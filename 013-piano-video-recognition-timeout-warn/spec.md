@@ -3,7 +3,7 @@
 **功能目录**: `013-piano-video-recognition-timeout-warn`  
 **创建日期**: 2026-05-11  
 **状态**: Implemented  
-**输入**: 用户要求修改并实现：`PianoVideoHomeWorkHandleServiceImpl#handle` 在等待 10 分钟超时后不再进行重试，而是发送告警；告警编号为 `WX003`；`campName` 和 `userName` 由 `common_warn_sender` 内部基于 `external_key` 补齐，调用方无需传入模板变量；告警调用方式参考 `C:\workspace\ju-chat\coze_plugin\external-info-save\src\main\java\com\drh\info\service\AppTask.java` 的 `notifyBookRegisterWarn` 方法。
+**输入**: 用户要求修改并实现：`PianoVideoHomeWorkHandleServiceImpl#handle` 在等待 10 分钟超时后不再进行重试，而是发送告警；告警编号为 `WX003`；同一个 `externalKey` 5 分钟内最多告警一次；`campName` 和 `userName` 由 `common_warn_sender` 内部基于 `external_key` 补齐，调用方无需传入模板变量；告警调用方式参考 `C:\workspace\ju-chat\coze_plugin\external-info-save\src\main\java\com\drh\info\service\AppTask.java` 的 `notifyBookRegisterWarn` 方法。
 
 ## 用户场景与测试 *(必填)*
 
@@ -55,6 +55,18 @@
 2. **Given** 超时告警需要发送，**When** 构造 `FcInvokeInput`，**Then** `functionName` 为 `common_warn_sender`。
 3. **Given** 超时告警需要发送，**When** 构造 `taskObj`，**Then** 入参格式与 `notifyBookRegisterWarn` 一致，并使用 `WX003`。
 
+### 用户故事 4 - 同一 externalKey 5 分钟内只告警一次（优先级：P1）
+
+同一个学员上下文在 5 分钟内可能触发多次钢琴视频识别超时。系统需要在本地调用 `common_warn_sender` 前做一次 `externalKey` 维度的去重，避免短时间内重复告警。
+
+**独立测试**：连续构造两个相同 `externalKey` 的钢琴视频识别超时场景；验证第一次会调用 `common_warn_sender`，第二次在 5 分钟窗口内命中去重并跳过告警。
+
+**验收场景**：
+
+1. **Given** 某 `externalKey` 首次触发超时告警，**When** Redis 去重 key 不存在，**Then** 系统写入 300 秒过期的去重 key 并发送 `WX003`。
+2. **Given** 同一 `externalKey` 在 5 分钟内再次触发超时，**When** Redis 去重 key 仍存在，**Then** 系统不调用 `common_warn_sender`，并记录 `piano_video_recognition_timeout_warn_repeat_limited` 日志。
+3. **Given** Redis 去重操作异常，**When** 系统处理超时告警，**Then** 记录降级日志并继续发送告警，避免漏告警。
+
 ## 边界情况
 
 - 本需求只修改钢琴视频作业处理类 `PianoVideoHomeWorkHandleServiceImpl` 的 `handle` 超时处理及必要告警辅助方法。
@@ -62,6 +74,10 @@
 - 首次 10 分钟等待内读取到 `FAIL` 时，按明确失败处理，返回空结果；本规格不要求对明确失败状态发送 `WX003` 超时告警。
 - 10 分钟等待超时后，即使缓存仍为 `PENDING` 或 `RUNNING`，也不再等待 7 分钟，不再二次触发异步识别。
 - `common_warn_sender` 依赖 `external_key`；实现时应从当前 SOP 上下文读取或构造可用 `external_key`，并在缺失时记录告警跳过日志。
+- `WX003` 告警发送前需要按 `externalKey` 做本地 Redis 去重，key 为 `ai:sopReply:pianoVideo:timeoutWarn:{externalKey}`，过期时间为 300 秒。
+- 命中 5 分钟去重时应跳过 `common_warn_sender` 调用，并记录可检索日志。
+- Redis 去重操作异常时继续发送告警，优先避免漏告警；此时可能无法严格保证 5 分钟只告警一次。
+- `common_warn_sender` 调用失败时不删除去重 key，避免失败期间重复尝试造成告警风暴。
 - `campName` 和 `userName` 是 `WX003` 模板变量，由 `common_warn_sender` 根据 `external_key` 补齐；调用方不需要传 `templateVariable`。
 - 告警发送失败不应抛出影响主流程，应捕获异常并记录错误日志。
 - 线程在 10 分钟等待期间被中断时，沿用现有中断处理策略。
@@ -82,6 +98,12 @@
 - **FR-012**：告警发送失败 MUST 被捕获并记录日志，不应中断或抛出主流程。
 - **FR-013**：首次等待成功、明确失败、空入参、`fileUrl` 为空、缓存命中成功等现有短路行为 MUST 保持不变。
 - **FR-014**：系统 SHOULD 增加可检索日志，覆盖识别等待超时、告警入参、告警发送成功或失败、超时后不重试。
+- **FR-015**：系统 MUST 在调用 `common_warn_sender` 前按 `externalKey` 做 5 分钟 Redis 去重。
+- **FR-016**：去重 key MUST 为 `ai:sopReply:pianoVideo:timeoutWarn:{externalKey}`。
+- **FR-017**：去重 key 过期时间 MUST 为 300 秒。
+- **FR-018**：同一个 `externalKey` 在 5 分钟内再次触发超时告警时，系统 MUST NOT 调用 `common_warn_sender`。
+- **FR-019**：Redis 去重操作异常时，系统 MUST 记录日志并继续发送告警。
+- **FR-020**：`common_warn_sender` 调用失败时，系统 MUST NOT 删除去重 key。
 
 ## 成功标准 *(必填)*
 
@@ -92,6 +114,8 @@
 - **SC-005**：告警入参不要求传 `templateVariable`；`common_warn_sender` 能根据 `external_key` 补齐 `campName` 和 `userName`。
 - **SC-006**：告警调用使用 `serviceName=service_sys`、`functionName=common_warn_sender`。
 - **SC-007**：`fc/sop-reply` 模块编译通过。
+- **SC-008**：同一 `externalKey` 在 5 分钟窗口内第二次触发超时时，不调用 `common_warn_sender`。
+- **SC-009**：Redis 去重异常时仍继续调用 `common_warn_sender`。
 
 ## 假设
 
@@ -99,4 +123,6 @@
 - 现有 `MAX_WAIT_MILLIS` 继续表示单次等待窗口 10 分钟。
 - 旧版 7 分钟延迟重试需求已被本规格替换，当前实现已移除延迟重试逻辑。
 - `common_warn_sender` 会基于 `external_key` 自动补齐基础变量，`WX003` 仍以 `campName`、`userName` 作为业务变量。
+- “只告警一次”按同一 `externalKey` 维度计算，不区分 `messageId`。
+- 5 分钟限制的是发送尝试次数；即使 `common_warn_sender` 调用失败，也不会在 5 分钟内重复尝试。
 - 本规格已实现并通过 `fc/sop-reply` 模块编译验证。

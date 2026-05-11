@@ -14,6 +14,9 @@
 - [x] 明确首次超时后发送告警。
 - [x] 明确告警编号为 `WX003`。
 - [x] 明确告警变量 `campName` 和 `userName` 由 `common_warn_sender` 内部补齐。
+- [x] 明确同一 `externalKey` 5 分钟内只告警一次。
+- [x] 明确去重 key 前缀和 300 秒过期时间。
+- [x] 明确 Redis 去重异常时继续告警。
 - [x] 明确参考实现为 `AppTask#notifyBookRegisterWarn`。
 - [x] 所有必填章节已完成。
 
@@ -23,6 +26,7 @@
 - [x] 需求可测试且无歧义。
 - [x] 成功标准可衡量。
 - [x] 验收场景覆盖首次超时、告警发送、告警入参和不重试。
+- [x] 验收场景覆盖 5 分钟去重命中和 Redis 异常降级。
 - [x] 边界情况已识别。
 
 ## 实施就绪度
@@ -33,9 +37,11 @@
 - [x] 明确需要编译检查。
 - [x] `PianoVideoHomeWorkHandleServiceImpl.java` 已按新规格移除延迟重试。
 - [x] `PianoVideoHomeWorkHandleServiceImpl.java` 已按新规格发送 `WX003` 告警。
+- [x] `PianoVideoHomeWorkHandleServiceImpl.java` 已按同一 `externalKey` 5 分钟去重。
 - [x] `fc/sop-reply` 模块已编译验证通过。
 
 ## 备注
 
 - 已完成业务代码实现。
 - 当前业务代码已从“10 分钟超时后 7 分钟延迟并单次重试”调整为“10 分钟超时后告警且不重试”。
+- 当前业务代码已实现同一 `externalKey` 5 分钟内最多尝试发送一次 `WX003`。

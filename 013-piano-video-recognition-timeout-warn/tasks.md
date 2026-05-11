@@ -27,6 +27,10 @@
 - [x] T016 告警发送异常捕获并记录日志，不影响主流程返回
 - [x] T017 首次等待超时并尝试告警后返回空 `HomeWorkResultDto`
 - [x] T018 增加识别等待超时、告警发送、告警失败、超时后不重试的关键日志
+- [x] T029 增加 `externalKey` 维度 5 分钟 Redis 去重 key
+- [x] T030 命中 5 分钟去重时跳过 `common_warn_sender`
+- [x] T031 Redis 去重异常时记录日志并继续发送告警
+- [x] T032 `common_warn_sender` 调用失败时不删除去重 key
 
 ## Phase 3：验证
 
@@ -40,6 +44,10 @@
 - [x] T026 验证告警调用目标为 `service_sys/common_warn_sender`
 - [x] T027 编译 `fc/sop-reply` 模块
 - [x] T028 记录验证结果和剩余风险
+- [x] T033 验证去重 key 前缀为 `ai:sopReply:pianoVideo:timeoutWarn:`
+- [x] T034 验证去重过期时间为 300 秒
+- [x] T035 验证命中去重时不调用 `FcInvokeUtils.doTask`
+- [x] T036 验证 Redis 去重异常分支继续发送告警
 
 ## 执行记录
 
@@ -70,3 +78,23 @@
 - 静态检查确认首次等待超时后调用 `notifyPianoVideoTimeoutWarn`，并直接返回空结果。
 - 静态检查确认告警入参包含 `external_key` 和 `sendTemplateList=["WX003"]`，未传 `templateVariable`。
 - 剩余风险：未接入真实 Redis、FC 异步任务和 `common_warn_sender` 做端到端联调；当前验证覆盖编译和关键逻辑走查。
+
+### D004 - 5 分钟去重实现记录
+
+- `PianoVideoHomeWorkHandleServiceImpl` 新增 `TIMEOUT_WARN_DEDUP_KEY_PREFIX = "ai:sopReply:pianoVideo:timeoutWarn:"`。
+- `PianoVideoHomeWorkHandleServiceImpl` 新增 `TIMEOUT_WARN_DEDUP_EXPIRE_SECONDS = 5 * 60`。
+- `notifyPianoVideoTimeoutWarn` 调用 `common_warn_sender` 前先执行 `isTimeoutWarnRepeatLimited`。
+- 去重逻辑通过 `RedisClient#setIfAbsentWithExpire` 写入 `ai:sopReply:pianoVideo:timeoutWarn:{externalKey}`。
+- 同一 `externalKey` 在 5 分钟内再次触发时，记录 `piano_video_recognition_timeout_warn_repeat_limited` 并跳过告警。
+- Redis 去重异常时记录 `piano_video_recognition_timeout_warn_dedup_error_continue` 并继续发送告警。
+- `common_warn_sender` 发送失败时不删除去重 key，避免 5 分钟内重复尝试。
+
+### D005 - 5 分钟去重验证记录
+
+- 执行命令：`mvn -q -DskipTests compile`
+- 执行目录：`C:\workspace\ju-chat\fc\sop-reply`
+- 执行结果：编译通过。
+- 静态检查确认告警发送前调用 `isTimeoutWarnRepeatLimited`。
+- 静态检查确认去重 key 前缀为 `ai:sopReply:pianoVideo:timeoutWarn:`，过期时间为 `5 * 60` 秒。
+- 静态检查确认命中去重时直接返回，不调用 `FcInvokeUtils.doTask`。
+- 静态检查确认 Redis 去重异常时返回 `false`，继续执行告警发送流程。
