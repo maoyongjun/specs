@@ -1,8 +1,8 @@
-# 任务清单：钢琴视频识别超时告警
+# 任务清单：钢琴视频识别超时与异常告警
 
 **输入**：来自 `specs/013-piano-video-recognition-timeout-warn/spec.md` 的功能规格  
 **前置条件**：`spec.md`、`checklists/requirements.md`、`AGENTS.md`  
-**测试**：通过模块编译检查、关键逻辑走查和告警入参验证。  
+**测试**：通过模块编译检查、关键逻辑走查、超时/异常告警入参验证。  
 
 ## Phase 1：规格与范围
 
@@ -49,6 +49,28 @@
 - [x] T035 验证命中去重时不调用 `FcInvokeUtils.doTask`
 - [x] T036 验证 Redis 去重异常分支继续发送告警
 
+## Phase 4：异常告警增量实现
+
+- [x] T037 将告警辅助方法从仅超时语义调整为可同时处理超时和异常触发原因
+- [x] T038 在 `handle` 中捕获钢琴视频识别处理链路异常，记录异常阶段并尝试发送 `WX003` 告警
+- [x] T039 覆盖 `triggerAsyncRecognitionIfNeeded` 异步提交异常或非法 `invocationId` 场景，确保会触发异常告警
+- [x] T040 覆盖 `waitForRecognitionResult` 等待轮询、缓存读取和线程中断异常，确保会触发异常告警
+- [x] T041 覆盖缓存成功结果解析异常，确保会触发异常告警
+- [x] T042 异常告警复用 `service_sys/common_warn_sender`、`sendTemplateList=["WX003"]`、`external_key`，且不传 `templateVariable`
+- [x] T043 异常告警复用 `externalKey` 维度 5 分钟 Redis 去重，沿用 key 前缀 `ai:sopReply:pianoVideo:timeoutWarn:`
+- [x] T044 异常告警发送完成或发送失败被捕获后，`handle` 返回空 `HomeWorkResultDto`，不向主流程抛出识别处理异常
+- [x] T045 增加识别处理异常、异常告警发送、异常告警失败、异常告警去重命中的关键日志
+
+## Phase 5：异常告警增量验证
+
+- [x] T046 验证异步提交异常或非法 `invocationId` 后发送 `WX003` 告警
+- [x] T047 验证等待轮询、缓存读取或线程中断异常后发送 `WX003` 告警
+- [x] T048 验证缓存成功结果解析异常后发送 `WX003` 告警
+- [x] T049 验证异常告警入参与超时告警一致，未传 `templateVariable`
+- [x] T050 验证同一 `externalKey` 5 分钟内超时和异常共用去重窗口
+- [x] T051 编译 `fc/sop-reply` 模块
+- [x] T052 记录异常告警实现验证结果和剩余风险
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -57,7 +79,7 @@
 - 已将旧版“首次 10 分钟超时后等待 7 分钟并重试一次”改为“首次 10 分钟超时后发送 `WX003` 告警且不重试”。
 - 已记录告警变量 `campName` 和 `userName` 由 `common_warn_sender` 内部基于 `external_key` 补齐，调用方无需传入。
 - 已记录告警调用参考 `external-info-save` 模块 `AppTask#notifyBookRegisterWarn`，目标函数为 `common_warn_sender`。
-- D001 仅为文档修改记录；业务代码已在 D002 中按新规格实现。
+- D001 仅为文档修改记录；业务代码已在 D002 中按原超时告警规格实现。
 
 ### D002 - 实现记录
 
@@ -98,3 +120,23 @@
 - 静态检查确认去重 key 前缀为 `ai:sopReply:pianoVideo:timeoutWarn:`，过期时间为 `5 * 60` 秒。
 - 静态检查确认命中去重时直接返回，不调用 `FcInvokeUtils.doTask`。
 - 静态检查确认 Redis 去重异常时返回 `false`，继续执行告警发送流程。
+
+### D006 - 异常告警增量规格记录
+
+- 已按用户新增要求将“异常也需要告警”写入 Spec Kit。
+- 异常告警范围包括异步提交异常、非法异步提交返回值、等待轮询异常、缓存读写异常、结果解析异常和等待线程中断。
+- 异常告警复用超时告警的 `WX003` 模板、`service_sys/common_warn_sender` 调用方式、`external_key` 入参和 5 分钟 `externalKey` 去重规则。
+- 明确业务 `FAIL` 不等同于处理链路异常；由本地异常写入或触发的失败状态应按异常告警处理。
+- D006 先完成规格与任务清单更新；业务代码已在 D007 中按 Phase 4/Phase 5 补充实现和验证。
+
+### D007 - 异常告警实现与验证记录
+
+- `PianoVideoHomeWorkHandleServiceImpl#handle` 新增处理链路异常兜底捕获，记录异常阶段并调用异常告警。
+- `triggerAsyncRecognitionIfNeeded` 改为返回派发结果；异步提交异常或 `invocationId=0` 时写入本地异常来源并触发 `WX003`。
+- `waitForRecognitionResult` 增加缓存读取、结果解析和线程等待异常结果，异常会回到 `handle` 统一告警并返回空结果。
+- 告警方法调整为同时支持 `TIMEOUT` 和 `EXCEPTION` 触发原因，入参仍仅包含 `external_key` 和 `sendTemplateList=["WX003"]`。
+- 超时和异常共用 `ai:sopReply:pianoVideo:timeoutWarn:{externalKey}` 5 分钟 Redis 去重窗口。
+- 执行命令：`mvn -q -DskipTests compile`
+- 执行目录：`C:\workspace\ju-chat\fc\sop-reply`
+- 执行结果：编译通过。
+- 剩余风险：未接入真实 Redis、FC 异步任务和 `common_warn_sender` 做端到端联调；当前验证覆盖编译和关键逻辑静态检查。
