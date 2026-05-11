@@ -20,14 +20,17 @@
 - [x] T009 在 `SopReply` 中识别钢琴未来作业：`sku=4` 且 `recognizedDay > currentDay`
 - [x] T010 钢琴未来作业直接发送固定话术，不通过 `homeworkDayRelation=FUTURE` 路由
 - [x] T011 钢琴未来作业分支打印包含关键上下文和固定话术的日志
+- [x] T012 钢琴未来作业固定话术发送成功后不计入点评进度
+- [x] T013 钢琴未来作业固定话术发送成功后不执行打标签
 
 ## Phase 3：验证
 
-- [x] T012 验证 `resolvePianoVideoPrompt` 的 `D%s` 替换结果
-- [x] T013 验证钢琴过去作业路由天数和 `homeworkDayRelation=CURRENT`
-- [x] T014 验证钢琴未来作业固定话术发送路径
-- [x] T015 编译 `fc/sop-reply` 模块
-- [x] T016 记录验证结果和剩余风险
+- [x] T014 验证 `resolvePianoVideoPrompt` 的 `D%s` 替换结果
+- [x] T015 验证钢琴过去作业路由天数和 `homeworkDayRelation=CURRENT`
+- [x] T016 验证钢琴未来作业固定话术发送路径
+- [x] T017 验证钢琴未来作业固定话术成功后不调用点评进度和打标签逻辑
+- [x] T018 编译 `fc/sop-reply` 模块
+- [x] T019 记录验证结果和剩余风险
 
 ## 执行记录
 
@@ -44,6 +47,7 @@
 - 钢琴过去作业路由参数强制覆盖为 `homeworkDayRelation=CURRENT`，并同步覆盖 `isPastHomework=false`、`isFutureHomework=false`。
 - `SopReply` 新增 `sku=4` 且 `recognizedDay > currentDay` 的钢琴未来作业分支。
 - 钢琴未来作业不请求配置中心路由，直接发送固定话术：`预习的不错，上课跟着再好好学习指法，完善一下会更好`。
+- 钢琴未来作业固定话术发送成功后，仅回填识别结果，不调用 `persistReviewProgress` 和 `tagAfterSuccessfulSend`。
 - 过去作业和未来作业分支均新增可检索日志。
 
 ### D003 - 验证记录
@@ -53,4 +57,5 @@
 - 执行结果：编译通过。
 - 静态检查确认 `PianoVideoHomeWorkHandleServiceImpl#resolvePianoVideoPrompt` 使用 `promptTemplate.replace("D%s", "D" + logicalDay)`。
 - 静态检查确认 `SopReply` 包含 `sopReply_piano_past_homework_route_override` 与 `sopReply_piano_future_homework_fixed_reply` 日志。
+- 静态检查确认钢琴未来作业分支调用 `handleSuccessfulPianoFutureHomeworkSend`，不调用通用的点评进度持久化和打标签成功处理。
 - 剩余风险：未接入真实配置中心、Redis、OTS 和企微发送链路做端到端联调；当前验证覆盖编译和关键逻辑走查。

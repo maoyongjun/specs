@@ -17,13 +17,14 @@
 - 钢琴特殊逻辑必须限定在 `sku=4`。
 - 非钢琴作业、钢琴当前作业和识别未通过流程必须保持现有行为。
 - 未来作业固定话术必须遵守现有 `wxsend=false` 预览模式。
+- 未来作业固定话术发送成功后，不计入点评进度，不打标签。
 - 过去作业和未来作业分支都必须打印可检索日志。
 
 ## 当前实现状态
 
 - `PianoVideoHomeWorkHandleServiceImpl#resolvePianoVideoPrompt` 已实现 `D%s -> D + logicalDay`。
 - `SopReply` 已实现钢琴过去作业 `recognizedDay` 路由与 `homeworkDayRelation=CURRENT` 覆写。
-- `SopReply` 已实现钢琴未来作业固定话术发送。
+- `SopReply` 已实现钢琴未来作业固定话术发送，且成功后不持久化点评进度、不打标签。
 
 ## 文档维护
 
