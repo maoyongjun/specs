@@ -16,12 +16,14 @@
 
 ## 排查结论：Codex Desktop 最近对话不在左侧列表展示
 
-结论：底层历史记录可读，但 Codex Desktop 左侧主对话列表按当前工作区/UI 状态过滤。搜索和归档能看到会员/历史记录，说明 `sessions`、`archived_sessions`、`session_index.jsonl` 并未完全丢失；左侧“对话”看不到，是因为 Desktop 未打开这些会话所属的 workspace。
+结论：底层历史记录可读，但 Codex Desktop 左侧主对话列表依赖当前工作区和 `.codex-global-state.json` 中的 UI 索引。搜索和归档能看到会员/历史记录，说明 `sessions`、`archived_sessions`、`session_index.jsonl` 并未完全丢失；左侧“对话”看不到，是因为 Desktop 没有把这些会话 ID 纳入 `projectless-thread-ids` 与 `thread-workspace-root-hints`。
 
 - Cursor 插件产生的最近会话 `session_meta.cwd` 为 `c:\workspace`。
 - Codex Desktop 在未传 workspace 路径时会进入 projectless/generated workspace，例如 `%USERPROFILE%\Documents\Codex\...`。
 - Desktop 自建对话会写入 `.codex-global-state.json` 的 `projectless-thread-ids` 与 `thread-workspace-root-hints`，而 Cursor/CLI 共享历史通常只有会话文件与索引。
+- `.codex-global-state.json` 还包含窗口、主题、onboarding 等 UI 状态，且 Codex Desktop 会原子重写该文件，硬链接/符号链接容易被打断。因此该文件不再作为账号共享文件处理。
 - 因此工具启动 Codex Desktop 时 MUST 传入匹配最近会话的 workspace path，优先使用 `codex.switcher.codexWorkspace` 显式覆盖；未配置时从所选账号最近会话文件的 `session_meta.cwd` 推断；最后才回退用户目录。
+- 同时工具在激活默认 `.codex` 后 MUST 从所选账号最近 `session_index.jsonl` 与会话文件回填 `.codex-global-state.json`：将最近会话 ID 写入 `projectless-thread-ids`，并将对应 `session_meta.cwd` 写入 `thread-workspace-root-hints`，让 Codex Desktop 左侧“对话”列表可以展示从 Cursor/Codex 插件同步来的最近会话。
 
 ## 用户场景与测试 *(必填)*
 
@@ -107,6 +109,7 @@
 - **FR-017**：Codex 启动 MUST 支持显式 `codex.switcher.codexExe` 覆盖、PATH 中的 `codex`，以及 Cursor 扩展目录中的 `codex.exe`。
 - **FR-018**：Codex 桌面启动前 MUST 将所选槽位 `auth.json` 与 `config.toml` 复制到默认 `.codex`，以兼容 MSIX 桌面端自行启动的后台服务。
 - **FR-019**：Codex 桌面启动 MUST 携带 workspace path；优先使用 `codex.switcher.codexWorkspace`，否则从所选账号最近会话 `session_meta.cwd` 推断，避免 Desktop 打开 projectless workspace 后左侧列表过滤掉最近对话。
+- **FR-020**：Codex 桌面启动前 MUST 回填默认 `.codex\.codex-global-state.json` 的 `projectless-thread-ids` 与 `thread-workspace-root-hints`，并且不得依赖 `.codex-global-state.json` 作为共享硬链接文件。
 
 ## 成功标准 *(必填)*
 

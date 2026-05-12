@@ -26,6 +26,7 @@
 - [x] T011a 分析并实现 Codex 软件启动复用槽位 `CODEX_HOME`
 - [x] T011b 修正 Codex 桌面 MSIX 不继承 `CODEX_HOME` 时的默认 `.codex` 激活逻辑
 - [x] T011c 排查并修正 Codex Desktop 左侧最近对话按 workspace 过滤导致不展示的问题
+- [x] T011d 回填 Codex Desktop `.codex-global-state.json` 侧栏索引，修正搜索可见但左侧对话为空的问题
 
 ## Phase 4：JavaFX UI 与打包
 
@@ -84,3 +85,10 @@
 - 测试命令：`mvn -f codex-account-switcher\pom.xml test`
 - 测试结果：BUILD SUCCESS；11 个 JUnit 测试通过。
 - 自检结论：通过。Codex Desktop 启动参数会携带推断出的 workspace path，以便左侧主对话列表命中最近会话所属工作区。
+
+### B006
+
+- 执行内容：根据手动验证反馈继续排查，确认搜索可见但左侧“对话”仍为空时，默认 `.codex\.codex-global-state.json` 只包含 Desktop 自建 projectless 会话 ID，未包含 Cursor/插件生成的最近会话 ID。实现启动前回填：从所选账号 `session_index.jsonl` 倒序读取最近会话，读取对应会话文件第一行 `session_meta.cwd`，写入默认 `.codex-global-state.json` 的 `projectless-thread-ids` 与 `thread-workspace-root-hints`。同时从共享文件列表移除 `.codex-global-state.json` 和 `.bak`，避免 Desktop 原子重写打断硬链接并覆盖 UI 状态；Codex 启动顺序调整为先停止旧进程，再激活默认 `.codex` 并回填状态，最后启动新 Codex，避免退出写盘覆盖回填结果。
+- 测试命令：`mvn -f codex-account-switcher\pom.xml test`
+- 测试结果：BUILD SUCCESS；12 个 JUnit 测试通过。
+- 自检结论：通过。新测试覆盖默认 Codex home 激活时回填 Desktop 侧栏状态。
