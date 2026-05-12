@@ -23,6 +23,8 @@
 - [x] T009 实现 Cursor 路径查找、进程停止与按槽位启动
 - [x] T010 实现明文 zip 导出，包含账号、共享、旧版兼容文件和 manifest
 - [x] T011 实现 zip manifest 校验、zip slip 防护、备份后替换恢复和共享链接重建
+- [x] T011a 分析并实现 Codex 软件启动复用槽位 `CODEX_HOME`
+- [x] T011b 修正 Codex 桌面 MSIX 不继承 `CODEX_HOME` 时的默认 `.codex` 激活逻辑
 
 ## Phase 4：JavaFX UI 与打包
 
@@ -59,3 +61,17 @@
 - 测试命令：`powershell -NoProfile -ExecutionPolicy Bypass -File codex-account-switcher\scripts\package-app.ps1`；`Test-Path codex-account-switcher\target\dist\CodexAccountSwitcher\CodexAccountSwitcher.exe`
 - 测试结果：脚本成功，目标 exe 存在。
 - 自检结论：通过。产物路径为 `C:\workspace\ju-chat\codex-account-switcher\target\dist\CodexAccountSwitcher\CodexAccountSwitcher.exe`。
+
+### B003
+
+- 执行内容：确认 `codex` 会读取 `CODEX_HOME`，并新增“启动 Codex”入口；启动时准备所选槽位目录，设置进程级 `CODEX_HOME` 与 `CODEX_ACCOUNT_SLOT`，优先查找显式 `codex.switcher.codexExe`、PATH 和 Cursor 扩展目录中的 `codex.exe`，对 CLI 使用 `codex app` 启动桌面 Codex。
+- 测试命令：`codex --help`；`$env:CODEX_HOME='C:\workspace\_codex_home_probe'; codex debug config`；`mvn -f codex-account-switcher\pom.xml test`
+- 测试结果：`codex --help` 显示 `app` 子命令；探测命令报错中引用了设置的 `CODEX_HOME`，证明启动链路读取该变量；Maven 测试通过。
+- 自检结论：通过。该登录态复用只保证通过本工具启动的 Cursor/Codex 子进程生效，不保证外部快捷方式启动的进程继承槽位环境。
+
+### B004
+
+- 执行内容：根据手动验证反馈修正 Codex 桌面启动逻辑。确认 `codex app` 打开 MSIX 桌面端后，桌面端会自行启动 `C:\Program Files\WindowsApps\OpenAI.Codex_...\app\resources\codex.exe`，不会继承工具传给 Cursor 扩展 `codex.exe` 的 `CODEX_HOME`；因此启动 Codex 桌面端前先将所选槽位的 `auth.json` 与 `config.toml` 同步到默认 `%USERPROFILE%\.codex`，并写入 `active_account_slot.txt`。
+- 测试命令：`mvn -f codex-account-switcher\pom.xml test`
+- 测试结果：BUILD SUCCESS；9 个 JUnit 测试通过。
+- 自检结论：通过。Cursor 仍使用进程级 `CODEX_HOME`；Codex 桌面端使用默认 `.codex` 激活文件兼容 MSIX 后台服务。

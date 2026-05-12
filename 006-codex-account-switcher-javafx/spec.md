@@ -3,22 +3,32 @@
 **功能目录**: `006-codex-account-switcher-javafx`  
 **创建日期**: 2026-05-08  
 **状态**: Implemented  
-**输入**: 用户要求将 `C:\Users\EDY\OneDrive\Desktop\switchCodex.cmd` 封装为类似 FinalShell 的可双击界面应用，源码放在 `C:\workspace\ju-chat`，使用 Java 与 JavaFX，最终生成 exe，并在现有切换账号功能外增加账号导出迁移恢复功能。
+**输入**: 用户要求将 `C:\Users\EDY\OneDrive\Desktop\switchCodex.cmd` 封装为类似 FinalShell 的可双击界面应用，源码放在 `C:\workspace\ju-chat`，使用 Java 与 JavaFX，最终生成 exe，并在现有切换账号功能外增加账号导出迁移恢复功能；后续要求确认 Cursor 内 Codex 插件登录态是否可用于 Codex 软件启动，并在可行时补充文档与代码。
+
+## 可行性分析：Codex 软件启动复用登录态
+
+结论：可行，前提是由本工具作为父进程启动 Codex，并在子进程环境中设置对应槽位的 `CODEX_HOME`。
+
+- 本机 `codex --help` 显示当前 `codex` 可执行文件提供 `app` 子命令，可用于启动 Codex desktop app。
+- 将 `CODEX_HOME` 指向测试目录后运行 `codex` 命令，命令输出会明确引用该路径，说明 Codex CLI/desktop 启动链路读取 `CODEX_HOME`。
+- 现有账号目录已经把每个槽位的 `auth.json`、`config.toml` 和共享会话数据准备到独立 `.codex-accountN` 中，和 Codex 读取 `CODEX_HOME` 的模型一致。
+- 风险边界：Codex 桌面 MSIX 应用会自行启动包内 `codex.exe` 后台服务，不会继承从 Cursor 扩展 `codex.exe app` 传入的 `CODEX_HOME`。因此启动 Codex 桌面端前，工具 MUST 将所选槽位的 `auth.json` 与 `config.toml` 同步到默认 `%USERPROFILE%\.codex`，并写入 `active_account_slot.txt` 标记当前桌面端账号。
 
 ## 用户场景与测试 *(必填)*
 
 ### 用户故事 1 - 图形界面切换 Codex 账号（优先级：P1）
 
-用户打开 Windows exe 后，可以在 JavaFX 界面中看到固定 1-7 个账号槽位、每个账号的邮箱/过期时间/账号目录，并点击账号启动 Cursor/Codex。
+用户打开 Windows exe 后，可以在 JavaFX 界面中看到固定 1-7 个账号槽位、每个账号的邮箱/过期时间/账号目录，并点击账号启动 Cursor 或 Codex。
 
-**独立测试**：在存在或不存在账号文件的机器上启动应用，验证界面显示 1-7 个槽位，点击某个槽位会准备对应目录并以该槽位的 `CODEX_HOME` 启动 Cursor。
+**独立测试**：在存在或不存在账号文件的机器上启动应用，验证界面显示 1-7 个槽位，点击某个槽位会准备对应目录并以该槽位的 `CODEX_HOME` 启动 Cursor 或 Codex。
 
 **验收场景**：
 
 1. **Given** 应用启动，**When** 主界面加载完成，**Then** 左侧固定显示账号 1-7。
 2. **Given** 某槽位存在 `auth.json` 或旧版 `auth_userN.json`，**When** 刷新状态，**Then** 显示解析出的邮箱和令牌过期时间。
-3. **Given** 用户点击启动账号 N，**When** 应用执行启动流程，**Then** 准备 `%USERPROFILE%\.codex-accountN` 并设置 `CODEX_HOME`、`CODEX_ACCOUNT_SLOT` 启动 Cursor。
-4. **Given** Cursor 不存在，**When** 用户启动账号，**Then** 应用显示明确错误并保留日志。
+3. **Given** 用户点击启动 Cursor 账号 N，**When** 应用执行启动流程，**Then** 准备 `%USERPROFILE%\.codex-accountN` 并设置 `CODEX_HOME`、`CODEX_ACCOUNT_SLOT` 启动 Cursor。
+4. **Given** 用户点击启动 Codex 账号 N，**When** 应用执行启动流程，**Then** 准备 `%USERPROFILE%\.codex-accountN`，将该槽位 `auth.json`、`config.toml` 激活到 `%USERPROFILE%\.codex`，并设置 `CODEX_HOME`、`CODEX_ACCOUNT_SLOT` 执行 `codex app` 或启动 Codex 可执行文件。
+5. **Given** Cursor 或 Codex 可执行文件不存在，**When** 用户启动对应目标，**Then** 应用显示明确错误并保留日志。
 
 ### 用户故事 2 - 一键准备与修复账号目录（优先级：P1）
 
@@ -72,8 +82,8 @@
 - **FR-001**：系统 MUST 新增独立 Maven JavaFX 项目 `codex-account-switcher`。
 - **FR-002**：系统 MUST 使用 Java 17 编译，JavaFX 依赖版本为 `21.0.6`。
 - **FR-003**：主界面 MUST 固定展示账号 1-7。
-- **FR-004**：界面 MUST 提供 `启动账号`、`准备全部账号`、`导出全部账号`、`恢复账号包`、`刷新状态` 操作。
-- **FR-005**：账号启动 MUST 设置进程级 `CODEX_HOME` 与 `CODEX_ACCOUNT_SLOT`，不得写入用户级系统环境变量。
+- **FR-004**：界面 MUST 提供 `启动 Cursor`、`启动 Codex`、`准备全部账号`、`导出全部账号`、`恢复账号包`、`刷新状态` 操作。
+- **FR-005**：Cursor 与 Codex 账号启动 MUST 设置进程级 `CODEX_HOME` 与 `CODEX_ACCOUNT_SLOT`，不得写入用户级系统环境变量。
 - **FR-006**：账号启动 MUST 先停止现有 `codex` 与 `Cursor` 进程。
 - **FR-007**：账号准备 MUST 创建账号目录、共享目录、默认 config，并导入旧版 auth。
 - **FR-008**：共享目录 MUST 包含 `sessions`、`archived_sessions`、`session_index.jsonl`。
@@ -85,6 +95,8 @@
 - **FR-014**：恢复 MUST 校验 manifest 和 zip slip 路径。
 - **FR-015**：恢复完成后 MUST 重建共享链接并刷新界面状态。
 - **FR-016**：最终 MUST 可生成 `target\dist\CodexAccountSwitcher\CodexAccountSwitcher.exe`。
+- **FR-017**：Codex 启动 MUST 支持显式 `codex.switcher.codexExe` 覆盖、PATH 中的 `codex`，以及 Cursor 扩展目录中的 `codex.exe`。
+- **FR-018**：Codex 桌面启动前 MUST 将所选槽位 `auth.json` 与 `config.toml` 复制到默认 `.codex`，以兼容 MSIX 桌面端自行启动的后台服务。
 
 ## 成功标准 *(必填)*
 
@@ -98,7 +110,7 @@
 ## 假设
 
 - 用户已确认导出包使用明文 zip，不加密。
-- 用户已确认点击账号默认启动 Cursor。
+- 用户已确认界面同时提供 Cursor 和 Codex 启动入口。
 - 用户已确认账号槽位固定为 1-7。
 - 用户已确认恢复策略为备份后替换。
 - 不做安装器 exe/MSI，只做可双击 app image。
