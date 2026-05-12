@@ -25,6 +25,16 @@
 - [x] T011 编译 `kkhc-idc` 的 `ai` 模块
 - [x] T012 记录验证结果和剩余风险
 
+## Phase 4：external_user_id 手机号补偿
+
+- [x] T013 更新 Spec Kit 文档，补充 OTS 手机号为空时的 `external_user_id` 补偿需求
+- [x] T014 在 `kkhc-idc-ai` 新增 `/user/externalUserPhone` 查询接口
+- [x] T015 在 `AppletUserMapper` 新增按 `external_userid` 关联 `union_id` 查询最新非空手机号的 SQL
+- [x] T016 修改 `AppTask#setTushu`，OTS 手机号为空时先调用补偿接口再查询图书物流
+- [x] T017 重新编译 `external-info-select` 模块
+- [x] T018 重新编译 `kkhc-idc` 的 `ai` 模块
+- [x] T019 记录本次验证结果和剩余风险
+
 ## 执行记录
 
 ### D001 - 实现记录
@@ -45,3 +55,19 @@
 - 额外尝试：`mvn -pl ai -am -DskipTests test`
 - 结果：在既有依赖模块 `base-common` 编译失败，错误为 `AESUtils.java` 引用 `com.sun.jndi.toolkit.url` 不存在；该失败发生在进入 `ai` 模块前，非本需求改动引入。
 - 剩余风险：未接入真实 OTS、Redis、数据库和网关做端到端联调；当前验证覆盖编译和静态逻辑。
+
+### D003 - external_user_id 手机号补偿实现记录
+
+- `kkhc-idc-ai` 新增 `GET /user/externalUserPhone?externalUserId=`，返回 `BaseResponse<String>`。
+- 手机号查询 SQL 使用 `drh_emp_external_user.external_userid` 查询，并通过 `union_id` 与 `emp_id` 关联 `drh_applet_user`，按 `drh_applet_user.id desc limit 1` 取最新非空手机号。
+- `AppTask#setTushu` 在 OTS `phone_number/phone` 为空时，通过 `external_user_id` 查询补偿手机号；补偿失败时记录日志并保持默认物流状态。
+
+### D004 - external_user_id 手机号补偿验证记录
+
+- 执行命令：`mvn -pl external-info-select -am -DskipTests test`
+- 执行目录：`C:\workspace\ju-chat\coze_plugin`
+- 执行结果：BUILD SUCCESS。
+- 执行命令：`mvn -pl ai -DskipTests test`
+- 执行目录：`C:\workspace\ju-chat\kkhc\kkhc-idc`
+- 执行结果：BUILD SUCCESS。
+- 剩余风险：未接入真实网关和数据库验证 `/user/externalUserPhone` 的线上数据命中情况。

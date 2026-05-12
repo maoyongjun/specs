@@ -3,7 +3,7 @@
 **功能目录**: `011-tushu-phone-fallback-filled-tag`  
 **创建日期**: 2026-05-11  
 **状态**: Ready for Implementation  
-**输入**: 用户要求 `AppTask#setTushu` 在 `applet_user_id` 为空时通过手机号查询图书物流；图书记录接口支持非必填 `phone`；`AiServiceImpl#selectUserCampDateIdInfo` 在标签营期补偿分支识别同一 `userid` 下的“已填写”标签并设置 `if_tushu=是`。
+**输入**: 用户要求 `AppTask#setTushu` 在 `applet_user_id` 为空时通过手机号查询图书物流；图书记录接口支持非必填 `phone`；`AiServiceImpl#selectUserCampDateIdInfo` 在标签营期补偿分支识别同一 `userid` 下的“已填写”标签并设置 `if_tushu=是`；当 OTS 手机号为空时通过 `external_user_id` 调用补偿接口查询手机号。
 
 ## 用户场景与测试 *(必填)*
 
@@ -32,7 +32,19 @@
 3. **Given** 两者都传，**When** 调用接口，**Then** 优先使用 `appletUserId` 对应用户手机号，查不到时回退到传入 `phone`。
 4. **Given** 两者都不传，**When** 调用接口，**Then** 返回空 JSON，不出现必填参数绑定异常。
 
-### 用户故事 3 - 标签营期补偿识别已填写（优先级：P1）
+### 用户故事 3 - OTS 手机号为空时通过 external_user_id 补偿（优先级：P1）
+
+当 OTS 基础信息没有 `phone_number` 或 `phone`，但存在 `external_user_id` 时，系统需要通过 `kkhc-idc-ai` 的补偿接口查询手机号，再继续查询图书物流。
+
+**独立测试**：构造 `if_tushu=是`、`applet_user_id=null`、`otsInfo.phone_number=null`、`external_user_id` 有值且补偿接口返回手机号，验证会请求图书查询接口并携带补偿手机号。
+
+**验收场景**：
+
+1. **Given** OTS 手机号有值，**When** 调用 `setTushu`，**Then** 不调用 external_user_id 手机号补偿接口。
+2. **Given** OTS 手机号为空且补偿接口命中手机号，**When** 调用 `setTushu`，**Then** 使用补偿手机号继续查询图书物流。
+3. **Given** OTS 手机号为空且补偿接口未命中或异常，**When** 调用 `setTushu`，**Then** 不抛异常并保持默认物流状态。
+
+### 用户故事 4 - 标签营期补偿识别已填写（优先级：P1）
 
 当用户未查到小程序用户记录，但可通过外部联系人的营期标签获得当前营期时，系统需要检查同一企微员工下是否存在“已填写”标签，存在则将图书标识写为 `if_tushu=是`。
 
@@ -47,6 +59,7 @@
 ## 边界情况
 
 - `otsInfo` 为空或不包含 `phone_number` 时，不因手机号兜底抛异常。
+- OTS 手机号为空、`external_user_id` 为空或补偿接口异常时，不因手机号补偿抛异常。
 - `phone` 为空字符串时，接口返回空 JSON。
 - 按手机号查询不到 `drh_book_question_record` 和 `drh_external_book_question_record` 时返回空 JSON。
 - 仅通过 `phone` 查询时，无法从 `appletUserId` 获取 `channelId`，响应可不包含 `channelId`。
@@ -65,6 +78,10 @@
 - **FR-009**：`AiServiceImpl` MUST 在标签营期补偿分支中检查“已填写”标签。
 - **FR-010**：“已填写”标签判断 MUST 校验 `follow_user.userid` 与当前 `qwUserId` 相等。
 - **FR-011**：当前 `userid` 存在“已填写”标签且营期匹配时，缓存 JSON MUST 写入 `if_tushu=是`。
+- **FR-012**：OTS `phone_number` 和 `phone` 为空时，`AppTask#setTushu` MUST 通过 `external_user_id` 调用补偿接口查询手机号。
+- **FR-013**：`kkhc-idc-ai` MUST 提供 `GET /user/externalUserPhone?externalUserId=`，返回匹配到的最新非空手机号。
+- **FR-014**：手机号补偿 SQL MUST 按 `drh_emp_external_user.external_userid` 查询，并通过 `union_id` 与 `emp_id` 关联 `drh_applet_user`，按 `drh_applet_user.id desc` 取 1 条。
+- **FR-015**：手机号补偿失败、返回非 200 或返回空时，`AppTask#setTushu` MUST 记录日志并保持原默认物流状态。
 
 ## 成功标准 *(必填)*
 
@@ -74,9 +91,13 @@
 - **SC-004**：只传 `phone` 时可按手机号查询物流记录。
 - **SC-005**：当前 `userid` 下含“已填写”标签时，标签营期匹配分支写入 `if_tushu=是`。
 - **SC-006**：编译检查覆盖 `external-info-select` 模块和 `kkhc-idc` 的 `ai` 模块。
+- **SC-007**：OTS 手机号为空且补偿接口返回手机号时，`AppTask` 构造包含补偿手机号的图书查询请求。
+- **SC-008**：`GET /user/externalUserPhone` 可按 `externalUserId` 返回最新非空手机号，不影响原 `user/externalUserInfo` 响应。
 
 ## 假设
 
 - OTS 基础信息中的手机号字段为 `phone_number`，兼容读取 `phone`。
 - 手机号查询不需要新增数据库字段或索引，现有 `phone` 字段可直接查询。
 - 通过标签营期补偿获得权限时，`payment_amount=0` 可作为缓存中的非负权限标记。
+- 补偿接口请求参数使用 `externalUserId`，SQL 字段仍使用 `external_userid`。
+- 手机号补偿 SQL 使用 `a.emp_id = b.emp_id` 约束同一企微员工。
