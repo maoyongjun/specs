@@ -92,6 +92,66 @@
 - [x] T066 编译 `fc/sop-reply` 模块
 - [x] T067 记录点评未知告警实现验证结果和剩余风险
 
+## Phase 8：异步任务失败告警补漏实现
+
+- [x] T068 明确 `PianoHomeWorkVideoTask` 写入的 `STATUS_FAIL` 属于异步任务执行失败，不应被当成普通作业未命中吞掉
+- [x] T069 `PianoHomeWorkVideoTask` 写入失败缓存时补充 `errorSource=ASYNC_TASK_FAIL`
+- [x] T070 `PianoHomeWorkVideoTask` 写入失败缓存时补充 `errorStage=piano_homework_video_task_analyze`
+- [x] T071 `PianoVideoHomeWorkHandleServiceImpl` 初始缓存读到非 `BUSINESS_FAIL` 的 `STATUS_FAIL` 时触发异常告警
+- [x] T072 `PianoVideoHomeWorkHandleServiceImpl#waitForRecognitionResult` 读到非 `BUSINESS_FAIL` 的 `STATUS_FAIL` 时触发异常告警
+- [x] T073 保留显式业务失败分支：只有 `errorSource=BUSINESS_FAIL` 才按普通失败返回空结果且不告警
+- [x] T074 异步任务失败告警复用 `service_sys/common_warn_sender`、`sendTemplateList=["WX003"]`、`external_key`，且不传 `templateVariable`
+- [x] T075 异步任务失败告警复用 `externalKey` 维度 5 分钟 Redis 去重，沿用 key 前缀 `ai:sopReply:pianoVideo:timeoutWarn:`
+
+## Phase 9：异步任务失败告警补漏验证
+
+- [x] T076 验证 `error=new supplier SDK call failed` 写入 `STATUS_FAIL` 后会触发 `WX003` 告警
+- [x] T077 验证 `errorSource=BUSINESS_FAIL` 的 `STATUS_FAIL` 不触发异常告警
+- [x] T078 验证异步任务失败告警入参与超时告警一致，未传 `templateVariable`
+- [x] T079 编译 `fc/sop-reply` 模块
+- [x] T080 编译 `fc/Gemini-Api` 模块
+- [x] T081 记录异步任务失败告警补漏验证结果和剩余风险
+
+## Phase 10：钢琴视频新供应商 HTTP 化实现
+
+- [x] T082 确认 `PianoHomeWorkVideoTask` 新供应商路径不再使用 Google GenAI SDK
+- [x] T083 新增直接使用业务 `file_url` 作为 `file_data.file_uri` 的逻辑
+- [x] T084 移除新供应商 HTTP resumable upload 初始化和 `x-goog-upload-url` 依赖
+- [x] T085 移除新供应商上传视频二进制并 finalize 的逻辑
+- [x] T086 新增 HTTP `generateContent` 调用逻辑，使用 `file_data.mime_type`、`file_data.file_uri=<原始视频URL>` 和 prompt
+- [x] T087 HTTP 生成成功后复用现有 `extractTextFromResponse` 解析逻辑，不写入 `STATUS_FAIL`
+- [x] T088 HTTP 生成失败或响应文本为空时保持现有重试；重试耗尽后写入 `STATUS_FAIL` 并由 `sop-reply` 触发 `WX003`
+- [x] T089 `PracticeCommentFc` 不纳入本次 HTTP 化改造范围，保持旧接口逻辑
+
+## Phase 11：钢琴视频新供应商 HTTP 化验证
+
+- [x] T090 验证 `PianoHomeWorkVideoTask` 编译通过
+- [x] T091 验证 `PianoVideoHomeWorkHandleServiceImpl` 编译通过
+- [x] T092 静态验证 `PianoHomeWorkVideoTask` 不包含 `com.google.genai` import
+- [x] T093 静态验证 HTTP 生成使用 `x-goog-api-key`、`file_data`、`mime_type`、`file_uri`
+- [x] T094 记录钢琴视频新供应商 HTTP 化实现验证结果和剩余风险
+
+## Phase 12：Google GenAI SDK 依赖与运行时依赖验证
+
+- [x] T093 将 `fc/Gemini-Api` 的 `com.google.genai:google-genai` 从 `1.22.0` 升级到 `1.53.0`
+- [x] T094 验证 `google-genai:1.53.0` 可从 Maven 仓库解析
+- [x] T095 验证 `fc/Gemini-Api` 编译通过
+- [x] T096 记录依赖树解析结果，确认实际使用 `com.google.genai:google-genai:jar:1.53.0:compile`
+- [x] T097 显式补充 `commons-logging:commons-logging:1.3.5`，修复 Apache HttpClient 运行时缺少 `LogFactory`
+- [x] T098 执行 `mvn -q -DskipTests package`，验证 shade 后 `gemini-api.jar` 包含 `org/apache/commons/logging/LogFactory.class`
+
+## Phase 13：新供应商本地验证 test 方法规格
+
+- [x] T099 在规格中明确新供应商 HTTP baseUrl 固定为 `https://ent.univibe.cc`
+- [x] T100 在规格中补充普通聊天本地 test 方法，用于验证纯文本 `generateContent`
+- [x] T101 在规格中补充视频理解本地 test 方法，用于验证视频 URL 直传 `generateContent` 和响应文本提取
+- [x] T102 在 `PianoHomeWorkVideoTask` 中实现普通聊天 test 方法
+- [x] T103 在 `PianoHomeWorkVideoTask` 中实现视频 URL 直传 test 方法或调整现有 `testNewSupplierVideoAnalysis` 使其固定使用 `https://ent.univibe.cc`
+- [x] T104 验证普通聊天 test 方法调用 `POST https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`
+- [x] T105 验证视频理解 test 方法只调用 `POST https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`，并传入 `file_data.file_uri=<视频URL>`
+- [x] T106 验证两个 test 方法均从 `new_supplier_api_key` 读取令牌，且不在代码、日志或文档中暴露令牌
+- [x] T107 记录普通聊天与视频理解本地 test 方法的执行结果和剩余风险
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -175,3 +235,55 @@
 - 验证命令：`mvn -q -DskipTests compile`
 - 验证目录：`C:\workspace\ju-chat\fc\sop-reply`
 - 剩余风险：未接入真实 Redis、FC 异步任务和 `common_warn_sender` 做端到端联调；当前验证覆盖编译和关键逻辑静态检查。
+
+### D009 - 异步任务失败告警补漏实现与验证记录
+
+- 根因确认：截图中的 `new supplier SDK call failed` 由 `fc/Gemini-Api` 的 `PianoHomeWorkVideoTask` 捕获异常后写入 Redis `STATUS_FAIL`；`fc/sop-reply` 轮询读到后只按普通 `fail()` 返回空结果，未进入告警链路。
+- `PianoHomeWorkVideoTask` 写入失败缓存时新增 `errorSource=ASYNC_TASK_FAIL` 和 `errorStage=piano_homework_video_task_analyze`。
+- `PianoVideoHomeWorkHandleServiceImpl` 读到 `STATUS_FAIL` 时，只有 `errorSource=BUSINESS_FAIL` 才按普通业务失败处理；其他失败均按异步任务执行异常触发 `WX003` 告警。
+- 截图场景 `钢琴视频识别异步任务失败, cacheKey=..., waitStage=initial, error=new supplier SDK call failed` 会触发异常告警，并返回空 `HomeWorkResultDto`。
+- 异步任务失败告警复用 `service_sys/common_warn_sender`、`sendTemplateList=["WX003"]`、`external_key`，且不传 `templateVariable`。
+- 异步任务失败告警与超时、异常、未知标题共用 `ai:sopReply:pianoVideo:timeoutWarn:{externalKey}` 5 分钟 Redis 去重窗口。
+- 验证命令：`mvn -q -DskipTests compile`
+- 验证目录：`C:\workspace\ju-chat\fc\sop-reply`、`C:\workspace\ju-chat\fc\Gemini-Api`
+- 剩余风险：未接入真实 Redis、FC 异步任务和 `common_warn_sender` 做端到端联调；当前验证覆盖编译和关键逻辑静态检查。
+
+### D010 - 钢琴视频新供应商 HTTP 化实现与验证记录
+
+- `PianoHomeWorkVideoTask` 新供应商路径已改为全 HTTP：直接把业务 `file_url` 作为 `file_data.file_uri` 调用 HTTP `generateContent`。
+- `PianoHomeWorkVideoTask` 不再导入或调用 `com.google.genai` SDK。
+- HTTP 生成使用 `POST https://ent.univibe.cc/{NEW_SUPPLIER_API_VERSION}/models/{NEW_SUPPLIER_MODEL}:generateContent`。
+- HTTP 请求体使用同一 `prompt` 和原始视频 URL，格式为 `contents[].parts[].text` 与 `contents[].parts[].file_data`。
+- HTTP 生成返回 2xx 时直接返回原始 JSON，继续复用现有 `extractTextFromResponse` 提取点评文本。
+- HTTP 生成失败或响应文本为空时仍进入现有重试流程；重试耗尽后写入 `STATUS_FAIL`、`errorSource=ASYNC_TASK_FAIL`，并由 `sop-reply` 发送 `WX003`。
+- `PracticeCommentFc` 不属于本次 HTTP 化范围，保持旧接口逻辑。
+- 验证命令：`mvn -q -DskipTests compile`
+- 验证目录：`C:\workspace\ju-chat\fc\Gemini-Api`、`C:\workspace\ju-chat\fc\sop-reply`
+- 剩余风险：未用真实新供应商响应做端到端验证；当前验证覆盖编译、打包和关键逻辑静态检查。
+
+### D011 - Google GenAI SDK 依赖升级记录
+
+- `fc/Gemini-Api/pom.xml` 中 `com.google.genai:google-genai` 已从 `1.22.0` 升级到 `1.53.0`。
+- `fc/Gemini-Api/pom.xml` 显式新增 `commons-logging:commons-logging:1.3.5`，用于补齐 Apache HttpClient 运行时依赖 `org/apache/commons/logging/LogFactory`。
+- 执行命令：`mvn -q -DskipTests compile`
+- 执行目录：`C:\workspace\ju-chat\fc\Gemini-Api`
+- 执行结果：编译通过。
+- 执行命令：`mvn dependency:tree "-Dincludes=com.google.genai:google-genai"`
+- 解析结果：`com.google.genai:google-genai:jar:1.53.0:compile`。
+- 执行命令：`mvn -q -DskipTests package`
+- 打包结果：`target/gemini-api.jar` 包含 `org/apache/commons/logging/LogFactory.class` 和 `org/apache/http/impl/client/HttpClientBuilder.class`。
+
+### D012 - 新供应商本地 test 方法规格记录
+
+- 已按用户要求先修改 Spec Kit 文档，补充普通聊天和视频理解两个本地 test 方法的验收要求。
+- 普通聊天 test 方法用于验证 `POST https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent` 的纯文本 `generateContent` 能力。
+- 视频理解 test 方法用于验证 `https://ent.univibe.cc` 下的视频 URL 直传、`POST /v1beta/models/gemini-3-flash-preview:generateContent` 和响应文本提取。
+- 两个 test 方法都必须从 `new_supplier_api_key` 读取令牌，不得把测试令牌写入代码、日志或文档。
+- 代码实现已完成：`main chat ...` 执行普通聊天 test，`main video ...` 或默认 main 执行视频 URL 直传 test。
+- 执行 `mvn -q -DskipTests package`，目录 `C:\workspace\ju-chat\fc\Gemini-Api`，结果通过。
+- 执行 `mvn -q -DskipTests compile`，目录 `C:\workspace\ju-chat\fc\sop-reply`，结果通过。
+- 静态检查确认 `PianoHomeWorkVideoTask` 不再包含 `callNewSupplierGeminiHttpWithUpload`、`startNewSupplierFileUpload`、`uploadNewSupplierFile`、`HttpGet`、`ByteArrayEntity` 和 `new_supplier_base_url`。
+- 静态检查确认 `PracticeCommentFc` 未被本次修改触及。
+- 普通聊天本地 test 已成功返回文本，验证 `https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent` 可用。
+- 视频理解本地 test 已确认调用同一 `generateContent` URL，并以 `file_data.file_uri=<视频URL>` 直传视频；本次外部网关返回 `503 model_not_found`，错误为 `gemini-slb` 分组下 `gemini-3-flash-preview` 无可用渠道。
+- 本次验证未暴露测试令牌；剩余风险是新供应商网关当前视频模型渠道不可用，需要供应商侧恢复或调整渠道后再做成功态视频理解联调。
