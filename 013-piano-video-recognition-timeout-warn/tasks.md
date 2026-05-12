@@ -152,6 +152,19 @@
 - [x] T106 验证两个 test 方法均从 `new_supplier_api_key` 读取令牌，且不在代码、日志或文档中暴露令牌
 - [x] T107 记录普通聊天与视频理解本地 test 方法的执行结果和剩余风险
 
+## Phase 14：新供应商 inlineData 模式实现与验证
+
+- [x] T108 在规格中补充新供应商支持 `fileUrl` 和 `inlineData` 两种视频输入模式，默认 `fileUrl`
+- [x] T109 在 `PianoHomeWorkVideoTask` 中新增 `newSupplierVideoInputMode` / `videoInputMode` 入参和 `new_supplier_video_input_mode` 环境变量解析
+- [x] T110 在 `PianoHomeWorkVideoTask` 中实现 `inlineData` 模式，使用同一个业务 `file_url` 下载视频并转 base64 后，通过 `inline_data.mime_type` 和 `inline_data.data` 调用 `generateContent`
+- [x] T111 在 `PianoHomeWorkVideoTask` 中保留默认 `fileUrl` 模式，继续通过 `file_data.file_uri=<原始视频URL>` 调用 `generateContent`
+- [x] T112 新增 `inline` / `video-inline` 本地 test 入口，支持传入视频 URL
+- [x] T113 编译 `fc/Gemini-Api` 模块
+- [x] T114 编译 `fc/sop-reply` 模块
+- [x] T115 本地执行内嵌数据 test，验证请求走 `inline_data` 而不是 `file_data`
+- [x] T116 静态验证代码和文档不暴露测试令牌，也不输出 base64 视频内容
+- [x] T117 记录内嵌数据模式执行结果和剩余风险
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -251,6 +264,7 @@
 ### D010 - 钢琴视频新供应商 HTTP 化实现与验证记录
 
 - `PianoHomeWorkVideoTask` 新供应商路径已改为全 HTTP：直接把业务 `file_url` 作为 `file_data.file_uri` 调用 HTTP `generateContent`。
+- 新供应商路径后续补充 `inlineData` 模式，默认仍为 `fileUrl`。
 - `PianoHomeWorkVideoTask` 不再导入或调用 `com.google.genai` SDK。
 - HTTP 生成使用 `POST https://ent.univibe.cc/{NEW_SUPPLIER_API_VERSION}/models/{NEW_SUPPLIER_MODEL}:generateContent`。
 - HTTP 请求体使用同一 `prompt` 和原始视频 URL，格式为 `contents[].parts[].text` 与 `contents[].parts[].file_data`。
@@ -278,6 +292,7 @@
 - 已按用户要求先修改 Spec Kit 文档，补充普通聊天和视频理解两个本地 test 方法的验收要求。
 - 普通聊天 test 方法用于验证 `POST https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent` 的纯文本 `generateContent` 能力。
 - 视频理解 test 方法用于验证 `https://ent.univibe.cc` 下的视频 URL 直传、`POST /v1beta/models/gemini-3-flash-preview:generateContent` 和响应文本提取。
+- 内嵌数据 test 方法用于验证 `https://ent.univibe.cc` 下的 `inline_data.mime_type`、`inline_data.data` 和 prompt 组合请求。
 - 两个 test 方法都必须从 `new_supplier_api_key` 读取令牌，不得把测试令牌写入代码、日志或文档。
 - 代码实现已完成：`main chat ...` 执行普通聊天 test，`main video ...` 或默认 main 执行视频 URL 直传 test。
 - 执行 `mvn -q -DskipTests package`，目录 `C:\workspace\ju-chat\fc\Gemini-Api`，结果通过。
@@ -287,3 +302,18 @@
 - 普通聊天本地 test 已成功返回文本，验证 `https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent` 可用。
 - 视频理解本地 test 已确认调用同一 `generateContent` URL，并以 `file_data.file_uri=<视频URL>` 直传视频；本次外部网关返回 `503 model_not_found`，错误为 `gemini-slb` 分组下 `gemini-3-flash-preview` 无可用渠道。
 - 本次验证未暴露测试令牌；剩余风险是新供应商网关当前视频模型渠道不可用，需要供应商侧恢复或调整渠道后再做成功态视频理解联调。
+
+### D013 - 新供应商 inlineData 模式实现与验证记录
+
+- 已按用户要求补充 `inlineData` 视频输入模式；默认模式保持 `fileUrl`。
+- 生产入参支持 `newSupplierVideoInputMode` 或 `videoInputMode`；未传时读取环境变量 `new_supplier_video_input_mode`；仍为空时默认 `fileUrl`。
+- `fileUrl` 模式继续使用 `file_data.file_uri=<原始视频URL>`；`inlineData` 模式将视频转 base64 后使用 `inline_data.data`。
+- `inlineData` 模式仍使用业务 `file_url` 作为入参，下载该 URL 对应视频并转 base64；不新增视频内容入参。
+- 新增 `main inline ...` 和 `main video-inline ...` 本地 test 入口。
+- 日志只输出 base64 长度，不输出 base64 内容；令牌仍只从 `new_supplier_api_key` 读取。
+- 执行 `mvn -q -DskipTests package`，目录 `C:\workspace\ju-chat\fc\Gemini-Api`，结果通过。
+- 执行 `mvn -q -DskipTests compile`，目录 `C:\workspace\ju-chat\fc\sop-reply`，结果通过。
+- 静态检查确认代码和文档未写入测试令牌，也未输出 base64 视频内容。
+- 本地执行 `main inline <视频URL> <prompt>`，确认使用同一个 `file_url` 下载视频并转为 `inline_data.data`；日志显示 `base64Length=2657892`，未输出 base64 内容。
+- 内嵌数据模式真实调用成功，返回结果为“视频里有人在弹钢琴。”。
+- 剩余风险：默认 `fileUrl` 模式仍依赖供应商侧可访问外部视频 URL；当供应商无法拉取 URL 时可切换 `inlineData` 模式兜底。

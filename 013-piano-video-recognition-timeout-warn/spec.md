@@ -3,7 +3,7 @@
 **功能目录**: `013-piano-video-recognition-timeout-warn`  
 **创建日期**: 2026-05-11  
 **状态**: Implemented  
-**输入**: 用户要求修改并实现：`PianoVideoHomeWorkHandleServiceImpl#handle` 在等待 10 分钟超时后不再进行重试，而是发送告警；告警编号为 `WX003`；同一个 `externalKey` 5 分钟内最多告警一次；`campName` 和 `userName` 由 `common_warn_sender` 内部基于 `external_key` 补齐，调用方无需传入模板变量；告警调用方式参考 `C:\workspace\ju-chat\coze_plugin\external-info-save\src\main\java\com\drh\info\service\AppTask.java` 的 `notifyBookRegisterWarn` 方法。新增要求：除等待超时外，钢琴视频识别处理链路发生异常时也需要发送 `WX003` 告警；识别成功但点评标题为 `未知` 时也需要发送 `WX003` 告警；异步识别任务写入缓存 `STATUS_FAIL` 且不是显式业务失败时也需要发送 `WX003` 告警，例如 `error=new supplier SDK call failed`；新供应商识别不再使用 Google GenAI SDK，改为 HTTP `generateContent` 中直接传入原始视频 URL；补充普通聊天和视频理解两个本地 test 方法，验证 baseUrl 固定为 `https://ent.univibe.cc`。
+**输入**: 用户要求修改并实现：`PianoVideoHomeWorkHandleServiceImpl#handle` 在等待 10 分钟超时后不再进行重试，而是发送告警；告警编号为 `WX003`；同一个 `externalKey` 5 分钟内最多告警一次；`campName` 和 `userName` 由 `common_warn_sender` 内部基于 `external_key` 补齐，调用方无需传入模板变量；告警调用方式参考 `C:\workspace\ju-chat\coze_plugin\external-info-save\src\main\java\com\drh\info\service\AppTask.java` 的 `notifyBookRegisterWarn` 方法。新增要求：除等待超时外，钢琴视频识别处理链路发生异常时也需要发送 `WX003` 告警；识别成功但点评标题为 `未知` 时也需要发送 `WX003` 告警；异步识别任务写入缓存 `STATUS_FAIL` 且不是显式业务失败时也需要发送 `WX003` 告警，例如 `error=new supplier SDK call failed`；新供应商识别不再使用 Google GenAI SDK，HTTP `generateContent` 支持 `fileUrl` 和 `inlineData` 两种视频输入模式，默认 `fileUrl` 直传；补充普通聊天、视频 URL 直传和内嵌数据视频理解 test 方法，验证 baseUrl 固定为 `https://ent.univibe.cc`。
 
 ## 用户场景与测试 *(必填)*
 
@@ -95,33 +95,35 @@
 4. **Given** `title=未知` 告警需要发送，**When** 构造告警入参，**Then** 复用 `service_sys/common_warn_sender`、`sendTemplateList=["WX003"]`、`external_key`，且不传 `templateVariable`。
 5. **Given** 同一 `externalKey` 在 5 分钟内已触发超时、异常或未知标题告警，**When** 再次触发未知标题告警，**Then** 命中同一 Redis 去重窗口并跳过 `common_warn_sender` 调用。
 
-### 用户故事 7 - 新供应商识别使用 HTTP 视频 URL 直传生成（优先级：P1）
+### 用户故事 7 - 新供应商识别支持 fileUrl 与 inlineData 两种 HTTP 生成模式（优先级：P1）
 
-钢琴视频异步识别调用新供应商时，`PianoHomeWorkVideoTask` 不使用 Google GenAI SDK，也不再上传视频文件。系统应把业务传入的 `file_url` 作为 `file_data.file_uri` 直接放入 HTTP `generateContent` 请求，最后复用现有 `extractTextFromResponse` 提取点评文本。模块中其他旧接口（如 `PracticeCommentFc`）不属于本需求改造范围。新供应商 HTTP baseUrl 固定为 `https://ent.univibe.cc`。
+钢琴视频异步识别调用新供应商时，`PianoHomeWorkVideoTask` 不使用 Google GenAI SDK，也不走 Files API 上传。业务入参始终使用 `file_url`。系统默认把 `file_url` 作为 `file_data.file_uri` 直接放入 HTTP `generateContent` 请求；当显式选择 `inlineData` 模式时，系统仍从同一个 `file_url` 下载视频并转为 base64，再通过 `inline_data.data` 传入。两种模式都复用现有 `extractTextFromResponse` 提取点评文本。模块中其他旧接口（如 `PracticeCommentFc`）不属于本需求改造范围。新供应商 HTTP baseUrl 固定为 `https://ent.univibe.cc`。
 
-**独立测试**：构造新供应商路径的钢琴视频任务；验证系统只调用 `POST https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`，请求体包含 `text` prompt 和 `file_data.file_uri=<原始视频URL>`，且 `PianoHomeWorkVideoTask` 不依赖 `com.google.genai` SDK。
+**独立测试**：构造新供应商路径的钢琴视频任务；验证默认模式只调用 `POST https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`，请求体包含 `text` prompt 和 `file_data.file_uri=<原始视频URL>`；验证 `inlineData` 模式请求体包含 `inline_data.mime_type` 和 `inline_data.data=<base64视频数据>`，且 `PianoHomeWorkVideoTask` 不依赖 `com.google.genai` SDK。
 
 **验收场景**：
 
-1. **Given** 新供应商路径被选中，**When** 开始识别，**Then** 系统不下载、不上传视频文件，直接使用输入 `file_url`。
-2. **Given** 已获得 `file_url`，**When** 生成内容，**Then** 系统调用 `https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`，请求体包含 `file_data.mime_type`、`file_data.file_uri` 和 `text` prompt。
-3. **Given** `file_url` 后缀可识别，**When** 构造 `file_data.mime_type`，**Then** `.mp4` 默认使用 `video/mp4`，`.mov`、`.avi`、`.webm` 分别映射到对应视频 MIME Type。
-4. **Given** HTTP 生成返回 2xx 和原始 Gemini JSON，**When** 现有 `extractTextFromResponse` 可提取文本，**Then** 写入 `STATUS_SUCCESS` 并返回识别结果。
-5. **Given** HTTP 生成失败或响应文本为空，**When** 重试耗尽，**Then** 写入 `STATUS_FAIL`、`errorSource=ASYNC_TASK_FAIL`、`errorStage=piano_homework_video_task_analyze`。
+1. **Given** 新供应商路径被选中且未指定视频输入模式，**When** 开始识别，**Then** 系统默认使用 `fileUrl` 模式，不下载、不上传视频文件，直接使用输入 `file_url`。
+2. **Given** 已获得 `file_url` 且模式为 `fileUrl`，**When** 生成内容，**Then** 系统调用 `https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`，请求体包含 `file_data.mime_type`、`file_data.file_uri` 和 `text` prompt。
+3. **Given** 已获得 `file_url` 且模式为 `inlineData`，**When** 生成内容，**Then** 系统把视频转为 base64，并在请求体中传入 `inline_data.mime_type`、`inline_data.data` 和 `text` prompt。
+4. **Given** `file_url` 后缀可识别，**When** 构造视频 MIME Type，**Then** `.mp4` 默认使用 `video/mp4`，`.mov`、`.avi`、`.webm` 分别映射到对应视频 MIME Type。
+5. **Given** HTTP 生成返回 2xx 和原始 Gemini JSON，**When** 现有 `extractTextFromResponse` 可提取文本，**Then** 写入 `STATUS_SUCCESS` 并返回识别结果。
+6. **Given** HTTP 生成失败、视频下载/读取失败或响应文本为空，**When** 重试耗尽，**Then** 写入 `STATUS_FAIL`、`errorSource=ASYNC_TASK_FAIL`、`errorStage=piano_homework_video_task_analyze`。
 
 ### 用户故事 8 - 新供应商普通聊天与视频理解本地验证方法（优先级：P1）
 
-为了区分网关基础文本能力和视频 URL 理解能力，`PianoHomeWorkVideoTask` 需要提供两个独立的本地 test 方法：一个验证普通聊天 `generateContent`，一个验证视频 URL 直传 `generateContent`。两个 test 方法都必须使用 `https://ent.univibe.cc` 作为 baseUrl，并从环境变量读取 `new_supplier_api_key`，不得把测试令牌写入代码、日志或文档。
+为了区分网关基础文本能力、视频 URL 理解能力和内嵌视频数据能力，`PianoHomeWorkVideoTask` 需要提供三个独立的本地 test 方法：普通聊天 `generateContent`、视频 URL 直传 `generateContent`、视频 `inline_data` 生成。三个 test 方法都必须使用 `https://ent.univibe.cc` 作为 baseUrl，并从环境变量读取 `new_supplier_api_key`，不得把测试令牌写入代码、日志或文档。
 
-**独立测试**：执行普通聊天 test 方法时，系统直接调用 `POST https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`，请求体只包含文本 prompt；执行视频理解 test 方法时，系统使用同一 baseUrl 调用 `generateContent`，请求体包含文本 prompt 和 `file_data.file_uri=<视频URL>`。
+**独立测试**：执行普通聊天 test 方法时，系统直接调用 `POST https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`，请求体只包含文本 prompt；执行视频 URL 直传 test 方法时，请求体包含文本 prompt 和 `file_data.file_uri=<视频URL>`；执行内嵌数据 test 方法时，请求体包含文本 prompt 和 `inline_data.data=<base64视频数据>`。
 
 **验收场景**：
 
 1. **Given** 已配置 `new_supplier_api_key`，**When** 执行普通聊天 test 方法，**Then** 系统调用 `https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent` 并输出响应文本或可诊断错误。
 2. **Given** 已配置 `new_supplier_api_key`、视频 URL 和视频理解 prompt，**When** 执行视频理解 test 方法，**Then** 系统调用 `https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`，并以 `file_data.file_uri` 直传视频 URL 完成验证。
-3. **Given** 普通聊天 test 失败，**When** 排查问题，**Then** 可判断是鉴权、baseUrl、模型或网关基础能力问题，而不是视频 URL 理解链路问题。
-4. **Given** 普通聊天 test 成功但视频理解 test 失败，**When** 排查问题，**Then** 可优先定位外部视频 URL 可访问性、视频 MIME Type 或视频生成请求体。
-5. **Given** 任一本地 test 失败，**When** 记录日志，**Then** 日志应包含 URL 路径、HTTP statusCode、响应头摘要和响应体摘要，但不得输出 `new_supplier_api_key`。
+3. **Given** 已配置 `new_supplier_api_key`、视频 URL 和 prompt，**When** 执行内嵌数据 test 方法，**Then** 系统从该视频 URL 下载内容，调用同一 `generateContent`，并以 `inline_data.data` 传入 base64 视频内容。
+4. **Given** 普通聊天 test 失败，**When** 排查问题，**Then** 可判断是鉴权、baseUrl、模型或网关基础能力问题，而不是视频 URL 或内嵌数据链路问题。
+5. **Given** 普通聊天 test 成功但视频 test 失败，**When** 排查问题，**Then** 可优先定位外部视频 URL 可访问性、视频 MIME Type、base64 转换或视频生成请求体。
+6. **Given** 任一本地 test 失败，**When** 记录日志，**Then** 日志应包含 URL 路径、HTTP statusCode、响应头摘要和响应体摘要，但不得输出 `new_supplier_api_key` 或 base64 视频内容。
 
 ## 边界情况
 
@@ -147,6 +149,7 @@
 - 新供应商 HTTP 生成中的鉴权、网络、超时、非 2xx 等失败继续按异步任务失败处理。
 - 新供应商 HTTP baseUrl 固定为 `https://ent.univibe.cc`；本地验证不得使用其他网关地址替代。
 - 本地 test 方法只能从环境变量或命令行参数读取测试令牌、视频 URL 和 prompt，不得硬编码敏感令牌。
+- 新供应商视频输入模式默认 `fileUrl`；只有显式配置 `newSupplierVideoInputMode`、`videoInputMode` 或环境变量 `new_supplier_video_input_mode=inlineData` 时才使用内嵌数据模式。
 
 ## 需求 *(必填)*
 
@@ -183,15 +186,15 @@
 - **FR-031**：系统读取到缓存 `STATUS_FAIL` 且未显式标记 `errorSource=BUSINESS_FAIL` 时，MUST 按异步任务执行失败发送 `WX003` 告警。
 - **FR-032**：异步任务执行失败告警 MUST 复用异常告警的 `service_sys/common_warn_sender`、`sendTemplateList=["WX003"]`、`external_key`、不传 `templateVariable` 和 5 分钟 `externalKey` Redis 去重规则。
 - **FR-033**：异步任务执行失败告警发送完成或发送失败被捕获后，`handle` MUST 返回空 `HomeWorkResultDto`，不应继续向主流程抛出异常。
-- **FR-034**：`PianoHomeWorkVideoTask` 新供应商路径 MUST 使用 HTTP `generateContent`，并把原始视频 URL 作为 `file_data.file_uri` 传入；该类 MUST NOT 使用 Google GenAI SDK。
+- **FR-034**：`PianoHomeWorkVideoTask` 新供应商路径 MUST 使用 HTTP `generateContent`，支持 `fileUrl` 和 `inlineData` 两种视频输入模式；该类 MUST NOT 使用 Google GenAI SDK。
 - **FR-035**：系统 MUST 使用 `NEW_SUPPLIER_BASE_URL=https://ent.univibe.cc` 替换示例中的 Google Base URL，并使用 `NEW_SUPPLIER_API_VERSION`、`NEW_SUPPLIER_MODEL` 和 `new_supplier_api_key` 构造 HTTP 请求。
-- **FR-036**：系统 MUST 使用原始 `file_url` 作为 `file_data.file_uri`，并通过 URL 后缀推断 MIME Type；无法明确识别时默认 `video/mp4`。
+- **FR-036**：默认 `fileUrl` 模式 MUST 使用原始 `file_url` 作为 `file_data.file_uri`，并通过 URL 后缀推断 MIME Type；无法明确识别时默认 `video/mp4`。
 - **FR-037**：系统 MUST NOT 调用 `{baseUrl}/upload/{apiVersion}/files`，也不得依赖 `x-goog-upload-url`。
-- **FR-038**：新供应商路径 MUST NOT 下载视频字节或上传视频二进制；旧供应商路径保留原有行为。
-- **FR-039**：系统 MUST 调用 `{baseUrl}/{apiVersion}/models/{model}:generateContent`，请求体包含 `file_data.file_uri`、`file_data.mime_type` 和 prompt 文本。
+- **FR-038**：`inlineData` 模式 MUST 使用同一个业务 `file_url` 下载视频并转换为 base64，再通过 `inline_data.mime_type` 和 `inline_data.data` 传入；不得在日志中输出 base64 数据。
+- **FR-039**：系统 MUST 调用 `{baseUrl}/{apiVersion}/models/{model}:generateContent`；`fileUrl` 模式请求体包含 `file_data.file_uri`、`file_data.mime_type` 和 prompt 文本，`inlineData` 模式请求体包含 `inline_data.data`、`inline_data.mime_type` 和 prompt 文本。
 - **FR-040**：HTTP 生成成功返回 2xx 时，系统 MUST 返回原始响应 JSON，并继续复用现有 `extractTextFromResponse` 解析逻辑。
 - **FR-041**：`PianoHomeWorkVideoTask` SHOULD 提供普通聊天本地 test 方法，用于验证 `POST https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent` 的纯文本 `generateContent` 能力。
-- **FR-042**：`PianoHomeWorkVideoTask` SHOULD 提供视频理解本地 test 方法，用于验证 `https://ent.univibe.cc` 下的视频 URL 直传 `generateContent` 和响应文本提取。
+- **FR-042**：`PianoHomeWorkVideoTask` SHOULD 提供视频理解本地 test 方法，用于验证 `https://ent.univibe.cc` 下的视频 URL 直传 `generateContent`、内嵌数据 `generateContent` 和响应文本提取。
 - **FR-043**：普通聊天和视频理解 test 方法 MUST 从 `new_supplier_api_key` 读取令牌，不得硬编码测试令牌，不得在日志中输出令牌。
 - **FR-044**：普通聊天和视频理解 test 方法失败时 SHOULD 输出可诊断的 statusCode、响应头摘要和响应体摘要。
 
@@ -213,10 +216,11 @@
 - **SC-014**：同一 `externalKey` 在 5 分钟窗口内先后触发超时、异常或未知标题告警时，后续告警不调用 `common_warn_sender`。
 - **SC-015**：当日志出现 `钢琴视频识别异步任务失败, cacheKey=..., waitStage=initial, error=new supplier SDK call failed` 对应场景时，系统发送 `WX003` 告警并返回空 `HomeWorkResultDto`。
 - **SC-016**：`PianoHomeWorkVideoTask.java` 不包含 `com.google.genai` import，不调用 Google GenAI SDK。
-- **SC-017**：新供应商路径通过 HTTP 完成视频 URL 直传、`generateContent` 和响应文本提取；HTTP 成功时不写入 `STATUS_FAIL`。
+- **SC-017**：新供应商路径通过 HTTP 完成视频 URL 直传或内嵌数据、`generateContent` 和响应文本提取；HTTP 成功时不写入 `STATUS_FAIL`。
 - **SC-018**：普通聊天 test 方法使用 `https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent` 完成纯文本 `generateContent` 验证。
 - **SC-019**：视频理解 test 方法使用 `https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`，并以 `file_data.file_uri=<视频URL>` 完成视频理解验证。
-- **SC-020**：普通聊天和视频理解 test 方法均不在代码、日志或文档中暴露测试令牌。
+- **SC-020**：内嵌数据 test 方法使用 `https://ent.univibe.cc/v1beta/models/gemini-3-flash-preview:generateContent`，并以 `inline_data.data=<base64视频数据>` 完成视频理解验证。
+- **SC-021**：普通聊天、视频 URL 直传和内嵌数据 test 方法均不在代码、日志或文档中暴露测试令牌，也不输出 base64 视频内容。
 
 ## 假设
 
@@ -231,3 +235,4 @@
 - `title=未知` 是识别质量问题，不等同于超时或本地异常，所以告警后仍返回识别结果，不强制返回空结果。
 - 当前 `Piano-homework-video` 的 `STATUS_FAIL` 来源是异步任务执行失败；若未来需要表达明确业务失败，应显式写入 `errorSource=BUSINESS_FAIL`。
 - 新供应商 HTTP 接口固定使用 `https://ent.univibe.cc`，兼容 Gemini `v1beta/models/{model}:generateContent` 路径，并接受 `x-goog-api-key` 认证头。
+- `inlineData` 模式用于供应商无法直接拉取外部视频 URL 或需要规避 URL 访问限制的场景；默认模式仍为 `fileUrl`，以避免常规请求体膨胀。两种模式的业务输入都仍是 `file_url`。
