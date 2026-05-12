@@ -3,7 +3,7 @@
 **功能目录**: `013-piano-video-recognition-timeout-warn`  
 **创建日期**: 2026-05-11  
 **状态**: Implemented  
-**输入**: 用户要求修改并实现：`PianoVideoHomeWorkHandleServiceImpl#handle` 在等待 10 分钟超时后不再进行重试，而是发送告警；告警编号为 `WX003`；同一个 `externalKey` 5 分钟内最多告警一次；`campName` 和 `userName` 由 `common_warn_sender` 内部基于 `external_key` 补齐，调用方无需传入模板变量；告警调用方式参考 `C:\workspace\ju-chat\coze_plugin\external-info-save\src\main\java\com\drh\info\service\AppTask.java` 的 `notifyBookRegisterWarn` 方法。新增要求：除等待超时外，钢琴视频识别处理链路发生异常时也需要发送 `WX003` 告警。
+**输入**: 用户要求修改并实现：`PianoVideoHomeWorkHandleServiceImpl#handle` 在等待 10 分钟超时后不再进行重试，而是发送告警；告警编号为 `WX003`；同一个 `externalKey` 5 分钟内最多告警一次；`campName` 和 `userName` 由 `common_warn_sender` 内部基于 `external_key` 补齐，调用方无需传入模板变量；告警调用方式参考 `C:\workspace\ju-chat\coze_plugin\external-info-save\src\main\java\com\drh\info\service\AppTask.java` 的 `notifyBookRegisterWarn` 方法。新增要求：除等待超时外，钢琴视频识别处理链路发生异常时也需要发送 `WX003` 告警；识别成功但点评标题为 `未知` 时也需要发送 `WX003` 告警。
 
 ## 用户场景与测试 *(必填)*
 
@@ -80,6 +80,20 @@
 2. **Given** 同一 `externalKey` 在 5 分钟内再次触发超时或异常，**When** Redis 去重 key 仍存在，**Then** 系统不调用 `common_warn_sender`，并记录 `piano_video_recognition_timeout_warn_repeat_limited` 日志。
 3. **Given** Redis 去重操作异常，**When** 系统处理超时或异常告警，**Then** 记录降级日志并继续发送告警，避免漏告警。
 
+### 用户故事 6 - 钢琴视频识别成功但点评标题未知后发送告警（优先级：P1）
+
+钢琴视频作业异步识别成功返回结构化结果后，如果 `title` 去空格后等于 `未知`，说明模型未能识别到明确作业标题或课程天数。系统应发送一次 `WX003` 告警提醒人工关注，但不改变原识别结果返回值，后续 SOP 流程继续按现有逻辑处理。
+
+**独立测试**：构造识别成功结果 `{"id":0,"isHomeWork":"否","question":"指法没问题,手型没问题,节奏有问题,弹得还可以","title":"未知"}`；验证系统调用 `common_warn_sender` 发送 `WX003` 告警，且 `handle` 仍返回该识别结果。
+
+**验收场景**：
+
+1. **Given** 初始缓存命中成功结果，**When** 解析出的 `title` 为 `未知`，**Then** 系统发送 `WX003` 告警并返回原识别结果。
+2. **Given** 等待异步识别命中成功结果，**When** 解析出的 `title` 为 `未知`，**Then** 系统发送 `WX003` 告警并返回原识别结果。
+3. **Given** 识别成功结果的 `title` 不等于 `未知`，**When** 返回结果前检查标题，**Then** 不发送未知标题告警。
+4. **Given** `title=未知` 告警需要发送，**When** 构造告警入参，**Then** 复用 `service_sys/common_warn_sender`、`sendTemplateList=["WX003"]`、`external_key`，且不传 `templateVariable`。
+5. **Given** 同一 `externalKey` 在 5 分钟内已触发超时、异常或未知标题告警，**When** 再次触发未知标题告警，**Then** 命中同一 Redis 去重窗口并跳过 `common_warn_sender` 调用。
+
 ## 边界情况
 
 - 本需求只修改钢琴视频作业处理类 `PianoVideoHomeWorkHandleServiceImpl` 的 `handle` 超时/异常处理及必要告警辅助方法。
@@ -95,6 +109,9 @@
 - `campName` 和 `userName` 是 `WX003` 模板变量，由 `common_warn_sender` 根据 `external_key` 补齐；调用方不需要传 `templateVariable`。
 - 告警发送失败不应抛出影响主流程，应捕获异常并记录错误日志。
 - 线程在 10 分钟等待期间被中断时，应恢复中断状态并按识别等待异常尝试发送告警。
+- 识别成功但 `HomeWorkResultDto.title` 去空格后等于 `未知` 时，应发送 `WX003` 告警；该场景属于识别质量问题，不强制返回空结果。
+- `title=未知` 告警不得改变原识别结果，应在告警发送完成、发送失败或命中去重后继续返回原 `HomeWorkResultDto`。
+- `title=未知` 告警与超时、异常告警共用同一个 `externalKey` 维度 5 分钟 Redis 去重窗口。
 
 ## 需求 *(必填)*
 
@@ -123,6 +140,11 @@
 - **FR-023**：异常告警 MUST 复用与超时告警相同的 5 分钟 `externalKey` Redis 去重规则。
 - **FR-024**：异常告警发送完成或发送失败被捕获后，`handle` MUST 返回空 `HomeWorkResultDto`，不应继续向主流程抛出识别处理异常。
 - **FR-025**：异常告警日志 MUST 包含异常阶段、异常类型或消息、`messageId`、`cacheKey` 和 `externalKey` 中可获得的信息。
+- **FR-026**：钢琴视频识别成功结果解析后，如果 `HomeWorkResultDto.title` 去空格后等于 `未知`，系统 MUST 发送 `WX003` 告警。
+- **FR-027**：`title=未知` 告警 MUST 复用与超时告警相同的 `service_sys/common_warn_sender`、`sendTemplateList=["WX003"]`、`external_key` 和不传 `templateVariable` 的入参约定。
+- **FR-028**：`title=未知` 告警 MUST 复用与超时、异常告警相同的 5 分钟 `externalKey` Redis 去重规则。
+- **FR-029**：`title=未知` 告警发送完成、发送失败或命中去重后，`handle` MUST 返回原识别结果，不应因该告警场景改为空结果。
+- **FR-030**：`title=未知` 告警日志 MUST 包含 `messageId`、`cacheKey`、`externalKey`、`title`、`question`、`isHomeWork` 和 `id` 中可获得的信息。
 
 ## 成功标准 *(必填)*
 
@@ -137,6 +159,9 @@
 - **SC-009**：Redis 去重异常时仍继续调用 `common_warn_sender`。
 - **SC-010**：异步提交、等待轮询、缓存读写、结果解析或线程中断等识别处理异常后，系统发送 `WX003` 告警。
 - **SC-011**：同一 `externalKey` 在 5 分钟窗口内先后触发超时和异常时，第二次不调用 `common_warn_sender`。
+- **SC-012**：识别成功结果为 `{"id":0,"isHomeWork":"否","question":"指法没问题,手型没问题,节奏有问题,弹得还可以","title":"未知"}` 时，系统发送 `WX003` 告警并返回原识别结果。
+- **SC-013**：识别成功结果的 `title` 不等于 `未知` 时，不发送未知标题告警。
+- **SC-014**：同一 `externalKey` 在 5 分钟窗口内先后触发超时、异常或未知标题告警时，后续告警不调用 `common_warn_sender`。
 
 ## 假设
 
@@ -147,3 +172,5 @@
 - “只告警一次”按同一 `externalKey` 维度计算，不区分 `messageId`，也不区分超时或异常触发原因。
 - 5 分钟限制的是发送尝试次数；即使 `common_warn_sender` 调用失败，也不会在 5 分钟内重复尝试。
 - 原超时告警规格已实现并通过 `fc/sop-reply` 模块编译验证；异常告警增量规格已实现并通过 `fc/sop-reply` 模块编译验证。
+- “点评的是未知”按 `HomeWorkResultDto.title == "未知"` 理解，不检查 `question` 内容。
+- `title=未知` 是识别质量问题，不等同于超时或本地异常，所以告警后仍返回识别结果，不强制返回空结果。

@@ -71,6 +71,27 @@
 - [x] T051 编译 `fc/sop-reply` 模块
 - [x] T052 记录异常告警实现验证结果和剩余风险
 
+## Phase 6：点评未知告警增量实现
+
+- [x] T053 在规格中补充识别成功但 `title=未知` 时发送 `WX003` 告警
+- [x] T054 在 `PianoVideoHomeWorkHandleServiceImpl` 中新增 `WARN_REASON_UNKNOWN_TITLE`
+- [x] T055 在初始缓存命中成功结果返回前检查 `title=未知`
+- [x] T056 在等待异步识别成功结果返回前检查 `title=未知`
+- [x] T057 新增 `notifyPianoVideoUnknownTitleWarn`、`warnIfPianoVideoTitleUnknown`、`isUnknownTitle` 私有辅助方法
+- [x] T058 `title=未知` 告警复用 `service_sys/common_warn_sender`、`sendTemplateList=["WX003"]`、`external_key`，且不传 `templateVariable`
+- [x] T059 `title=未知` 告警复用 `externalKey` 维度 5 分钟 Redis 去重，沿用 key 前缀 `ai:sopReply:pianoVideo:timeoutWarn:`
+- [x] T060 `title=未知` 告警发送完成、发送失败或命中去重后返回原识别结果
+- [x] T061 增加 `title=未知` 告警日志，包含 `cacheKey`、`messageId`、`externalKey`、`title`、`question`、`isHomeWork`、`id`
+
+## Phase 7：点评未知告警增量验证
+
+- [x] T062 验证 `{"id":0,"isHomeWork":"否","question":"指法没问题,手型没问题,节奏有问题,弹得还可以","title":"未知"}` 会触发 `WX003` 告警
+- [x] T063 验证 `title` 非 `未知` 时不触发未知标题告警
+- [x] T064 验证未知标题告警入参与超时告警一致，未传 `templateVariable`
+- [x] T065 验证同一 `externalKey` 5 分钟内超时、异常和未知标题共用去重窗口
+- [x] T066 编译 `fc/sop-reply` 模块
+- [x] T067 记录点评未知告警实现验证结果和剩余风险
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -139,4 +160,18 @@
 - 执行命令：`mvn -q -DskipTests compile`
 - 执行目录：`C:\workspace\ju-chat\fc\sop-reply`
 - 执行结果：编译通过。
+- 剩余风险：未接入真实 Redis、FC 异步任务和 `common_warn_sender` 做端到端联调；当前验证覆盖编译和关键逻辑静态检查。
+
+### D008 - 点评未知告警实现与验证记录
+
+- 已按用户新增要求将“识别成功但 `title=未知` 也需要告警”写入 Spec Kit。
+- `PianoVideoHomeWorkHandleServiceImpl` 新增 `WARN_REASON_UNKNOWN_TITLE`。
+- 初始缓存命中成功结果和等待异步识别成功结果返回前，都会执行 `warnIfPianoVideoTitleUnknown`。
+- 判断规则固定为 `title != null && title.trim().equals("未知")`。
+- 示例结果 `{"id":0,"isHomeWork":"否","question":"指法没问题,手型没问题,节奏有问题,弹得还可以","title":"未知"}` 会触发 `WX003` 告警。
+- 未知标题告警复用 `service_sys/common_warn_sender`、`sendTemplateList=["WX003"]`、`external_key`，且不传 `templateVariable`。
+- 未知标题告警与超时、异常共用 `ai:sopReply:pianoVideo:timeoutWarn:{externalKey}` 5 分钟 Redis 去重窗口。
+- 未知标题告警发送完成、发送失败或命中去重后，`handle` 返回原识别结果，不强制返回空结果。
+- 验证命令：`mvn -q -DskipTests compile`
+- 验证目录：`C:\workspace\ju-chat\fc\sop-reply`
 - 剩余风险：未接入真实 Redis、FC 异步任务和 `common_warn_sender` 做端到端联调；当前验证覆盖编译和关键逻辑静态检查。
