@@ -14,6 +14,15 @@
 - 现有账号目录已经把每个槽位的 `auth.json`、`config.toml` 和共享会话数据准备到独立 `.codex-accountN` 中，和 Codex 读取 `CODEX_HOME` 的模型一致。
 - 风险边界：Codex 桌面 MSIX 应用会自行启动包内 `codex.exe` 后台服务，不会继承从 Cursor 扩展 `codex.exe app` 传入的 `CODEX_HOME`。因此启动 Codex 桌面端前，工具 MUST 将所选槽位的 `auth.json` 与 `config.toml` 同步到默认 `%USERPROFILE%\.codex`，并写入 `active_account_slot.txt` 标记当前桌面端账号。
 
+## 排查结论：Codex Desktop 最近对话不在左侧列表展示
+
+结论：底层历史记录可读，但 Codex Desktop 左侧主对话列表按当前工作区/UI 状态过滤。搜索和归档能看到会员/历史记录，说明 `sessions`、`archived_sessions`、`session_index.jsonl` 并未完全丢失；左侧“对话”看不到，是因为 Desktop 未打开这些会话所属的 workspace。
+
+- Cursor 插件产生的最近会话 `session_meta.cwd` 为 `c:\workspace`。
+- Codex Desktop 在未传 workspace 路径时会进入 projectless/generated workspace，例如 `%USERPROFILE%\Documents\Codex\...`。
+- Desktop 自建对话会写入 `.codex-global-state.json` 的 `projectless-thread-ids` 与 `thread-workspace-root-hints`，而 Cursor/CLI 共享历史通常只有会话文件与索引。
+- 因此工具启动 Codex Desktop 时 MUST 传入匹配最近会话的 workspace path，优先使用 `codex.switcher.codexWorkspace` 显式覆盖；未配置时从所选账号最近会话文件的 `session_meta.cwd` 推断；最后才回退用户目录。
+
 ## 用户场景与测试 *(必填)*
 
 ### 用户故事 1 - 图形界面切换 Codex 账号（优先级：P1）
@@ -27,7 +36,7 @@
 1. **Given** 应用启动，**When** 主界面加载完成，**Then** 左侧固定显示账号 1-7。
 2. **Given** 某槽位存在 `auth.json` 或旧版 `auth_userN.json`，**When** 刷新状态，**Then** 显示解析出的邮箱和令牌过期时间。
 3. **Given** 用户点击启动 Cursor 账号 N，**When** 应用执行启动流程，**Then** 准备 `%USERPROFILE%\.codex-accountN` 并设置 `CODEX_HOME`、`CODEX_ACCOUNT_SLOT` 启动 Cursor。
-4. **Given** 用户点击启动 Codex 账号 N，**When** 应用执行启动流程，**Then** 准备 `%USERPROFILE%\.codex-accountN`，将该槽位 `auth.json`、`config.toml` 激活到 `%USERPROFILE%\.codex`，并设置 `CODEX_HOME`、`CODEX_ACCOUNT_SLOT` 执行 `codex app` 或启动 Codex 可执行文件。
+4. **Given** 用户点击启动 Codex 账号 N，**When** 应用执行启动流程，**Then** 准备 `%USERPROFILE%\.codex-accountN`，将该槽位 `auth.json`、`config.toml` 激活到 `%USERPROFILE%\.codex`，并设置 `CODEX_HOME`、`CODEX_ACCOUNT_SLOT` 执行 `codex app <workspace>` 或启动 Codex 可执行文件。
 5. **Given** Cursor 或 Codex 可执行文件不存在，**When** 用户启动对应目标，**Then** 应用显示明确错误并保留日志。
 
 ### 用户故事 2 - 一键准备与修复账号目录（优先级：P1）
@@ -97,6 +106,7 @@
 - **FR-016**：最终 MUST 可生成 `target\dist\CodexAccountSwitcher\CodexAccountSwitcher.exe`。
 - **FR-017**：Codex 启动 MUST 支持显式 `codex.switcher.codexExe` 覆盖、PATH 中的 `codex`，以及 Cursor 扩展目录中的 `codex.exe`。
 - **FR-018**：Codex 桌面启动前 MUST 将所选槽位 `auth.json` 与 `config.toml` 复制到默认 `.codex`，以兼容 MSIX 桌面端自行启动的后台服务。
+- **FR-019**：Codex 桌面启动 MUST 携带 workspace path；优先使用 `codex.switcher.codexWorkspace`，否则从所选账号最近会话 `session_meta.cwd` 推断，避免 Desktop 打开 projectless workspace 后左侧列表过滤掉最近对话。
 
 ## 成功标准 *(必填)*
 

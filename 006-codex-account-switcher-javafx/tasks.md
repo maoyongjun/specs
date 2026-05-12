@@ -25,6 +25,7 @@
 - [x] T011 实现 zip manifest 校验、zip slip 防护、备份后替换恢复和共享链接重建
 - [x] T011a 分析并实现 Codex 软件启动复用槽位 `CODEX_HOME`
 - [x] T011b 修正 Codex 桌面 MSIX 不继承 `CODEX_HOME` 时的默认 `.codex` 激活逻辑
+- [x] T011c 排查并修正 Codex Desktop 左侧最近对话按 workspace 过滤导致不展示的问题
 
 ## Phase 4：JavaFX UI 与打包
 
@@ -75,3 +76,11 @@
 - 测试命令：`mvn -f codex-account-switcher\pom.xml test`
 - 测试结果：BUILD SUCCESS；9 个 JUnit 测试通过。
 - 自检结论：通过。Cursor 仍使用进程级 `CODEX_HOME`；Codex 桌面端使用默认 `.codex` 激活文件兼容 MSIX 后台服务。
+
+### B005
+
+- 执行内容：排查 Codex Desktop “搜索/归档能看到，但左侧对话列表看不到最近记录”的原因。确认共享历史的 `session_index.jsonl` 中存在最近会话，且会话文件 `session_meta.cwd` 指向 `c:\workspace`；而未传 workspace 启动 Desktop 时会进入 `%USERPROFILE%\Documents\Codex\...` 的 projectless/generated workspace，左侧主列表按当前 workspace/UI 状态过滤，导致最近记录不显示。
+- 修正策略：启动 Codex Desktop 时传入 workspace path。优先使用系统属性 `codex.switcher.codexWorkspace`；未配置时从所选账号最近会话文件的 `session_meta.cwd` 推断；失败时才回退用户目录。
+- 测试命令：`mvn -f codex-account-switcher\pom.xml test`
+- 测试结果：BUILD SUCCESS；11 个 JUnit 测试通过。
+- 自检结论：通过。Codex Desktop 启动参数会携带推断出的 workspace path，以便左侧主对话列表命中最近会话所属工作区。
