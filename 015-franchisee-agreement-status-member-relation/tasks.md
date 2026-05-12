@@ -2,7 +2,7 @@
 
 **输入**：来自 `specs/015-franchisee-agreement-status-member-relation/spec.md` 的功能规格  
 **前置条件**：`spec.md`、`checklists/requirements.md`、`AGENTS.md`  
-**测试**：当前阶段仅创建文档；后续实现后需编译 `idc/base` 模块并验证 Mapper 查询场景。  
+**测试**：联营商列表改造后需编译 `idc/base` 模块并验证 Mapper 查询场景；商户状态校验兼容增量需编译 `idc/base` 与 `idc/order` 相关模块，并验证 `checkMemberState` 与订单预下单路径。当前 `idc/base` 已编译通过，真实数据库场景和订单模块编译仍待完成。  
 
 ## Phase 1：规格与范围
 
@@ -51,6 +51,30 @@
 - [x] T037 编译 `C:\workspace\proj\proj-two\idc\base` 模块
 - [x] T038 记录 Mapper 查询验证结果和剩余风险
 
+## Phase 4：商户状态校验兼容后续实现
+
+- [x] T039 排查商户状态、通联账号状态、`checkMemberState`、`organization_id` 单点校验相关代码位置，确认除 `MemberServiceImpl#checkMemberState` 外是否还有联营商关联场景需要同步兼容
+- [x] T040 调整 `MemberServiceImpl#checkMemberState(schoolId)`，保持方法签名和失败提示不变
+- [x] T041 保持通过 `organizationService.getOrgBySchoolId(schoolId)` 获取学校组织，并使用学校组织 `superId` 作为待校验联营商组织 id
+- [x] T042 在商户状态校验中优先查找 `proj_member.organization_id = superId` 的自己的商户号
+- [x] T043 仅当自己的商户号不存在时，再查找 `organization_ids` 分隔符安全包含 `superId` 的关联商户号
+- [x] T044 商户状态校验中的 `organization_ids` 匹配必须避免 `organization_ids='12'` 误匹配联营商 id `2`
+- [x] T045 保持可用商户号判断标准不变：`legalAuditStatus == SUCCESS` 且 `agreementStatus == SUCCESS`
+- [x] T046 保持 `GET /member/checkMemberState`、订单侧 `BaseClient#checkMemberState` 和 `ProjOrderServiceImpl#createQrCode` 调用契约不变
+- [x] T047 确保自己的商户号存在但不可用时，不使用关联商户号绕过失败
+- [x] T048 不新增 DTO 字段，不修改数据库结构，不修改接口路径
+
+## Phase 5：商户状态校验兼容后续验证
+
+- [ ] T049 验证学校上级联营商自己的商户号可用时，`checkMemberState(schoolId)` 成功
+- [ ] T050 验证联营商没有自己的商户号但存在关联可用商户号时，`checkMemberState(schoolId)` 成功
+- [ ] T051 验证自己的商户号存在但不可用、关联商户号可用时，`checkMemberState(schoolId)` 失败
+- [ ] T052 验证自己的商户号不存在且关联商户号不可用或不存在时，失败提示保持 `通联账号未申请成功，请先确认`
+- [ ] T053 验证 `organization_ids='12'` 不匹配联营商 id `2`
+- [ ] T054 通过 `ProjOrderServiceImpl#createQrCode` 预下单路径复测，仅有关联可用商户号时不再报 `商户号状态异常`
+- [ ] T055 编译 `idc/base` 与 `idc/order` 相关模块
+- [x] T056 记录 `checkMemberState`、订单预下单路径验证结果和未连接真实数据库时的剩余风险
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -82,3 +106,24 @@
 - 执行结果：编译通过。
 - 直接在 `C:\workspace\proj\proj-two\idc\base` 执行 `mvn -q -DskipTests compile` 会因未纳入同仓库 `common` 和父级依赖而失败；已改用聚合根编译验证。
 - 剩余风险：未连接真实数据库执行 Mapper 查询，T024 到 T036 的数据场景需在具备测试数据源后验证。
+
+### D004 - 商户状态校验兼容文档增量
+
+- 已按本次计划补充订单预下单商户状态校验兼容联营商关联商户号的规格。
+- 已记录当前失败链路：`ProjOrderServiceImpl#createQrCode` -> 订单侧 `checkMemberState` -> `BaseClient#checkMemberState` -> `MemberController#checkMemberState` -> `MemberServiceImpl#checkMemberState`。
+- 已记录后续实现口径：通过 `schoolId` 找学校组织，使用 `superId` 定位联营商，自己的商户号优先，关联商户号兜底。
+- 已记录可用商户号标准保持法务审核成功且签约成功。
+- 已追加 T039 到 T056 作为后续实现和验证任务；初始追加时均为未完成。
+- 文档增量阶段未修改 `proj-two` 业务代码；后续 D005 已进入代码实现阶段。
+
+### D005 - 商户状态校验兼容实现记录
+
+- 已实现 `MemberServiceImpl#checkMemberState` 的联营商关联商户号兼容。
+- 商户选择规则为：通过 `schoolId` 获取学校组织，取 `superId` 作为联营商组织 id；优先查 `organization_id = superId` 的自己的商户号；没有自己的商户号时，再用分隔符安全 `LOCATE(CONCAT(',', superId, ','), CONCAT(',', organization_ids, ',')) > 0` 查询法务审核和签约均成功的关联商户号。
+- 校验失败文案保持 `通联账号未申请成功，请先确认`。
+- 自己的商户号存在但法务审核或签约未成功时，不使用关联商户号绕过失败。
+- 已新增 `MemberService#findSignedByFranchiseeOrgId`，并将 `SchoolController#org/detail`、`SchoolController#org/detail/list` 的签约商户号读取同步改为自己的商户号优先、关联商户号兜底。
+- 未新增 DTO 字段，未修改数据库结构，未修改接口路径和订单侧 feign 契约。
+- 执行命令：`mvn -q -DskipTests -pl proj-two/idc/base -am compile`，执行目录：`C:\workspace\proj`，执行结果：编译通过。
+- 执行命令：`mvn -q -DskipTests -pl proj-two/idc/base,proj-two/idc/order -am compile`，执行目录：`C:\workspace\proj`，执行结果：`idc/order` 编译失败，失败点为既有 `ProjOrderServiceImpl` 中 `ProjActivity#getOrgId()` 不存在及一个 `@Override` 不匹配，非本次改动引入。
+- 尚未连接真实数据库执行 T049 到 T054 的数据场景验证。
