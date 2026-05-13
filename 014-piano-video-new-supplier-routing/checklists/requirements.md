@@ -9,12 +9,15 @@
 - [x] 明确当前阶段只编写文档，不编码。
 - [x] 明确目标代码文件为 `PianoHomeWorkVideoTask.java`。
 - [x] 明确新供应商接口地址。
-- [x] 明确新增环境变量 `newSupplierWeight`。
-- [x] 明确 `newSupplierWeight` 的 0、1 和中间值行为。
+- [x] 明确新增环境变量 `supplierWeights`。
+- [x] 明确 `supplierWeights` 的三段格式、异常回退和归一化行为。
+- [x] 明确新增环境变量 `supplierDynamicRoutingEnabled`。
+- [x] 明确最近 1 小时供应商成功率动态调权行为。
 - [x] 明确新供应商测试提示词文件 `resources/demo-prompt`。
 - [x] 明确生产新供应商密钥通过环境变量注入。
 - [x] 明确独立 JUnit 测试入口按用户要求从测试配置文件读取测试参数。
-- [x] 明确新增 Gemini 兼容供应商环境变量 `GOOGLE_GEMINI_BASE_URL/GEMINI_API_KEY/GEMINI_MODEL`。
+- [x] 明确新增 Gemini 兼容供应商1环境变量 `GOOGLE_GEMINI_BASE_URL/GEMINI_API_KEY/GEMINI_MODEL`。
+- [x] 明确新增 Gemini 兼容供应商2环境变量 `SUPPLIER2_BASE_URL/SUPPLIER2_API_KEY/SUPPLIER2_MODEL/SUPPLIER2_AUTH_MODE`。
 - [x] 明确 fileUrl 直传和 inline_data 内嵌数据两种测试方式。
 - [x] 明确所有必填章节已完成。
 

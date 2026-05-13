@@ -10,18 +10,18 @@
 - [x] T002 明确当前阶段只编写文档，不修改业务代码
 - [x] T003 明确目标文件为 `PianoHomeWorkVideoTask.java`
 - [x] T004 明确新供应商接口地址
-- [x] T005 明确 `newSupplierWeight` 的取值范围和路由含义
+- [x] T005 明确 `supplierWeights` 三段权重格式和路由含义，`newSupplierWeight` 不再参与流量分配
 - [x] T006 明确 `resources/demo-prompt` 文件仅用于新供应商测试提示词
 - [x] T007 明确 API key 不落入文档和代码，后续通过环境变量注入
 
 ## Phase 2：后续实现
 
-- [x] T008 在 `PianoHomeWorkVideoTask.java` 中新增读取并解析 `newSupplierWeight` 的辅助逻辑
-- [x] T009 对 `newSupplierWeight` 做容错处理：未配置、空值、解析失败按 0；小于 0 按 0；大于 1 按 1
-- [x] T010 在 `analyzeVideoWithRetry` 开始时按权重为本次请求选择供应商，并在重试中保持同一供应商
-- [x] T011 实现 `newSupplierWeight=1` 时全部走新供应商
-- [x] T012 实现 `newSupplierWeight=0` 时全部保持现有供应商
-- [x] T013 实现 `0 < newSupplierWeight < 1` 时按请求随机切流
+- [x] T008 在 `PianoHomeWorkVideoTask.java` 中新增读取并解析 `supplierWeights` 的辅助逻辑
+- [x] T009 对 `supplierWeights` 做容错处理：未配置、解析失败、不是三段或全为 0 时按 `1,0,0` 回退；单项小于 0 按 0，大于 1 按 1
+- [x] T010 在 `analyzeVideoWithRetry` 开始时按权重为本次请求选择旧供应商、新供应商1或新供应商2，并在重试中保持同一供应商
+- [x] T011 实现 `supplierWeights=1,0,0` 时全部走旧供应商
+- [x] T012 实现 `supplierWeights=0,1,0` 时全部走新供应商1
+- [x] T013 实现 `supplierWeights=0,0,1` 时全部走新供应商2，其他正数权重按归一化比例随机切流
 - [x] T014 新增新供应商 API key 环境变量读取逻辑，变量名 `new_supplier_api_key`
 - [x] T015 新增新供应商提示词解析逻辑：优先读取 `resources/demo-prompt`，文件为空或读取失败时回退入参 `prompt`
 - [x] T016 在 `PianoHomeWorkVideoTask.java` 中新增新供应商调用方法
@@ -34,15 +34,15 @@
 - [x] T023 保持 `finally` 中释放 `dispatchLockKey` 的行为不变
 - [x] T024 增加供应商选择、权重解析、新供应商状态码和错误摘要日志
 - [x] T025 确保日志不打印明文 API key、Authorization header 或完整请求体
-- [x] T026 如部署模板由仓库维护，则在配置文档或模板中补充 `newSupplierWeight` 和新供应商密钥变量，并确认 `resources/demo-prompt` 被打入函数包
+- [x] T026 如部署模板由仓库维护，则在配置文档或模板中补充 `supplierWeights`、新供应商1密钥变量和 `SUPPLIER2_*` 变量，并确认 `resources/demo-prompt` 被打入函数包
 - [x] T026A 新增独立 JUnit 供应商联调测试入口
 
 ## Phase 3：后续验证
 
-- [x] T027 验证 `newSupplierWeight` 未配置时仍全部使用旧供应商
-- [x] T028 验证 `newSupplierWeight=0` 时仍全部使用旧供应商
-- [x] T029 验证 `newSupplierWeight=1` 时全部使用新供应商
-- [x] T030 验证 `newSupplierWeight=0.5` 时多次调用的新供应商比例接近 50%
+- [x] T027 验证 `supplierWeights` 未配置或非法时仍全部使用旧供应商
+- [x] T028 验证 `supplierWeights=1,0,0` 时仍全部使用旧供应商
+- [x] T029 验证 `supplierWeights=0,1,0` 与 `0,0,1` 时分别全部使用新供应商1和新供应商2
+- [x] T030 验证 `supplierWeights=0.5,0,0.5` 时旧供应商与新供应商2按 50%/50% 边界分配
 - [x] T031 验证 `resources/demo-prompt` 有内容时，新供应商请求使用该文件提示词
 - [x] T032 验证 `resources/demo-prompt` 为空或读取失败时，新供应商请求回退入参 `prompt`
 - [x] T033 验证旧供应商请求不受 `resources/demo-prompt` 影响
@@ -60,6 +60,14 @@
 - [x] T045 JUnit 测试入口支持旧供应商、新供应商1、新供应商2的 fileUrl 直传和 inline_data 内嵌数据验证
 - [x] T046 旧供应商新增 `old_supplier_video_input_mode` 环境变量，支持 `inlineData` 默认模式和 `fileUrl` 直传模式
 - [x] T047 所有供应商 JUnit 联调用例失败后间隔 1 秒重试，最多 10 次
+- [x] T048 `PianoHomeWorkVideoTask` 废弃 `newSupplierWeight` 路由，改用 `supplierWeights`
+- [x] T049 新增新供应商2生产环境变量 `SUPPLIER2_BASE_URL/SUPPLIER2_API_KEY/SUPPLIER2_MODEL/SUPPLIER2_AUTH_MODE`
+- [x] T050 新增 `PianoHomeWorkVideoTaskRouteTest` 覆盖三段权重解析、截断、归一化和异常回退
+- [x] T051 新增 `supplierDynamicRoutingEnabled`，默认开启成功率动态调权
+- [x] T052 新增供应商最近 1 小时 Redis 分钟桶成功率统计
+- [x] T053 动态有效权重按 `baseWeight * (0.5 + smoothedSuccessRate)` 计算并归一化
+- [x] T054 最终成功或失败后按本次选中供应商记录一次指标
+- [x] T055 路由单测覆盖动态权重、零权重禁用、低样本平滑、动态开关和 60 分钟窗口
 
 ## 执行记录
 
@@ -73,7 +81,7 @@
 
 ### D002 - 实现记录
 
-- `PianoHomeWorkVideoTask` 新增 `newSupplierWeight` 解析逻辑，异常配置按 0 处理，小于 0 归 0，大于 1 归 1。
+- `PianoHomeWorkVideoTask` 当前使用 `supplierWeights` 解析逻辑，异常配置回退旧供应商，小于 0 归 0，大于 1 归 1 后按总和归一化。
 - `PianoHomeWorkVideoTask` 在单次 `analyzeVideoWithRetry` 开始时按权重选择供应商，并在本次重试中保持同一供应商。
 - 新增新供应商调用方法，使用 Gemini 兼容 HTTP API，默认 `baseUrl=https://ent.univibe.cc`，`apiVersion=v1beta`，模型为 `gemini-3-flash-preview`。
 - 新供应商生产 API key 从环境变量 `new_supplier_api_key` 读取；JUnit 测试路径按用户要求从测试配置文件读取测试 key。
@@ -81,7 +89,7 @@
 - 新供应商输入对齐 `callExternalGeminiApiWithFileUri`，使用 `text + file_uri` 结构。
 - 新供应商响应复用 `AppTask#extractTextFromResponse(AppTask.clearJSON(rawResponse))` 解析。
 - 新供应商异常、空文本和可重试文案纳入最多 3 次重试。
-- `template.yml` 新增 `newSupplierWeight` 和 `new_supplier_api_key` 占位变量。
+- `template.yml` 当前使用 `supplierWeights`、`new_supplier_api_key` 和 `SUPPLIER2_*` 占位变量。
 - `README-CONFIG.md` 补充新供应商环境变量和 `demo-prompt` 资源说明。
 
 ### D003 - 验证记录
@@ -89,9 +97,9 @@
 - 执行命令：`mvn -q -DskipTests compile`
 - 执行目录：`C:\workspace\ju-chat\fc\Gemini-Api`
 - 执行结果：编译通过。
-- 静态检查确认 `newSupplierWeight=0` 或未配置时走现有供应商。
-- 静态检查确认 `newSupplierWeight=1` 时走新供应商。
-- 静态检查确认 `0 < newSupplierWeight < 1` 时按请求随机选择供应商。
+- 静态检查确认 `supplierWeights` 未配置或非法时走现有供应商。
+- 静态检查确认 `supplierWeights=0,1,0` 和 `0,0,1` 时分别走新供应商1和新供应商2。
+- 静态检查确认 `supplierWeights` 正数权重会按归一化比例随机选择供应商。
 - 静态检查确认新供应商提示词优先读取 `src/main/resources/demo-prompt`。
 - 静态检查确认生产调用优先读取环境变量；人工测试参数按用户要求内置在代码中。
 - 剩余风险：未调用真实新供应商接口做端到端联调；认证方式、模型响应和供应商错误格式仍需部署环境验证。
@@ -142,3 +150,21 @@
 - 旧供应商、新供应商1、新供应商2的 fileUrl 和 inlineData 联调用例均增加测试级重试。
 - 任一调用或解析断言失败后等待 1 秒再测，最多执行 10 次。
 - 第 10 次仍失败时保留最后一次异常作为 JUnit 失败原因。
+
+### D010 - 三供应商权重路由
+
+- `PianoHomeWorkVideoTask` 已将生产路由从 `newSupplierWeight` 升级为 `supplierWeights`。
+- `supplierWeights` 顺序固定为旧供应商、新供应商1、新供应商2；例如 `0.5,0,0.5` 表示旧供应商 50%、新供应商1 0%、新供应商2 50%。
+- `supplierWeights` 单项先截断到 0 到 1，再按正数总和归一化；未配置、非法、不是三段或全为 0 时回退到旧供应商 100%。
+- 新供应商2新增生产配置 `SUPPLIER2_BASE_URL/SUPPLIER2_API_KEY/SUPPLIER2_MODEL/SUPPLIER2_AUTH_MODE`，默认 baseUrl 为 `https://api1132.xyz`，默认模型为 `gemini-3-flash-preview`，默认鉴权为 `X_GOOG_API_KEY`。
+- `template.yml` 默认配置改为 `supplierWeights=1,0,0`，并移除 `newSupplierWeight` 部署占位。
+- 新增 `PianoHomeWorkVideoTaskRouteTest` 覆盖三段权重解析、边界选择、截断归一化和异常回退。
+
+### D011 - 动态成功率加权路由
+
+- `PianoHomeWorkVideoTask` 新增 `supplierDynamicRoutingEnabled`，默认开启；关闭时只使用静态 `supplierWeights`。
+- 动态路由读取最近 60 个分钟桶的供应商 `total/success` 指标，Redis key 形如 `piano:video:supplier:metric:{supplier}:{epochMinute}:total`，TTL 为 2 小时。
+- 动态有效权重以 `supplierWeights` 为基础，基础权重为 0 的供应商保持禁用；新供应商缺少 API key 时从有效权重中剔除。
+- 成功率使用先验平滑，避免小样本流量剧烈抖动；无历史数据时有效权重等于基础权重。
+- 本次请求最终成功时记录成功一次；最终失败、空响应、可重试文案耗尽或异常时记录失败一次。
+- `PianoHomeWorkVideoTaskRouteTest` 已覆盖动态调权、低样本平滑、动态开关、成功/失败计数写入计划和最近 1 小时窗口汇总。

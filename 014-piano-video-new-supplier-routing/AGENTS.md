@@ -12,19 +12,23 @@
 
 - 在 `PianoHomeWorkVideoTask.java` 中规划新增新供应商调用方法。
 - 新供应商使用 Gemini 兼容 HTTP API 调用，默认 `baseUrl=https://ent.univibe.cc`，`apiVersion=v1beta`，模型为 `gemini-3-flash-preview`。
-- 新增 Gemini 兼容供应商环境变量 `GOOGLE_GEMINI_BASE_URL/GEMINI_API_KEY/GEMINI_MODEL`，配置后优先覆盖默认 baseUrl、密钥和模型。
-- 新增环境变量 `newSupplierWeight`，取值范围 0 到 1。
-- `newSupplierWeight=1` 时，钢琴视频识别请求全部使用新供应商。
-- `newSupplierWeight=0` 或未配置时，保持全部使用现有供应商。
-- `0 < newSupplierWeight < 1` 时，按权重将部分请求切到新供应商。
+- 新增 Gemini 兼容供应商1环境变量 `GOOGLE_GEMINI_BASE_URL/GEMINI_API_KEY/GEMINI_MODEL`，配置后优先覆盖新供应商1默认 baseUrl、密钥和模型。
+- 新增 Gemini 兼容供应商2环境变量 `SUPPLIER2_BASE_URL/SUPPLIER2_API_KEY/SUPPLIER2_MODEL/SUPPLIER2_AUTH_MODE`。
+- 新增环境变量 `supplierWeights`，格式为 `旧供应商,新供应商1,新供应商2`。
+- 新增环境变量 `supplierDynamicRoutingEnabled`，默认开启成功率动态调权。
+- `supplierWeights=1,0,0` 时，钢琴视频识别请求全部使用旧供应商。
+- `supplierWeights=0,1,0` 时，钢琴视频识别请求全部使用新供应商1。
+- `supplierWeights=0,0,1` 时，钢琴视频识别请求全部使用新供应商2。
+- `newSupplierWeight` 不再参与流量分配。
 - 新供应商提示词测试时从 `resources/demo-prompt` 文件获取，对应仓库路径为 `C:\workspace\ju-chat\fc\Gemini-Api\src\main\resources\demo-prompt`。
 
 ## 当前实现状态
 
-- `PianoHomeWorkVideoTask.java` 已实现 `newSupplierWeight` 解析与新供应商切流。
-- `newSupplierWeight=1` 时，本次钢琴视频识别请求全部使用新供应商。
-- `newSupplierWeight=0`、未配置或解析失败时，保持使用现有供应商。
-- `0 < newSupplierWeight < 1` 时，按请求随机选择供应商；同一次 `analyzeVideoWithRetry` 的重试保持同一供应商。
+- `PianoHomeWorkVideoTask.java` 已实现 `supplierWeights` 解析与三供应商切流。
+- `supplierWeights` 未配置、解析失败、不是三段或全为 0 时，保持使用旧供应商。
+- `supplierWeights` 单项先截断到 0 到 1，再按正数总和归一化；同一次 `analyzeVideoWithRetry` 的重试保持同一供应商。
+- 动态路由开启时，按 Redis 最近 1 小时供应商 `success/total` 指标温和调整有效权重；基础权重为 0 的供应商保持禁用。
+- 本次请求最终成功或失败后，会按选中的供应商记录一次分钟桶指标。
 - 新供应商被选中时优先读取 classpath resource `demo-prompt` 作为测试提示词，读取不到或为空时回退入参 `prompt`。
 - 新供应商调用已对齐旧 `callExternalGeminiApiWithFileUri` 形态，支持视频 URL `file_uri` 直传，也支持 `inline_data` 内嵌数据。
 - 旧供应商可通过环境变量 `old_supplier_video_input_mode` 在 `inlineData` 和 `fileUrl` 之间切换；默认 `inlineData`。
