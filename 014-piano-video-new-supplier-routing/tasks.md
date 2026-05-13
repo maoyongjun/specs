@@ -59,6 +59,7 @@
 - [x] T044 将人工测试密钥、视频 URL、baseUrl、model 和 prompt 写入代码，测试时不需要传参
 - [x] T045 JUnit 测试入口支持旧供应商、新供应商1、新供应商2的 fileUrl 直传和 inline_data 内嵌数据验证
 - [x] T046 旧供应商新增 `old_supplier_video_input_mode` 环境变量，支持 `inlineData` 默认模式和 `fileUrl` 直传模式
+- [x] T047 所有供应商 JUnit 联调用例失败后间隔 1 秒重试，最多 10 次
 
 ## 执行记录
 
@@ -135,3 +136,9 @@
 - 旧供应商默认保持 `inlineData`，继续使用下载视频后 base64 内嵌数据调用。
 - 当 `old_supplier_video_input_mode=fileUrl` 时，旧供应商改用 `AppTask#callExternalGeminiApiWithFileUri` URL 直传。
 - 请求入参可选 `oldSupplierVideoInputMode` 覆盖环境变量，便于临时调试。
+
+### D009 - 供应商 JUnit 重试
+
+- 旧供应商、新供应商1、新供应商2的 fileUrl 和 inlineData 联调用例均增加测试级重试。
+- 任一调用或解析断言失败后等待 1 秒再测，最多执行 10 次。
+- 第 10 次仍失败时保留最后一次异常作为 JUnit 失败原因。

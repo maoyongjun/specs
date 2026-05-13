@@ -111,6 +111,7 @@
 - **FR-026**：系统 MUST 支持新增 Gemini 兼容供应商环境变量 `GOOGLE_GEMINI_BASE_URL/GEMINI_API_KEY/GEMINI_MODEL`，并优先于默认新供应商配置。
 - **FR-027**：JUnit 测试配置 MUST 写入用户提供的测试密钥、视频 URL、`https://api1132.xyz` 和 `gemini-3-pro-preview`，执行测试时不要求 main 方法传参。
 - **FR-028**：旧供应商 MUST 支持通过环境变量 `old_supplier_video_input_mode` 在 `inlineData` 和 `fileUrl` 两种视频输入模式之间切换，默认 `inlineData`。
+- **FR-029**：所有供应商的 `fileUrl` 与 `inlineData` JUnit 联调用例失败后 MUST 间隔 1 秒重试，最多执行 10 次。
 
 ## 成功标准 *(必填)*
 
