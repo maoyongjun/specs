@@ -71,6 +71,7 @@
 - 新增 Gemini 兼容供应商配置：`GOOGLE_GEMINI_BASE_URL`、`GEMINI_API_KEY`、`GEMINI_MODEL`；当这些变量配置时，优先使用该供应商覆盖默认 baseUrl、API key 和模型。
 - 人工测试默认使用代码内置 `baseUrl=https://api1132.xyz`、模型 `gemini-3-pro-preview`、固定视频 URL 和用户提供的测试密钥，不需要命令行传参。
 - 新供应商调用形态应对齐旧 `callExternalGeminiApiWithFileUri`：提示词使用 text part，视频支持 `file_uri` / `mime_type=video/mp4` 直传，也支持下载后以 `inline_data` 内嵌数据传入。
+- 旧供应商视频输入形态通过环境变量 `old_supplier_video_input_mode` 选择，支持 `inlineData` 和 `fileUrl`；未配置时默认 `inlineData`，保持原有行为。
 - 新供应商认证默认假设使用 `Authorization: Bearer <apiKey>`；如供应商联调要求其他 header，应更新本规格再实现。
 - 生产新供应商密钥通过 `GEMINI_API_KEY` 或 `new_supplier_api_key` 环境变量读取；JUnit 联调测试按用户要求从测试配置文件读取测试密钥。
 - 新供应商测试提示词只从 `resources/demo-prompt` 文件读取；该文件为空或读取失败时使用入参 `prompt`。
@@ -109,6 +110,7 @@
 - **FR-025**：新供应商视频输入 MUST 支持 `inline_data` 形态，将测试视频下载并转为 base64 后内嵌传入。
 - **FR-026**：系统 MUST 支持新增 Gemini 兼容供应商环境变量 `GOOGLE_GEMINI_BASE_URL/GEMINI_API_KEY/GEMINI_MODEL`，并优先于默认新供应商配置。
 - **FR-027**：JUnit 测试配置 MUST 写入用户提供的测试密钥、视频 URL、`https://api1132.xyz` 和 `gemini-3-pro-preview`，执行测试时不要求 main 方法传参。
+- **FR-028**：旧供应商 MUST 支持通过环境变量 `old_supplier_video_input_mode` 在 `inlineData` 和 `fileUrl` 两种视频输入模式之间切换，默认 `inlineData`。
 
 ## 成功标准 *(必填)*
 

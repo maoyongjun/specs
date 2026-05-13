@@ -27,6 +27,7 @@
 - `0 < newSupplierWeight < 1` 时，按请求随机选择供应商；同一次 `analyzeVideoWithRetry` 的重试保持同一供应商。
 - 新供应商被选中时优先读取 classpath resource `demo-prompt` 作为测试提示词，读取不到或为空时回退入参 `prompt`。
 - 新供应商调用已对齐旧 `callExternalGeminiApiWithFileUri` 形态，支持视频 URL `file_uri` 直传，也支持 `inline_data` 内嵌数据。
+- 旧供应商可通过环境变量 `old_supplier_video_input_mode` 在 `inlineData` 和 `fileUrl` 之间切换；默认 `inlineData`。
 - 生产新供应商密钥从环境变量 `GEMINI_API_KEY` 或 `new_supplier_api_key` 获取；JUnit 联调测试按用户要求从测试配置文件读取测试参数。
 - 供应商联调已独立到 `PianoVideoSupplierIntegrationTest`，测试参数从 `src/test/resources/piano-video-supplier-test.properties` 读取。
 - `template.yml` 与 `README-CONFIG.md` 已补充新环境变量说明和占位配置。

@@ -58,6 +58,7 @@
 - [x] T043 新增 Gemini 兼容供应商环境变量 `GOOGLE_GEMINI_BASE_URL/GEMINI_API_KEY/GEMINI_MODEL`
 - [x] T044 将人工测试密钥、视频 URL、baseUrl、model 和 prompt 写入代码，测试时不需要传参
 - [x] T045 JUnit 测试入口支持旧供应商、新供应商1、新供应商2的 fileUrl 直传和 inline_data 内嵌数据验证
+- [x] T046 旧供应商新增 `old_supplier_video_input_mode` 环境变量，支持 `inlineData` 默认模式和 `fileUrl` 直传模式
 
 ## 执行记录
 
@@ -127,3 +128,10 @@
 - 新增 `src/test/resources/piano-video-supplier-test.properties`，测试参数包含旧供应商、新供应商1、新供应商2的 key、baseUrl、model、视频 URL 和 prompt。
 - 新增 `PianoVideoSupplierIntegrationTest`，包含 6 个真实联调用例。
 - `PianoHomeWorkVideoTask` 已移除 main 参数测试入口，测试统一通过 `mvn -q -Dtest=PianoVideoSupplierIntegrationTest test` 执行。
+
+### D008 - 旧供应商视频输入模式环境变量
+
+- `PianoHomeWorkVideoTask` 新增 `old_supplier_video_input_mode` 环境变量读取逻辑。
+- 旧供应商默认保持 `inlineData`，继续使用下载视频后 base64 内嵌数据调用。
+- 当 `old_supplier_video_input_mode=fileUrl` 时，旧供应商改用 `AppTask#callExternalGeminiApiWithFileUri` URL 直传。
+- 请求入参可选 `oldSupplierVideoInputMode` 覆盖环境变量，便于临时调试。
