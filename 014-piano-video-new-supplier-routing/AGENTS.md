@@ -11,7 +11,8 @@
 ## 当前目标
 
 - 在 `PianoHomeWorkVideoTask.java` 中规划新增新供应商调用方法。
-- 新供应商使用 Java SDK 调用，`baseUrl=https://ent.univibe.cc`，`apiVersion=v1beta`，模型为 `gemini-3-flash-preview`。
+- 新供应商使用 Gemini 兼容 HTTP API 调用，默认 `baseUrl=https://ent.univibe.cc`，`apiVersion=v1beta`，模型为 `gemini-3-flash-preview`。
+- 新增 Gemini 兼容供应商环境变量 `GOOGLE_GEMINI_BASE_URL/GEMINI_API_KEY/GEMINI_MODEL`，配置后优先覆盖默认 baseUrl、密钥和模型。
 - 新增环境变量 `newSupplierWeight`，取值范围 0 到 1。
 - `newSupplierWeight=1` 时，钢琴视频识别请求全部使用新供应商。
 - `newSupplierWeight=0` 或未配置时，保持全部使用现有供应商。
@@ -25,17 +26,17 @@
 - `newSupplierWeight=0`、未配置或解析失败时，保持使用现有供应商。
 - `0 < newSupplierWeight < 1` 时，按请求随机选择供应商；同一次 `analyzeVideoWithRetry` 的重试保持同一供应商。
 - 新供应商被选中时优先读取 classpath resource `demo-prompt` 作为测试提示词，读取不到或为空时回退入参 `prompt`。
-- 新供应商调用已对齐旧 `callExternalGeminiApiWithFileUri` 形态，使用视频 URL 作为 `file_uri`，不再把视频下载后转 base64。
-- 新供应商密钥从环境变量 `new_supplier_api_key` 获取。
-- `PianoHomeWorkVideoTask` 已提供 `main/testNewSupplierVideoAnalysis` 人工测试入口。
+- 新供应商调用已对齐旧 `callExternalGeminiApiWithFileUri` 形态，支持视频 URL `file_uri` 直传，也支持 `inline_data` 内嵌数据。
+- 生产新供应商密钥从环境变量 `GEMINI_API_KEY` 或 `new_supplier_api_key` 获取；JUnit 联调测试按用户要求从测试配置文件读取测试参数。
+- 供应商联调已独立到 `PianoVideoSupplierIntegrationTest`，测试参数从 `src/test/resources/piano-video-supplier-test.properties` 读取。
 - `template.yml` 与 `README-CONFIG.md` 已补充新环境变量说明和占位配置。
 - `fc/Gemini-Api` 已通过 `mvn -q -DskipTests compile` 编译验证。
 - 尚未使用真实新供应商做端到端联调。
 
 ## 安全与配置约束
 
-- 用户提供的新供应商 API key 是敏感信息，文档和代码均不得写入明文密钥。
-- 新供应商密钥通过环境变量 `new_supplier_api_key` 注入。
+- 生产新供应商 API key 是敏感信息，应通过环境变量注入。
+- 本次 JUnit 联调测试配置按用户要求写入测试 key；不要在生产配置、日志或 README 示例中输出密钥。
 - 日志不得打印 API key、Authorization header 或完整请求体。
 - 新供应商密钥缺失时，不应静默切到新供应商；应记录可检索错误并按规格决定失败或回退。
 

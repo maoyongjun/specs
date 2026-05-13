@@ -3,7 +3,7 @@
 **功能目录**: `014-piano-video-new-supplier-routing`  
 **创建日期**: 2026-05-11  
 **状态**: Implemented - Pending Supplier E2E  
-**输入**: 用户要求先在 `C:\workspace\ju-chat\specs` 新建 Spec Kit 并编写文档，不编码；后续在 `C:\workspace\ju-chat\fc\Gemini-Api\src\main\java\com\drh\gemini\api\PianoHomeWorkVideoTask.java` 中增加调用新供应商的方法；新供应商使用 Java SDK，`baseUrl=https://ent.univibe.cc`，`apiVersion=v1beta`，模型为 `gemini-3-flash-preview`；调用形态对齐旧 `callExternalGeminiApiWithFileUri`，使用视频 URL 作为 `file_uri`；增加环境变量 `newSupplierWeight`，取值 0 到 1，`1` 表示全部使用新供应商；新供应商提示词测试时从 `resources/demo-prompt` 文件获取；人工测试方法写入 `PianoHomeWorkVideoTask`。
+**输入**: 用户要求先在 `C:\workspace\ju-chat\specs` 新建 Spec Kit 并编写文档，不编码；后续在 `C:\workspace\ju-chat\fc\Gemini-Api\src\main\java\com\drh\gemini\api\PianoHomeWorkVideoTask.java` 中增加调用新供应商的方法；新供应商使用 Gemini 兼容 HTTP API，默认 `baseUrl=https://ent.univibe.cc`，`apiVersion=v1beta`，模型为 `gemini-3-flash-preview`；调用形态对齐旧 `callExternalGeminiApiWithFileUri`，使用视频 URL 作为 `file_uri`；增加环境变量 `newSupplierWeight`，取值 0 到 1，`1` 表示全部使用新供应商；新供应商提示词测试时从 `resources/demo-prompt` 文件获取；人工测试方法写入 `PianoHomeWorkVideoTask`；人工测试参数内置在代码中，并新增 `GOOGLE_GEMINI_BASE_URL/GEMINI_API_KEY/GEMINI_MODEL` 供应商配置。
 
 ## 用户场景与测试 *(必填)*
 
@@ -49,7 +49,7 @@
 
 新供应商 API key 属于敏感信息，不能写入代码或文档。系统应通过环境变量读取密钥，部署时由运行环境注入用户提供的 key。
 
-**独立测试**：扫描代码和规格目录，确认不包含明文 key；运行时配置新供应商密钥环境变量后，新供应商请求的 `Authorization` header 正确设置；未配置密钥时，系统不打印密钥、不发送空凭据请求。
+**独立测试**：确认生产路径优先读取 `GEMINI_API_KEY` 或 `new_supplier_api_key` 环境变量；运行时配置新供应商密钥环境变量后，新供应商请求认证信息正确设置；未配置密钥且非 JUnit 联调测试时，系统不打印密钥、不发送空凭据请求。
 
 **验收场景**：
 
@@ -65,25 +65,27 @@
 - `newSupplierWeight=1` 表示所有请求使用新供应商，不再调用旧供应商。
 - `newSupplierWeight=0` 表示所有请求使用旧供应商，保持当前行为。
 - `0 < newSupplierWeight < 1` 表示按请求随机切流；当前实现会在单次 `analyzeVideoWithRetry` 开始时选定供应商，同一次请求的后续重试保持同一供应商，避免跨供应商结果差异。
-- 新供应商 SDK `baseUrl` 固定为 `https://ent.univibe.cc`。
-- 新供应商 SDK `apiVersion` 固定为 `v1beta`。
-- 新供应商模型固定为 `gemini-3-flash-preview`。
-- 新供应商调用形态应对齐旧 `callExternalGeminiApiWithFileUri`：提示词使用 text part，视频使用 `file_uri` / `mime_type=video/mp4`，不再下载后转 base64。
+- 新供应商默认 `baseUrl` 为 `https://ent.univibe.cc`。
+- 新供应商 `apiVersion` 固定为 `v1beta`。
+- 新供应商默认模型为 `gemini-3-flash-preview`。
+- 新增 Gemini 兼容供应商配置：`GOOGLE_GEMINI_BASE_URL`、`GEMINI_API_KEY`、`GEMINI_MODEL`；当这些变量配置时，优先使用该供应商覆盖默认 baseUrl、API key 和模型。
+- 人工测试默认使用代码内置 `baseUrl=https://api1132.xyz`、模型 `gemini-3-pro-preview`、固定视频 URL 和用户提供的测试密钥，不需要命令行传参。
+- 新供应商调用形态应对齐旧 `callExternalGeminiApiWithFileUri`：提示词使用 text part，视频支持 `file_uri` / `mime_type=video/mp4` 直传，也支持下载后以 `inline_data` 内嵌数据传入。
 - 新供应商认证默认假设使用 `Authorization: Bearer <apiKey>`；如供应商联调要求其他 header，应更新本规格再实现。
-- 新供应商密钥通过 `new_supplier_api_key` 环境变量读取，禁止硬编码。
+- 生产新供应商密钥通过 `GEMINI_API_KEY` 或 `new_supplier_api_key` 环境变量读取；JUnit 联调测试按用户要求从测试配置文件读取测试密钥。
 - 新供应商测试提示词只从 `resources/demo-prompt` 文件读取；该文件为空或读取失败时使用入参 `prompt`。
 - `resources/demo-prompt` 对应实现路径为 `fc/Gemini-Api/src/main/resources/demo-prompt`，运行时可按 classpath resource `demo-prompt` 读取。
 - 旧供应商调用继续使用现有环境变量和现有提示词逻辑。
 - 日志可记录供应商名称、权重、选择结果、baseUrl、模型、响应长度和响应摘要，但不得记录密钥或完整请求体。
 - 新供应商失败不应跳过 `finally` 中的 `releaseDispatchLock`。
-- `PianoHomeWorkVideoTask` 应提供人工测试入口，允许通过命令行参数或 `new_supplier_test_video_url` 环境变量传入视频 URL，并直接调用新供应商，不读写 Redis 缓存。
+- 供应商联调测试应独立为 JUnit 测试类，测试参数从 `src/test/resources/piano-video-supplier-test.properties` 读取；不再依赖 `PianoHomeWorkVideoTask.main` 传参，并且不读写 Redis 缓存。
 
 ## 需求 *(必填)*
 
 - **FR-001**：系统 MUST 在 `C:\workspace\ju-chat\specs` 下维护本 Spec Kit 目录。
 - **FR-002**：当前阶段 MUST 只编写文档，MUST NOT 修改业务代码。
 - **FR-003**：后续实现 MUST 在 `PianoHomeWorkVideoTask.java` 中新增新供应商调用能力。
-- **FR-004**：新供应商 MUST 使用 Java SDK 调用，`baseUrl=https://ent.univibe.cc`，`apiVersion=v1beta`，模型为 `gemini-3-flash-preview`。
+- **FR-004**：新供应商 MUST 使用 Gemini 兼容 HTTP API 调用，默认 `baseUrl=https://ent.univibe.cc`，`apiVersion=v1beta`，模型为 `gemini-3-flash-preview`。
 - **FR-005**：系统 MUST 新增环境变量 `newSupplierWeight` 控制新供应商流量比例。
 - **FR-006**：`newSupplierWeight` MUST 支持 0 到 1 的小数值。
 - **FR-007**：`newSupplierWeight=1` 时，系统 MUST 全部使用新供应商。
@@ -93,7 +95,7 @@
 - **FR-011**：`resources/demo-prompt` 有内容且新供应商被选中时，系统 MUST 使用该文件内容作为请求提示词。
 - **FR-012**：`resources/demo-prompt` 为空或读取失败且新供应商被选中时，系统 MUST 回退使用入参 `prompt`。
 - **FR-013**：旧供应商请求 MUST NOT 被 `resources/demo-prompt` 覆盖。
-- **FR-014**：新供应商密钥 MUST 通过环境变量注入，MUST NOT 硬编码到 Java 文件或规格文档中。
+- **FR-014**：生产新供应商密钥 MUST 通过环境变量注入；JUnit 联调测试 MAY 按本次要求在测试配置文件中写入测试密钥。
 - **FR-015**：新供应商密钥环境变量建议命名为 `new_supplier_api_key`。
 - **FR-016**：新供应商请求认证 SHOULD 使用 `Authorization: Bearer <apiKey>`，除非供应商联调确认需要其他认证方式。
 - **FR-017**：新供应商请求体 MUST 与现有 Gemini 响应解析兼容。
@@ -102,19 +104,22 @@
 - **FR-020**：新供应商返回空文本、可重试文案或异常时，系统 MUST 保持现有失败/重试/缓存状态语义。
 - **FR-021**：系统 MUST 增加可检索日志，覆盖 `newSupplierWeight` 解析结果、供应商选择结果、新供应商 HTTP 状态和错误摘要。
 - **FR-022**：系统 MUST NOT 在日志中输出新供应商明文密钥、Authorization header 或完整请求体。
-- **FR-024**：新供应商视频输入 MUST 使用 `file_uri` 形态，直接传入 `file_url`。
-- **FR-023**：系统 SHOULD 在 `PianoHomeWorkVideoTask` 中提供人工测试入口，用于手动验证新供应商视频识别。
+- **FR-023**：系统 SHOULD 提供独立 JUnit 测试类，用于验证旧供应商、新供应商1、新供应商2的视频识别。
+- **FR-024**：新供应商视频输入 MUST 支持 `file_uri` 形态，直接传入 `file_url`。
+- **FR-025**：新供应商视频输入 MUST 支持 `inline_data` 形态，将测试视频下载并转为 base64 后内嵌传入。
+- **FR-026**：系统 MUST 支持新增 Gemini 兼容供应商环境变量 `GOOGLE_GEMINI_BASE_URL/GEMINI_API_KEY/GEMINI_MODEL`，并优先于默认新供应商配置。
+- **FR-027**：JUnit 测试配置 MUST 写入用户提供的测试密钥、视频 URL、`https://api1132.xyz` 和 `gemini-3-pro-preview`，执行测试时不要求 main 方法传参。
 
 ## 成功标准 *(必填)*
 
 - **SC-001**：本目录包含 `AGENTS.md`、`spec.md`、`tasks.md`、`checklists/requirements.md`。
-- **SC-002**：当前提交只包含 Spec Kit 文档变化，不包含业务代码变化。
+- **SC-002**：本次变更包含 Spec Kit 文档、`PianoHomeWorkVideoTask.java`、`README-CONFIG.md` 和 `template.yml` 更新。
 - **SC-003**：规格明确 `newSupplierWeight=1` 时全部使用新供应商。
 - **SC-004**：规格明确 `newSupplierWeight=0` 或异常配置时保持旧供应商。
 - **SC-005**：规格明确新供应商测试提示词可从 `resources/demo-prompt` 文件获取，并只影响新供应商。
 - **SC-006**：规格明确新供应商 URL、认证方式假设、密钥环境变量和密钥脱敏要求。
 - **SC-007**：`fc/Gemini-Api` 模块编译通过。
-- **SC-008**：通过静态检查确认代码和规格目录不包含明文 API key。
+- **SC-008**：`PianoVideoSupplierIntegrationTest` 可通过 Maven 执行 fileUrl 直传和 inline_data 内嵌数据两种视频测试。
 
 ## 假设
 
@@ -122,5 +127,5 @@
 - 新供应商 API key 可通过 Bearer token 方式认证；该假设需要后续联调验证。
 - 新供应商使用 `file_uri` 形态直接传视频 URL；旧供应商仍沿用下载后转 base64 的现有行为。
 - 现有 `PianoHomeWorkVideoTask#analyzeVideoWithRetry` 的重试和缓存语义仍适用于新供应商。
-- 为避免泄露敏感信息，本规格不记录用户提供的明文 API key；部署时应通过环境变量注入。
+- 生产部署仍建议通过环境变量注入密钥；本次按用户要求仅在 JUnit 测试配置文件中写入测试参数。
 - 当前已完成编译和静态检查，尚未调用真实新供应商接口做端到端联调。
