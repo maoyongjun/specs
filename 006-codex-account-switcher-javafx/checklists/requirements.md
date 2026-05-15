@@ -10,7 +10,7 @@
 - [x] 明确记录源码目录：`C:\workspace\ju-chat\codex-account-switcher`。
 - [x] 明确记录最终 exe 目录：`target\dist\CodexAccountSwitcher\CodexAccountSwitcher.exe`。
 - [x] 明确记录 Java 与 JavaFX 版本。
-- [x] 明确记录账号槽位固定 1-7。
+- [x] 明确记录账号槽位固定 1-15。
 - [x] 明确记录导出包为明文 zip。
 - [x] 明确记录恢复策略为备份后替换。
 - [x] 所有必填章节已完成。
@@ -38,5 +38,5 @@
 
 - 用户已确认：导出包使用明文 zip。
 - 用户已确认：点击账号默认启动 Cursor。
-- 用户已确认：账号槽位固定为 1-7。
+- 用户已确认：账号槽位固定为 1-15。
 - 用户已确认：恢复策略为备份后替换。
