@@ -3,7 +3,7 @@
 **功能目录**: `020-qw-user-message-export-906`  
 **创建日期**: 2026-05-18  
 **状态**: Draft - Documentation Only  
-**输入**: 用户要求先在 `C:\workspace\ju-chat\specs` 编写 Spec Kit 文档，不改代码；后续修改 `C:\workspace\ju-chat\qw-user-message-export`，导出 `yangfan`、`LiYan`、`ZengYan` 三个账号最近 10 天的私聊聊天记录。导出时老师和用户的消息都要保留，不做 `isSelf` 过滤，不导出群聊消息；`chat_name` 只保留以 `906` 开头的记录；输出字段固定为 `chat_name`、`contact_name`、`text`。
+**输入**: 用户要求先在 `C:\workspace\ju-chat\specs` 编写 Spec Kit 文档，不改代码；后续修改 `C:\workspace\ju-chat\qw-user-message-export`，导出 `yangfan`、`LiYan`、`ZengYan` 三个账号最近 10 天的私聊聊天记录。导出时老师和用户的消息都要保留，不做 `isSelf` 过滤，不导出群聊消息；`chat_name` 只保留以 `906` 开头的记录；输出时 `message_source` 保持原始值，`isSelf` 仅在输出中转换为“老师发送 / 学员发送”，最终字段顺序固定为 `message_source`、`isSelf`、`chat_name`、`contact_name`、`text`。
 
 ## 用户场景与测试 *(必填)*
 
@@ -67,15 +67,15 @@
 2. **Given** 某条记录的 `chat_name` 不以 `906` 开头，**When** 运行导出，**Then** 该记录不进入结果。
 3. **Given** 同一账号下同时存在 `906` 前缀和非 `906` 前缀记录，**When** 运行导出，**Then** 仅 `906` 前缀记录保留。
 
-### 用户故事 6 - 输出固定三列文本（优先级：P1）
+### 用户故事 6 - 输出固定五列文本（优先级：P1）
 
-后续人工处理需要固定列顺序的可读结果，因此导出内容必须稳定输出 `chat_name`、`contact_name`、`text` 三列。
+后续人工处理需要固定列顺序的可读结果，因此导出内容必须稳定输出 `message_source`、`isSelf`、`chat_name`、`contact_name`、`text` 五列。其中 `message_source` 必须保留原始值，`isSelf` 必须转换为“老师发送 / 学员发送”。
 
-**独立测试**：准备一批符合条件的记录，运行导出并检查输出文本每行的列顺序和列数量。
+**独立测试**：准备一批符合条件的记录，运行导出并检查输出文本每行的列顺序、列数量，以及 `message_source` / `isSelf` 的输出语义。
 
 **验收场景**：
 
-1. **Given** 一条符合条件的聊天记录，**When** 写入输出，**Then** 该行必须按 `chat_name<TAB>contact_name<TAB>text` 输出。
+1. **Given** 一条符合条件的聊天记录，**When** 写入输出，**Then** 该行必须按 `message_source<TAB>isSelf<TAB>chat_name<TAB>contact_name<TAB>text` 输出。
 2. **Given** 一条记录包含更多原始字段，**When** 写入输出，**Then** 输出中不得额外附加其他列。
 3. **Given** 一条记录的 `text` 为空，**When** 运行导出，**Then** 后续实现应明确处理策略并在规格中保持一致，默认不输出空文本行。
 
@@ -103,7 +103,7 @@
 - **FR-006**：后续实现 MUST 包含老师和用户双方消息，不得按 `isSelf` 过滤。
 - **FR-007**：后续实现 MUST 排除群聊消息。
 - **FR-008**：后续实现 MUST 仅保留 `chat_name` 以 `906` 开头的记录。
-- **FR-009**：后续实现 MUST 输出 `chat_name`、`contact_name`、`text` 三列。
+- **FR-009**：后续实现 MUST 输出 `message_source`、`isSelf`、`chat_name`、`contact_name`、`text` 五列。
 - **FR-010**：后续实现 MUST 保持输出列顺序固定，且列之间使用制表符分隔。
 - **FR-011**：后续实现 SHOULD 支持分页查询，避免遗漏大批量聊天记录。
 - **FR-012**：后续实现 SHOULD 在编码前确认 `yangfan`、`LiYan`、`ZengYan` 对应的 OTS 字段映射。
@@ -119,7 +119,7 @@
 - **SC-003**：导出结果 100% 保留老师和用户双方消息，不再因为 `isSelf` 丢失一方文本。
 - **SC-004**：导出结果 100% 排除群聊消息。
 - **SC-005**：导出结果 100% 只保留 `chat_name` 以 `906` 开头的记录。
-- **SC-006**：每一行输出都严格包含 `chat_name`、`contact_name`、`text` 三列。
+- **SC-006**：每一行输出都严格包含 `message_source`、`isSelf`、`chat_name`、`contact_name`、`text` 五列。
 - **SC-007**：后续实现完成后可通过至少一轮真实或样例数据导出，人工核对字段顺序与过滤条件无偏差。
 
 ## 假设
@@ -128,4 +128,5 @@
 - 最近 10 天按任务运行时刻向前回溯 10 天计算。
 - `chat_name` 的“906开头”按前缀过滤理解。
 - 输出格式采用纯文本行输出，列之间使用 `TAB` 分隔。
+- `message_source` 按原始字段值输出，`isSelf` 按 `true => 老师发送`、`false => 学员发送` 转换后输出。
 - 当前阶段只写 Spec Kit 文档，不修改业务代码。

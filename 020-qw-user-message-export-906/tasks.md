@@ -2,7 +2,7 @@
 
 **输入**：来自 `specs/020-qw-user-message-export-906/spec.md` 的功能规格  
 **前置条件**：`spec.md`、`checklists/requirements.md`、`AGENTS.md`  
-**测试**：当前阶段只验证 Spec Kit 文档存在且需求完整；后续实现阶段需要验证三账号范围、私聊过滤、群聊排除、`906` 前缀筛选和固定三列输出。
+**测试**：当前阶段只验证 Spec Kit 文档存在且需求完整；后续实现阶段需要验证三账号范围、私聊过滤、群聊排除、`906` 前缀筛选和固定五列输出，其中 `message_source` 保持原值、`isSelf` 按老师/学员转换。
 
 ## Phase 1：规格与范围
 
@@ -14,8 +14,8 @@
 - [x] T006 明确排除群聊消息
 - [x] T007 明确仅查询最近 10 天的聊天记录
 - [x] T008 明确 `chat_name` 只保留 `906` 前缀
-- [x] T009 明确输出字段为 `chat_name`、`contact_name`、`text`
-- [x] T010 明确输出列顺序固定且使用制表符分隔
+- [x] T009 明确输出字段为 `message_source`、`isSelf`、`chat_name`、`contact_name`、`text`
+- [x] T010 明确输出列顺序固定且使用制表符分隔，且 `message_source` / `isSelf` 语义清晰
 
 ## Phase 2：实现准备
 
@@ -35,7 +35,7 @@
 - [ ] T021 移除对 `isSelf` 的过滤依赖
 - [ ] T022 增加群聊排除逻辑
 - [ ] T023 增加 `chat_name` 前缀筛选逻辑
-- [ ] T024 统一输出字段为 `chat_name`、`contact_name`、`text`
+- [ ] T024 统一输出字段为 `message_source`、`isSelf`、`chat_name`、`contact_name`、`text`
 - [ ] T025 实现分页查询，确保全量导出不漏数
 - [ ] T026 实现文本单行化，避免换行破坏输出
 - [ ] T027 保证输出顺序稳定且只包含目标列
@@ -47,8 +47,8 @@
 - [ ] T030 验证老师和用户消息都被导出
 - [ ] T031 验证群聊消息被排除
 - [ ] T032 验证非 `906` 前缀的 `chat_name` 被排除
-- [ ] T033 验证输出固定为三列
-- [ ] T034 验证输出按 `chat_name<TAB>contact_name<TAB>text` 排列
+- [ ] T033 验证输出固定为五列
+- [ ] T034 验证输出按 `message_source<TAB>isSelf<TAB>chat_name<TAB>contact_name<TAB>text` 排列
 - [ ] T035 验证分页场景下不漏记录
 
 ## 执行记录
@@ -59,5 +59,5 @@
 - 当前阶段未修改业务代码。
 - 已记录三账号范围、私聊范围、群聊排除和 `906` 前缀规则。
 - 已记录最近 10 天的时间范围规则。
-- 已记录输出字段固定为 `chat_name`、`contact_name`、`text`。
-- 已记录输出格式采用制表符分隔的纯文本行输出。
+- 已记录输出字段固定为 `message_source`、`isSelf`、`chat_name`、`contact_name`、`text`。
+- 已记录输出格式采用制表符分隔的纯文本行输出，其中 `message_source` 原样输出、`isSelf` 转换为老师/学员标签。
