@@ -34,6 +34,7 @@
 - [x] 功能满足成功标准中定义的可衡量结果。
 - [x] 规格文档与任务清单职责分离。
 - [x] 验证命令已执行并记录：`mvn -f kkhc/kkhc-idc/pom.xml -pl ai -am -DskipTests compile`、`mvn -f kkhc/kkhc-bizcenter/pom.xml -pl schedule -am -DskipTests compile`。
+- [x] 实现防错规则已写入 `spec.md` 与 `AGENTS.md`，后续修改可直接按规则检查。
 
 ## 备注
 

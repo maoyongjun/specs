@@ -5,6 +5,14 @@
 **状态**: Implemented  
 **输入**: 用户要求在 `C:\workspace\ju-chat\kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\crm\controller\AiController.java` 新增补偿接口，由 `kkhc-bizcenter/schedule` 的定时任务异步触发。补偿范围为当天整天 `create_time` 范围内、`union_id` 为空、`l_ids` 不为空的 `drh_book_question_record`，按 `200` 条一页分页处理。
 
+## 实现防错规则
+
+1. `unionId` 过滤条件必须同时排除 `NULL` 和空字符串，写法保持为 `isNotNull(...).ne(..., "")`。
+2. 当 `externalUserId` 为空或 OTS 未命中时，不得直接 `continue`，必须继续尝试 `AppletUserDo` 兜底链路。
+3. `union_id` 回写必须放在“可发送”前置条件校验之后，避免记录被提前标记为已补偿但消息未发送。
+4. 补偿链路中的 fallback 顺序固定为 `phone_number -> external_user_id -> drh_emp_external_user -> AppletUserDo.id -> phone`。
+5. 任何单条失败都只能影响当前记录，不能阻断后续分页或后续记录处理。
+
 ## 用户场景与测试 *(必填)*
 
 ### 用户故事 1 - 定时任务可以异步触发当天图书补偿（优先级：P1）
