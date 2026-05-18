@@ -10,7 +10,7 @@
 - [x] 明确记录 schedule job 的异步触发方式。
 - [x] 明确记录 AI 补偿接口的控制器落点与路径。
 - [x] 明确记录按当天范围分页处理，每页 `200` 条。
-- [x] 明确记录数据链路：`phone_number -> external_user_id -> unionId`。
+- [x] 明确记录数据链路：`phone_number -> external_user_id -> unionId`，并补充 `AppletUserDo.id/phone` 兜底链路。
 - [x] 明确记录消息模板来源：参考 `sendMsgStudent`。
 - [x] 明确记录消息链接格式与热线号。
 - [x] 面向产品、测试和开发均可读。

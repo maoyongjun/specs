@@ -12,7 +12,7 @@
 
 - 在 AI 服务侧提供图书 `unionId` 补偿接口。
 - 按当天范围分页处理，每页 `200` 条待补偿记录。
-- 通过 `phone_number -> external_user_id -> unionId` 补全数据，再向学员发送消息。
+- 通过 `phone_number -> external_user_id -> unionId` 优先补全数据，失败后再按 `AppletUserDo.id -> phone` 兜底查 `unionId`，再向学员发送消息。
 - 学员消息内容必须与参考实现 `sendMsgStudent` 保持一致，`type=1`，热线 `4006689062`。
 - schedule 侧 job 仅负责异步触发，不等待批处理结束。
 

@@ -22,14 +22,14 @@
 
 ### 用户故事 2 - 图书补偿接口可以补回 unionId 并发送学员消息（优先级：P1）
 
-AI 服务需要按当天数据批量扫描 `drh_book_question_record`，将 `unionId` 补齐后发送给学员。补偿时先通过 OTS 表 `drh_ai_external_base_info` 的 `phone_number` 找到 `external_user_id`，再通过 `drh_emp_external_user.externalUserid` 找到 `unionId`，随后回写 `drh_book_question_record.union_id` 并发消息。
+AI 服务需要按当天数据批量扫描 `drh_book_question_record`，将 `unionId` 补齐后发送给学员。补偿时优先通过 OTS 表 `drh_ai_external_base_info` 的 `phone_number` 找到 `external_user_id`，再通过 `drh_emp_external_user.externalUserid` 找到 `unionId`；如果这条链路缺失，则兜底通过 `drh_applet_user.id`，再按 `phone` 继续补查 `unionId`，随后回写 `drh_book_question_record.union_id` 并发消息。
 
-**独立测试**：构造当天 1 条待补偿记录，验证接口按 `phone_number -> external_user_id -> unionId` 的链路补回 unionId，并成功发送学员消息。
+**独立测试**：构造当天 1 条待补偿记录，验证接口按 `phone_number -> external_user_id -> unionId` 的主链路补回 unionId，主链路未命中时还能通过 `AppletUserDo` 兜底查回 unionId，并成功发送学员消息。
 
 **验收场景**：
 
 1. **Given** 当天存在 `union_id` 为空且 `l_ids` 不为空的图书记录，**When** 调用补偿接口，**Then** 接口会扫描并处理这些记录，按 `200` 条一页分页处理完当天所有记录。
-2. **Given** 某条记录的手机号在 OTS 中命中 `external_user_id`，**When** 接口执行到该记录，**Then** 会继续按 `external_user_id` 查询 `drh_emp_external_user` 获取 `unionId`。
+2. **Given** 某条记录的手机号在 OTS 中命中 `external_user_id`，**When** 接口执行到该记录，**Then** 会继续按 `external_user_id` 查询 `drh_emp_external_user` 获取 `unionId`；如果 OTS 未命中，**Then** 会先按 `AppletUserDo.id`，再按 `phone` 兜底查询 `unionId`。
 3. **Given** 某条记录拿到了 `unionId`，**When** 补偿成功，**Then** 会回写 `drh_book_question_record.union_id` 并发送学员消息。
 4. **Given** 某条记录的 `lIds` 存在多个单号，**When** 发送消息，**Then** 取 `lIds` 数组中最后一个非空单号作为本次发送的 `lId`。
 
@@ -70,11 +70,11 @@ AI 服务需要按当天数据批量扫描 `drh_book_question_record`，将 `uni
 - **FR-005**：补偿接口 MUST 只处理当天零点之后、`union_id` 为空、`l_ids` 不为空的 `drh_book_question_record`。
 - **FR-006**：补偿接口 MUST 按 `200` 条一页分页处理当天记录。
 - **FR-007**：补偿接口 MUST 从 `lIds` 中取最后一个有效物流单号作为本次发送的 `lId`。
-- **FR-008**：补偿接口 MUST 通过 OTS 表 `drh_ai_external_base_info` 的 `phone_number` 查询 `external_user_id`。
-- **FR-009**：补偿接口 MUST 通过 `drh_emp_external_user.externalUserid` 获取 `unionId`。
+- **FR-008**：补偿接口 MUST 先通过 OTS 表 `drh_ai_external_base_info` 的 `phone_number` 查询 `external_user_id`，命中后再继续后续链路。
+- **FR-009**：补偿接口 MUST 通过 `drh_emp_external_user.externalUserid` 获取 `unionId`，若主链路未命中，MUST 再按 `AppletUserDo.id` 与 `phone` 兜底查 `unionId`。
 - **FR-010**：补偿接口 MUST 将获取到的 `unionId` 回写到 `drh_book_question_record.union_id`。
 - **FR-011**：补偿接口 MUST 发送学员消息，消息正文 MUST 与参考实现 `sendMsgStudent` 保持一致，链接使用 `logisticsDetailV2.html`，`type=1`，热线为 `4006689062`。
-- **FR-012**：单条记录在 OTS 未命中、`unionId` 未命中、`lIds` 异常、`aesId` 缺失、更新失败或发送失败时 SHOULD 记录日志并继续处理后续记录。
+- **FR-012**：单条记录在 OTS 未命中、`AppletUserDo` 兜底未命中、`unionId` 未命中、`lIds` 异常、`aesId` 缺失、更新失败或发送失败时 SHOULD 记录日志并继续处理后续记录。
 - **FR-013**：实现阶段 MUST 不新增数据库表、公共 DTO 或配置项。
 - **FR-014**：`drh_ai_external_base_info` 的 TableStore 索引命名 SHOULD 遵循项目现有约定；如实际索引名不同，仅调整常量，不改流程。
 
@@ -85,7 +85,7 @@ AI 服务需要按当天数据批量扫描 `drh_book_question_record`，将 `uni
 - **SC-001**：SchedulerX job 100% 通过异步线程触发 AI 补偿接口。
 - **SC-002**：job 提交成功时不等待完整批处理结束即可返回成功。
 - **SC-003**：补偿接口可正确筛出当天待处理的图书记录，并按 `200` 条一页分页处理完毕。
-- **SC-004**：命中手机号的记录可 100% 完成 `phone_number -> external_user_id -> unionId` 链路。
+- **SC-004**：命中手机号的记录可 100% 完成 `phone_number -> external_user_id -> unionId` 主链路，未命中时可通过 `AppletUserDo` 兜底补齐。
 - **SC-005**：成功命中的记录可 100% 回写 `drh_book_question_record.union_id` 并发送学员消息。
 - **SC-006**：消息正文与参考实现一致，`type=1` 与热线号 `4006689062` 不偏离。
 - **SC-007**：单条失败不会阻断后续记录处理。
@@ -95,6 +95,6 @@ AI 服务需要按当天数据批量扫描 `drh_book_question_record`，将 `uni
 
 - 当天的判定以服务端本地时间的零点为准。
 - `lIds` 以 JSON 数组字符串形式存储，最后一个有效元素即本次发送单号。
-- `drh_emp_external_user.externalUserid` 与 OTS 查到的 `external_user_id` 一一对应。
+- `drh_emp_external_user.externalUserid` 与 OTS 查到的 `external_user_id` 一一对应；若 OTS 未命中，则允许通过 `AppletUserDo.id` 与 `phone` 兜底补充 `unionId`。
 - 学员消息沿用参考实现，不新增文案分支。
 - OTS 表 `drh_ai_external_base_info` 使用项目现有 TableStore 命名约定；若实际索引名不同，只调整常量。
