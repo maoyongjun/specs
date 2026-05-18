@@ -3,7 +3,7 @@
 **功能目录**: `017-gemini-app-task-retry-feishu-alert`  
 **创建日期**: 2026-05-15  
 **状态**: Ready for Implementation  
-**输入**: 用户要求修改 `C:\workspace\ju-chat\fc\Gemini-Api\src\main\java\com\drh\gemini\api\AppTask.java`，在重试次数超过上限时触发飞书通知，同时在 `private void retry(JSONObject jsonObject,String serviceName,String functionName)` 的延迟重试提交超时/异常退出时也触发飞书通知；其中常规重试延迟保持 60 秒不变，告警兜底延迟使用 55 分钟（3300 秒）。参考 `C:\workspace\ju-chat\kkhc\kkhc-idc\erp\src\main\java\com\drh\idc\erp\service\impl\EmpErpPasswordServiceImpl.java` 的 `FeiShuUtil.send(...)` 用法，固定飞书用户 ID 为 `6d9e5ee3`，消息包含 `unionId`、`songName`、`nickName`、`picId`、`classId`。
+**输入**: 用户要求修改 `C:\workspace\ju-chat\fc\Gemini-Api\src\main\java\com\drh\gemini\api\AppTask.java`，在重试次数超过上限时触发飞书通知，同时在 `private void retry(JSONObject jsonObject,String serviceName,String functionName)` 的延迟重试提交超时/异常退出时也触发飞书通知；其中常规重试延迟保持 60 秒不变，告警兜底延迟使用 55 分钟（3300 秒）。另外，`picUrl` 为空时需要直接走失败回调，异步入口不再抛出异常而是记录 `error` 日志后返回 `null`。参考 `C:\workspace\ju-chat\kkhc\kkhc-idc\erp\src\main\java\com\drh\idc\erp\service\impl\EmpErpPasswordServiceImpl.java` 的 `FeiShuUtil.send(...)` 用法，固定飞书用户 ID 为 `6d9e5ee3`，消息包含 `unionId`、`songName`、`nickName`、`picId`、`classId`。
 
 ## 用户场景与测试 *(必填)*
 
@@ -44,6 +44,30 @@
 2. **Given** 任务仍处于可重试区间，**When** 执行处理，**Then** 不发送重试超限告警。
 3. **Given** `retry(...)` 正常提交成功，**When** 执行处理，**Then** 不发送 retry 超时告警。
 
+### 用户故事 4 - `picUrl` 为空时应直接失败回调（优先级：P1）
+
+当输入中的 `picUrl` 为空时，系统不应继续执行音频下载和模型调用，而应直接发送失败回调，避免空值导致后续处理失败。
+
+**独立测试**：构造 `picUrl` 为空的输入，验证 `sendCallback(...)` 被调用且 `isSuccess=0`，同时不会进入外部音频分析流程。
+
+**验收场景**：
+
+1. **Given** `picUrl` 为空，**When** 执行处理，**Then** 直接发送失败回调。
+2. **Given** `picUrl` 为空，**When** 检查回调内容，**Then** `isSuccess` 必须为 `0`。
+3. **Given** `picUrl` 为空，**When** 执行处理，**Then** 不应继续触发音频下载或 Gemini 调用。
+
+### 用户故事 5 - 异步入口失败应返回 `null` 并记录错误日志（优先级：P2）
+
+由于 `AppTask` 作为异步任务处理入口，发生失败时应通过 `return null` 结束流程，而不是继续向上抛异常；同时需要打印 `error` 日志，保证异步调用方拿到的是稳定的返回行为。
+
+**独立测试**：构造会进入重试失败路径或重试超限失败路径的输入，验证方法最终返回 `null` 且输出 `error` 日志。
+
+**验收场景**：
+
+1. **Given** 重试提交失败，**When** 任务结束，**Then** 方法返回 `null`。
+2. **Given** 重试超限失败，**When** 任务结束，**Then** 方法返回 `null`。
+3. **Given** 任意失败分支，**When** 检查日志，**Then** 必须打印 `error` 级别日志。
+
 ## 边界情况
 
 - `unionId`、`songName`、`nickName`、`picId`、`classId` 任一字段为空时，消息仍应发送，字段值以原始读取结果展示。
@@ -52,6 +76,8 @@
 - `retry(...)` 的延迟重试提交超时或异常退出时，也应发送飞书告警；若飞书发送失败，只记录日志，不影响原始失败抛出。
 - `retry(...)` 的常规延迟重试保持 60 秒不变；当这次提交失败、超时或抛出异常时，才触发 3300 秒（55 分钟）兜底延迟重试。
 - `retry(...)` 正常提交成功时，不应发送 retry 超时告警。
+- `picUrl` 为空时应直接发送失败回调，`isSuccess` 为 `0`，且不继续进入外部分析流程。
+- 由于入口是异步调用，失败分支应以 `return null` 结束并打印 `error` 日志，而不是继续向上抛出异常。
 
 ## 需求 *(必填)*
 
@@ -66,6 +92,8 @@
 - **FR-009**：`retry(...)` 调用 `FcInvokeUtils.doTaskWithDelay(...)` 时 MUST 先使用 60 秒作为常规延迟。
 - **FR-010**：当 60 秒常规延迟提交返回 `0`、超时或抛出异常时，`retry(...)` MUST 发送飞书通知并再尝试 3300 秒（55 分钟）兜底延迟重试。
 - **FR-011**：3300 秒兜底延迟重试失败 MUST NOT 阻止原始失败继续抛出。
+- **FR-012**：当 `picUrl` 为空时，`AppTask` MUST 直接发送失败回调且 `isSuccess` 为 `0`。
+- **FR-013**：异步失败分支 MUST 记录 `error` 日志并 `return null`，而不是继续抛出异常。
 
 ## 成功标准 *(必填)*
 
@@ -78,6 +106,8 @@
 - **SC-007**：`retry(...)` 正常提交成功时不发送飞书告警。
 - **SC-008**：`retry(...)` 的常规延迟重试固定使用 60 秒。
 - **SC-009**：`retry(...)` 的兜底延迟重试固定使用 3300 秒（55 分钟）。
+- **SC-010**：`picUrl` 为空时会直接发送失败回调。
+- **SC-011**：失败分支会打印 `error` 日志并返回 `null`。
 
 ## 假设
 
