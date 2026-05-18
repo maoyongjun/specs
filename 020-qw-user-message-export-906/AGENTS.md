@@ -6,7 +6,7 @@
 
 - 规格文档：`C:\workspace\ju-chat\specs\020-qw-user-message-export-906`
 - 目标项目：`C:\workspace\ju-chat\qw-user-message-export`
-- 输出内容：`chat_name`、`contact_name`、`text`
+- 输出内容：`message_source`、`isSelf`、`chat_name`、`contact_name`、`text`
 
 ## 当前目标
 
@@ -17,7 +17,7 @@
 - 导出老师和用户双方消息，不做 `isSelf` 过滤。
 - 不导出群聊消息。
 - 只保留 `chat_name` 以 `906` 开头的记录。
-- 输出格式按行文本，字段顺序为 `chat_name<TAB>contact_name<TAB>text`。
+- 输出格式按行文本，字段顺序为 `message_source<TAB>isSelf<TAB>chat_name<TAB>contact_name<TAB>text`，其中 `message_source` 保持原始值，`isSelf` 转换为老师/学员标签。
 
 ## 后续实现约束
 
@@ -25,7 +25,7 @@
 - 查询必须支持分页，避免遗漏记录。
 - 查询必须限定最近 10 天时间范围。
 - 查询必须同时满足账号范围、私聊范围和 `chat_name` 前缀条件。
-- 输出字段必须保持固定顺序，不额外增加列。
+- 输出字段必须保持固定顺序，不额外增加列，其中 `message_source` 原样输出、`isSelf` 仅做展示转换。
 - 实现阶段若发现 `chat_name` 或 `contact_name` 来源不一致，应在代码与规格中统一口径。
 
 ## 文档维护
