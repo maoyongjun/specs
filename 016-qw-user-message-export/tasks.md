@@ -23,42 +23,42 @@
 
 ## Phase 2：后续实现准备
 
-- [ ] T015 确认后续导出项目所在目录和技术栈
-- [ ] T016 确认 `qwUserId` 在 `juzi_private_message` / `juzi_private_message_index` 中对应字段
+- [x] T015 确认后续导出项目所在目录和技术栈
+- [x] T016 确认 `qwUserId` 在 `juzi_private_message` / `juzi_private_message_index` 中对应字段
 - [ ] T017 确认是否需要对重复 `qwUserId` 去重，默认建议去重
-- [ ] T018 确认输出目录命名规则，默认建议每次运行生成独立批次目录
-- [ ] T019 确认输出文件命名规则，默认建议 `messages_001.txt`、`messages_002.txt`
-- [ ] T020 确认单条消息超过 10MB 时的处理策略，默认建议记录异常并跳过主输出
-- [ ] T021 确认是否需要在导出行中附加 `qwUserId`、`timestamp` 或 `message_id`，默认只输出 `text`
+- [x] T018 确认输出目录命名规则，默认建议每次运行生成独立批次目录
+- [x] T019 确认输出文件命名规则，默认建议 `messages_001.txt`、`messages_002.txt`
+- [x] T020 确认单条消息超过 10MB 时的处理策略，默认建议记录异常并跳过主输出
+- [x] T021 确认导出行附加 `union_id` 与格式化 `timestamp`，默认不附加 `qwUserId` 或 `message_id`
 
 ## Phase 3：后续编码任务
 
-- [ ] T022 创建导出项目或模块
+- [x] T022 创建导出项目或模块
 - [ ] T023 实现读取项目目录下 `userIds.txt`
 - [ ] T024 实现空行和空白裁剪
 - [ ] T025 实现重复 `qwUserId` 处理策略
-- [ ] T026 初始化 OTS `SyncClient`，复用现有环境变量配置口径
-- [ ] T027 基于 `OtsUtil#getLatestMessage` 的方式构造 `SearchRequest`
-- [ ] T028 使用表 `juzi_private_message` 和索引 `juzi_private_message_index`
-- [ ] T029 使用 `timestamp >= startTimestamp` 和 `timestamp <= endTimestamp` 查询最近三个月
-- [ ] T030 添加 `isSelf=false` 查询条件
-- [ ] T031 添加 `type in (2, 7)` 查询条件
-- [ ] T032 添加 `qwUserId` 对应字段的查询条件
-- [ ] T033 实现 OTS 查询分页，导出完整时间范围内的全部匹配消息
-- [ ] T034 读取必要列：`payload`、`timestamp`、`isSelf`、`type`，以及错误追踪所需主键或 `message_id`
-- [ ] T035 解析 `payload` JSON
-- [ ] T036 提取 `payload.text`
-- [ ] T037 跳过空 `text` 或仅空白 `text`
-- [ ] T038 将消息内部换行规范化为单行
-- [ ] T039 按 `timestamp ASC` 顺序写入输出文件
-- [ ] T040 实现 UTF-8 文本写入
-- [ ] T041 实现输出文件 10MB 阈值检测
-- [ ] T042 实现超过阈值前切换到新文件
-- [ ] T043 确保单条消息不会被拆分到多个文件
-- [ ] T044 实现单个用户查询失败时记录错误并继续后续用户
-- [ ] T045 实现单条消息解析失败时记录错误并继续后续消息
-- [ ] T046 实现导出完成统计输出
-- [ ] T047 如 OTS 行包含 `recall=1`，按现有口径跳过撤回消息
+- [x] T026 初始化 OTS `SyncClient`，复用现有环境变量配置口径
+- [x] T027 基于 `OtsUtil#getLatestMessage` 的方式构造 `SearchRequest`
+- [x] T028 使用表 `juzi_private_message` 和索引 `juzi_private_message_index`
+- [x] T029 使用 `timestamp >= startTimestamp` 和 `timestamp <= endTimestamp` 查询最近三个月
+- [x] T030 添加 `isSelf=false` 查询条件
+- [x] T031 添加 `type in (2, 7)` 查询条件
+- [x] T032 添加 `qwUserId` 对应字段的查询条件
+- [x] T033 实现 OTS 查询分页，导出完整时间范围内的全部匹配消息
+- [x] T034 读取必要列：`payload`、`timestamp`、`isSelf`、`type`、`external_user_id`，以及错误追踪所需主键或 `message_id`
+- [x] T035 解析 `payload` JSON
+- [x] T036 提取 `payload.text`
+- [x] T037 跳过空 `text` 或仅空白 `text`
+- [x] T038 将消息内部换行规范化为单行
+- [x] T039 按 `timestamp ASC` 顺序写入输出文件
+- [x] T040 实现 UTF-8 文本写入
+- [x] T041 实现输出文件 10MB 阈值检测
+- [x] T042 实现超过阈值前切换到新文件
+- [x] T043 确保单条消息不会被拆分到多个文件
+- [x] T044 实现单个用户查询失败时记录错误并继续后续用户
+- [x] T045 实现单条消息解析失败时记录错误并继续后续消息
+- [x] T046 实现导出完成统计输出
+- [x] T047 如 OTS 行包含 `recall=1`，按现有口径跳过撤回消息
 
 ## Phase 4：后续验证
 

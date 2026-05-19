@@ -3,7 +3,7 @@
 **功能目录**: `016-qw-user-message-export`  
 **创建日期**: 2026-05-14  
 **状态**: Draft - Documentation Only  
-**输入**: 用户要求先在 `C:\workspace\ju-chat\specs` 编写 Spec Kit 文档，不编码；后续创建一个项目，读取项目的 `userIds.txt` 文件，每行是一个 `qwUserId`，根据 `qwUserId` 依次查询 OTS 表中最近三个月用户发送的消息，生成到 `txt`；每条消息一行；单个文件超过 10MB 时写入新文件；查询 OTS 表可参考 `C:\workspace\ju-chat\fc\delay-mq\src\main\java\com\drh\delay\consumer\util\OtsUtil.java` 的 `getLatestMessage` 方法；使用 `timestamp` 筛选时间范围；目标消息为用户发送的文字或语音/文件类消息，`type in (2, 7)`，需要解析 `payload` JSON 中的 `text` 内容，例如 `"text":"老师好.."`。另外还需要新增一个统计功能：统计 5 月 8 日到统计执行当天区间内的新增学员开口率，并增加一个全量学员模式；新增学员模式以聊天记录中命中 `我已经添加了你，现在我们可以开始聊天了。` 或 `我通过了你的联系人验证请求，现在我们可以开始聊天了` 为准，全量学员模式不限制该文案作为入组条件，但开口消息要排除这两句招呼语；统计对象为 `15313122087`、`15110220704`、`15110180421`、`15110220914` 这四个 `user_id`。
+**输入**: 用户要求先在 `C:\workspace\ju-chat\specs` 编写 Spec Kit 文档，不编码；后续创建一个项目，读取项目的 `userIds.txt` 文件，每行是一个 `qwUserId`，根据 `qwUserId` 依次查询 OTS 表中最近三个月用户发送的消息，生成到 `txt`；每条消息一行；单个文件超过 10MB 时写入新文件；查询 OTS 表可参考 `C:\workspace\ju-chat\fc\delay-mq\src\main\java\com\drh\delay\consumer\util\OtsUtil.java` 的 `getLatestMessage` 方法；使用 `timestamp` 筛选时间范围；目标消息为用户发送的文字或语音/文件类消息，`type in (2, 7)`，需要解析 `payload` JSON 中的 `text` 内容，例如 `"text":"老师好.."`。当前已实现的 `--mode export` 仍使用固定的 `yangfan`、`LiYan`、`ZengYan` 三人名单，并在导出行中追加 `union_id` 与格式化后的 `timestamp`。另外还需要新增一个统计功能：统计 5 月 8 日到统计执行当天区间内的新增学员开口率，并增加一个全量学员模式；新增学员模式以聊天记录中命中 `我已经添加了你，现在我们可以开始聊天了。` 或 `我通过了你的联系人验证请求，现在我们可以开始聊天了` 为准，全量学员模式不限制该文案作为入组条件，但开口消息要排除这两句招呼语；统计对象为 `15313122087`、`15110220704`、`15110180421`、`15110220914` 这四个 `user_id`。
 
 ## 用户场景与测试 *(必填)*
 
@@ -146,19 +146,18 @@
 
 ## 输出格式
 
-默认输出为纯文本文件：
+默认输出为纯文本文件，每行是一条消息，列顺序如下：
 
 ```text
-老师好..
-这个课什么时候开始
-我已经发过去了
+message_source<TAB>isSelf<TAB>chat_name<TAB>contact_name<TAB>union_id<TAB>timestamp<TAB>text
 ```
 
 规则：
 
 - 每条有效消息占一行。
-- 默认只输出 `payload.text` 内容，不输出 `qwUserId`、`timestamp`、`message_id` 或原始 JSON。
-- 如后续归类整理需要追溯来源，可在实现前新增可选输出格式，但默认结果仍应满足“一条消息一行”的纯文本要求。
+- `message_source` 保持原始值直接输出，`isSelf` 在输出中转换为 `老师发送` / `学员发送`。
+- `union_id` 通过 `drh_emp_external_user` 表按 `external_userid` 查询获取。
+- `timestamp` 以 `yyyy-MM-dd HH:mm:ss` 格式输出，默认按 `Asia/Shanghai` 时区转换。
 - 写入前应将消息内部的 `\r`、`\n` 等换行规范化为空格或其他单行安全字符。
 - 输出编码建议使用 UTF-8。
 
