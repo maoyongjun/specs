@@ -1,9 +1,9 @@
-# 功能规格：906 私聊聊天记录 CSV 导出
+# 功能规格：私聊聊天记录 CSV 导出
 
 **功能目录**: `020-qw-user-message-export-906`  
 **创建日期**: 2026-05-18  
 **状态**: Draft - Documentation Only  
-**输入**: 用户要求先在 `C:\workspace\ju-chat\specs` 编写 Spec Kit 文档，不改代码；后续修改 `C:\workspace\ju-chat\qw-user-message-export`，导出 `yangfan`、`LiYan`、`ZengYan` 三个账号最近 15 天的私聊聊天记录，输出 CSV 文件，并保留 `union_id` 与格式化后的 `timestamp`。导出时老师和用户的消息都要保留，不做 `isSelf` 过滤，不导出群聊消息；`chat_name` 只保留以 `906` 开头的记录；输出时 `message_source` 保持原始值，`isSelf` 仅在输出中转换为“老师发送 / 学员发送”，最终字段顺序固定为 `message_source`、`isSelf`、`chat_name`、`contact_name`、`union_id`、`timestamp`、`text`。
+**输入**: 用户要求先在 `C:\workspace\ju-chat\specs` 编写 Spec Kit 文档，不改代码；后续修改 `C:\workspace\ju-chat\qw-user-message-export`，导出 `yangfan`、`LiYan`、`ZengYan` 三个账号最近 15 天的私聊聊天记录，输出 CSV 文件，并保留 `union_id` 与格式化后的 `timestamp`。导出时老师和用户的消息都要保留，不做 `isSelf` 过滤，不导出群聊消息；不再按 `chat_name` 前缀做额外过滤；输出时 `message_source` 保持原始值，`isSelf` 仅在输出中转换为“老师发送 / 学员发送”，最终字段顺序固定为 `message_source`、`isSelf`、`chat_name`、`contact_name`、`union_id`、`timestamp`、`text`。
 
 ## 用户场景与测试 *(必填)*
 
@@ -55,17 +55,17 @@
 2. **Given** 某条记录属于私聊，**When** 运行导出，**Then** 该记录按其文本内容进入结果。
 3. **Given** 同一联系人既有私聊也有群聊消息，**When** 运行导出，**Then** 仅私聊消息保留。
 
-### 用户故事 5 - 只保留 `chat_name` 以 `906` 开头的记录（优先级：P1）
+### 用户故事 5 - 不按 `chat_name` 前缀过滤记录（优先级：P1）
 
-导出结果还需要按 `chat_name` 前缀做二次筛选，只保留 `chat_name` 以 `906` 开头的聊天记录。
+导出结果不再按 `chat_name` 前缀做二次筛选，所有符合账号、时间和私聊条件的聊天记录都应保留。
 
-**独立测试**：准备 `chat_name` 以 `906` 开头和非 `906` 开头的记录，运行导出并验证只有前者保留。
+**独立测试**：准备不同前缀的 `chat_name` 记录，运行导出并验证它们都能被保留。
 
 **验收场景**：
 
-1. **Given** 某条记录的 `chat_name` 以 `906` 开头，**When** 运行导出，**Then** 该记录进入结果。
-2. **Given** 某条记录的 `chat_name` 不以 `906` 开头，**When** 运行导出，**Then** 该记录不进入结果。
-3. **Given** 同一账号下同时存在 `906` 前缀和非 `906` 前缀记录，**When** 运行导出，**Then** 仅 `906` 前缀记录保留。
+1. **Given** 某条记录的 `chat_name` 以任意前缀开头，**When** 运行导出，**Then** 该记录在满足其他条件时进入结果。
+2. **Given** 某条记录的 `chat_name` 前缀不同于其他记录，**When** 运行导出，**Then** 该记录不应因前缀不同而被排除。
+3. **Given** 同一账号下同时存在不同前缀的 `chat_name` 记录，**When** 运行导出，**Then** 这些记录都应保留。
 
 ### 用户故事 6 - 输出固定七列 CSV（优先级：P1）
 
@@ -84,7 +84,7 @@
 
 - `yangfan`、`LiYan`、`ZengYan` 中某个账号无匹配记录。
 - 同一账号同时存在私聊和群聊消息。
-- 同一账号同时存在 `906` 前缀与非 `906` 前缀的 `chat_name`。
+- 同一账号同时存在不同前缀的 `chat_name`。
 - 老师和用户双方都发送了消息。
 - `chat_name` 或 `contact_name` 为空。
 - `text` 为空、仅空白或包含换行符。
@@ -92,7 +92,7 @@
 - `union_id` 查询不到时如何处理，需要保持与旧逻辑一致，默认写空值并记录错误。
 - 最近 15 天内无消息。
 - OTS 单次查询存在分页限制，需要翻页取全量结果。
-- 实现阶段若 `chat_name` 的前缀规则与字段来源存在歧义，应先统一口径再编码。
+- 实现阶段若 `chat_name` 的字段来源存在歧义，应先统一口径再编码。
 
 ## 需求 *(必填)*
 
@@ -105,7 +105,7 @@
 - **FR-005**：后续实现 MUST 仅查询最近 15 天的聊天记录。
 - **FR-006**：后续实现 MUST 包含老师和用户双方消息，不得按 `isSelf` 过滤。
 - **FR-007**：后续实现 MUST 排除群聊消息。
-- **FR-008**：后续实现 MUST 仅保留 `chat_name` 以 `906` 开头的记录。
+- **FR-008**：后续实现 MUST 不再按 `chat_name` 前缀额外过滤记录。
 - **FR-009**：后续实现 MUST 输出 `message_source`、`isSelf`、`chat_name`、`contact_name`、`union_id`、`timestamp`、`text` 七列 CSV。
 - **FR-010**：后续实现 MUST 保持输出列顺序固定，CSV 首行 MUST 输出表头 `message_source,isSelf,chat_name,contact_name,union_id,timestamp,text`，且列之间使用英文逗号分隔；字段中包含逗号或引号时 MUST 按 CSV 规则转义。
 - **FR-011**：后续实现 SHOULD 支持分页查询，避免遗漏大批量聊天记录。
@@ -121,7 +121,7 @@
 - **SC-002**：导出结果 100% 仅来自最近 15 天的聊天记录。
 - **SC-003**：导出结果 100% 保留老师和用户双方消息，不再因为 `isSelf` 丢失一方文本。
 - **SC-004**：导出结果 100% 排除群聊消息。
-- **SC-005**：导出结果 100% 只保留 `chat_name` 以 `906` 开头的记录。
+- **SC-005**：导出结果 100% 不会因为 `chat_name` 前缀而丢弃记录。
 - **SC-006**：每一条数据行都严格包含 `message_source`、`isSelf`、`chat_name`、`contact_name`、`union_id`、`timestamp`、`text` 七列，且 CSV 表头与数据列一致。
 - **SC-007**：后续实现完成后可通过至少一轮真实或样例数据导出，人工核对字段顺序、CSV 转义与过滤条件无偏差。
 
@@ -129,7 +129,7 @@
 
 - `yangfan`、`LiYan`、`ZengYan` 按 `qwUserId` 处理。
 - 最近 15 天按任务运行时刻向前回溯 15 天计算。
-- `chat_name` 的“906开头”按前缀过滤理解。
+- `chat_name` 不再按前缀过滤，按字段原值保留。
 - 输出格式采用 CSV 文件，首行包含表头 `message_source,isSelf,chat_name,contact_name,union_id,timestamp,text`，列之间使用英文逗号分隔。
 - `message_source` 按原始字段值输出，`isSelf` 按 `true => 老师发送`、`false => 学员发送` 转换后输出。
 - `union_id` 由 `drh_emp_external_user` 表按 `external_userid` 查询获取。
