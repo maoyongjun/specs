@@ -13,19 +13,21 @@
 - 先编写 Spec Kit 文档，不修改业务代码。
 - 后续实现用于导出指定三个账号的私聊聊天记录。
 - 导出范围仅限 `yangfan`、`LiYan`、`ZengYan` 三个账号。
-- 导出范围仅限最近 10 天内的聊天记录。
+- 导出范围仅限最近 15 天内的聊天记录。
 - 导出老师和用户双方消息，不做 `isSelf` 过滤。
 - 不导出群聊消息。
 - 只保留 `chat_name` 以 `906` 开头的记录。
-- 输出格式按行文本，字段顺序为 `message_source<TAB>isSelf<TAB>chat_name<TAB>contact_name<TAB>text`，其中 `message_source` 保持原始值，`isSelf` 转换为老师/学员标签。
+- 输出格式为 CSV，首行包含表头 `message_source,isSelf,chat_name,contact_name,union_id,timestamp,text`，字段顺序固定，列之间使用英文逗号分隔，其中 `message_source` 保持原始值，`isSelf` 转换为老师/学员标签，`union_id` 与 `timestamp` 保留用于回溯。
 
 ## 后续实现约束
 
 - 后续实现应先确认 `yangfan`、`LiYan`、`ZengYan` 对应的查询字段。
 - 查询必须支持分页，避免遗漏记录。
-- 查询必须限定最近 10 天时间范围。
+- 查询必须限定最近 15 天时间范围。
 - 查询必须同时满足账号范围、私聊范围和 `chat_name` 前缀条件。
 - 输出字段必须保持固定顺序，不额外增加列，其中 `message_source` 原样输出、`isSelf` 仅做展示转换。
+- CSV 字段若包含逗号或引号，需要按 CSV 规则转义；`text` 中的换行需要先规范化为单行安全字符。
+- `union_id` 通过 `drh_emp_external_user` 的 `external_userid` 查询；`timestamp` 按 `yyyy-MM-dd HH:mm:ss` 和 `Asia/Shanghai` 输出。
 - 实现阶段若发现 `chat_name` 或 `contact_name` 来源不一致，应在代码与规格中统一口径。
 
 ## 文档维护
