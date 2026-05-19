@@ -1,6 +1,6 @@
 # 规格执行说明
 
-本目录记录 `024-juzi-piano-sop-reply-switch-gate` 的规格与后续实现约定。目录名保留历史命名，当前需求范围已扩展为所有命中 SOP 点评的 SKU。当前阶段只完成文档，未编码。
+本目录记录 `024-juzi-piano-sop-reply-switch-gate` 的规格与实现约定。目录名保留历史命名，当前需求范围已扩展为除 `skuId=5` 外所有命中 SOP 点评的 SKU，且 `skuId=5` 是明确例外。
 
 ## 作用范围
 
@@ -11,7 +11,8 @@
 ## 当前目标
 
 - 在 `juzi-service` 的 SOP 点评处理前增加通用开关门禁。
-- 门禁适用于所有命中 SOP 点评的 SKU，包括 `skuId=4`、`skuId=5` 以及通过通配规则命中的其他 SKU。
+- 门禁适用于除 `skuId=5` 外所有命中 SOP 点评的 SKU，包括 `skuId=4` 以及通过通配规则命中的其他 SKU。
+- `skuId=5` 是明确例外，命中 SOP 点评时不校验 AI 开关、作业点评开关和群 ID 白名单。
 - 门禁逻辑仿照 `AppTask.java`：
   - `aiStatus == 1` 才视为 AI 开启。
   - `aiAutoReview == 1` 才视为作业点评开启。
@@ -25,12 +26,13 @@
 - 后续实现应优先复用或等价实现 `AppTask.java#getAiReviewConfig`、`isAiOpen`、`isHomeworkReviewOpen` 的判断口径。
 - 群聊判断是否需要点评时应优先复用或等价实现 `AppTask.java#isGroupOpen` 的判断口径。
 - 配置为空、查询失败、字段为空或字段不是 `1` 时，一律按未开启处理。
-- 任意 SKU 命中 SOP 点评时必须应用门禁，不允许只校验 `skuId=4`。
-- 群聊 SOP 点评必须同时满足 AI 开关开启、作业点评开关开启、当前 `roomWecomChatId` 命中 `chatList` 三项条件才允许调用 `sop-reply`。
-- 群聊 `chatList` 为空、不包含当前群 ID、`roomWecomChatId` 为空时，一律不允许调用 `sop-reply`。
+- 除 `skuId=5` 外，任意 SKU 命中 SOP 点评时必须应用门禁，不允许只校验 `skuId=4`。
+- 除 `skuId=5` 外，群聊 SOP 点评必须同时满足 AI 开关开启、作业点评开关开启、当前 `roomWecomChatId` 命中 `chatList` 三项条件才允许调用 `sop-reply`。
+- 除 `skuId=5` 外，群聊 `chatList` 为空、不包含当前群 ID、`roomWecomChatId` 为空时，一律不允许调用 `sop-reply`。
 - 单聊 SOP 点评不要求校验群 ID，不能因 `roomWecomChatId` 为空被拦截。
+- `skuId=5` 不因配置为空、开关关闭、`chatList` 为空、不包含当前群 ID 或 `roomWecomChatId` 为空被 SOP 门禁拦截。
 - 门禁拦截后不允许调用 `sop-reply` FC；是否进入通用聊天应交由现有路由 fallback 规则决定。
-- 后续实现必须增加单元测试，覆盖 `skuId=4`、`skuId=5`、AI 开关、作业点评开关、群 ID 命中 / 未命中、空群列表、空群 ID、单聊和非 SOP 链路。
+- 后续实现必须增加单元测试，覆盖 `skuId=4`、`skuId=5` 例外、其他 SOP SKU、AI 开关、作业点评开关、群 ID 命中 / 未命中、空群列表、空群 ID、单聊和非 SOP 链路。
 - 本需求不修改 `fc/sop-reply` 内部点评逻辑，不新增数据库表，不新增对外接口。
 
 ## 重点代码位置

@@ -2,20 +2,20 @@
 
 **输入**：来自 `specs/024-juzi-piano-sop-reply-switch-gate/spec.md` 的功能规格  
 **前置条件**：`spec.md`、`checklists/requirements.md`、`AGENTS.md`  
-**测试**：实现阶段需要验证所有命中 SOP 点评的 SKU 在 AI 开关关闭、作业点评开关关闭、群 ID 未命中、配置缺失和开关全开等场景下的 `sop-reply` 调用行为；必须补充单元测试覆盖 `skuId=4`、`skuId=5` 和非 SOP 链路。
+**测试**：实现阶段需要验证除 `skuId=5` 外所有命中 SOP 点评的 SKU 在 AI 开关关闭、作业点评开关关闭、群 ID 未命中、配置缺失和开关全开等场景下的 `sop-reply` 调用行为；必须补充单元测试覆盖 `skuId=4`、`skuId=5` 例外、其他 SOP SKU 和非 SOP 链路。
 
 ## Phase 1：规格与范围
 
 - [x] T001 创建 `specs/024-juzi-piano-sop-reply-switch-gate` 目录与 `AGENTS.md`、`spec.md`、`tasks.md`、`checklists/requirements.md`
 - [x] T002 明确目标模块为 `data-RC/juzi-service`
 - [x] T003 明确参考逻辑为 `fc/delay-mq/.../AppTask.java` 的 `isAiOpen`、`isHomeworkReviewOpen` 和 `isGroupOpen`
-- [x] T004 明确门禁适用于所有命中 SOP 点评的 SKU，不限制为 `skuId=4`
+- [x] T004 明确门禁适用于除 `skuId=5` 外所有命中 SOP 点评的 SKU，不限制为 `skuId=4`
 - [x] T005 明确 `aiStatus == 1` 且 `aiAutoReview == 1` 才允许单聊调用 `sop-reply`
 - [x] T006 明确关闭、空配置、异常配置均不调用 `sop-reply`
 - [x] T007 明确异步 SOP 调用和同步 SOP 评估都要受门禁控制
 - [x] T008 明确非 SOP 点评链路保持不变
 - [x] T009 明确群聊 SOP 点评需要仿照 `AppTask.java#isGroupOpen` 校验 `roomWecomChatId`
-- [x] T010 明确后续实现必须补充单元测试覆盖 `skuId=4`、`skuId=5`、开关门禁和群 ID 门禁
+- [x] T010 明确后续实现必须补充单元测试覆盖 `skuId=4`、`skuId=5` 例外、开关门禁和群 ID 门禁
 
 ## Phase 2：实现
 
@@ -24,8 +24,9 @@
 - [ ] T013 新增或复用 `isAiOpen(config)`，仅 `aiStatus == 1` 返回 true
 - [ ] T014 新增或复用 `isHomeworkReviewOpen(config)`，仅 `aiAutoReview == 1` 返回 true
 - [ ] T015 新增或复用 `isGroupOpen(config, campDateId, empId, roomWecomChatId)`，仅 `isHomeworkReviewOpen(config)` 且 `chatList.contains(roomWecomChatId)` 返回 true
-- [ ] T016 新增统一 SOP 点评门禁判断，所有 SKU 调用 `sop-reply` 前都必须经过该判断
-- [ ] T017 统一门禁判断规则：单聊校验 AI 开关和作业点评开关；群聊额外校验 `roomWecomChatId` 是否命中 `chatList`
+- [ ] T016 新增统一 SOP 点评门禁判断，除 `skuId=5` 外所有 SKU 调用 `sop-reply` 前都必须经过该判断
+- [ ] T017 统一门禁判断规则：除 `skuId=5` 外，单聊校验 AI 开关和作业点评开关；群聊额外校验 `roomWecomChatId` 是否命中 `chatList`
+- [ ] T017A 明确 `skuId=5` 命中 SOP 点评时跳过门禁，不因开关关闭、配置缺失、群列表为空或群 ID 未命中被拦截
 - [ ] T018 在 `MessageServiceImpl#tryInvokeSopRouteAsyncWhenNoopFallback` 调用 `sop-reply` 前增加门禁
 - [ ] T019 在 `DefaultSopRouteEvaluator#evaluate` 调用 `sop-reply` 前增加门禁
 - [ ] T020 确保门禁关闭时不调用 `FcInvokeUtils.doTask`、`doSyncTaskReturnJSONObj` 等 `sop-reply` 调用点
@@ -36,14 +37,15 @@
 ## Phase 3：验证与单元测试
 
 - [ ] T024 单元测试：`skuId=4` 单聊且 `aiStatus=1`、`aiAutoReview=1` 时仍会调用 `sop-reply`
-- [ ] T025 单元测试：`skuId=5` 单聊且 `aiStatus=1`、`aiAutoReview=1` 时仍会调用 `sop-reply`
-- [ ] T026 单元测试：`skuId=4` 和 `skuId=5` 在 `aiStatus=0` 时不会调用 `sop-reply`
-- [ ] T027 单元测试：`skuId=4` 和 `skuId=5` 在 `aiStatus=1`、`aiAutoReview=0` 时不会调用 `sop-reply`
-- [ ] T028 单元测试：配置为空、字段缺失、查询异常时不会调用 `sop-reply`
-- [ ] T029 单元测试：`skuId=5` 群聊且 `chatList` 包含当前 `roomWecomChatId` 时允许调用 `sop-reply`
-- [ ] T030 单元测试：`skuId=5` 群聊且 `chatList` 不包含当前 `roomWecomChatId` 时不会调用 `sop-reply`
-- [ ] T031 单元测试：任意 SKU 群聊且 `chatList` 为空、配置为空或 `roomWecomChatId` 为空时不会调用 `sop-reply`
-- [ ] T032 单元测试：任意 SKU 单聊且开关全开时，不因缺少 `roomWecomChatId` 被拦截
+- [ ] T025 单元测试：`skuId=5` 单聊即使 `aiStatus=0`、`aiAutoReview=0`、配置为空或字段缺失，也仍会调用 `sop-reply`
+- [ ] T026 单元测试：`skuId=4` 和除 `skuId=5` 外的其他 SOP SKU 在 `aiStatus=0` 时不会调用 `sop-reply`
+- [ ] T027 单元测试：`skuId=4` 和除 `skuId=5` 外的其他 SOP SKU 在 `aiStatus=1`、`aiAutoReview=0` 时不会调用 `sop-reply`
+- [ ] T028 单元测试：除 `skuId=5` 外，配置为空、字段缺失、查询异常时不会调用 `sop-reply`
+- [ ] T029 单元测试：除 `skuId=5` 外，群聊且 `chatList` 包含当前 `roomWecomChatId` 时允许调用 `sop-reply`
+- [ ] T030 单元测试：除 `skuId=5` 外，群聊且 `chatList` 不包含当前 `roomWecomChatId` 时不会调用 `sop-reply`
+- [ ] T031 单元测试：除 `skuId=5` 外，任意 SKU 群聊且 `chatList` 为空、配置为空或 `roomWecomChatId` 为空时不会调用 `sop-reply`
+- [ ] T032 单元测试：除 `skuId=5` 外，任意 SKU 单聊且开关全开时，不因缺少 `roomWecomChatId` 被拦截
+- [ ] T032A 单元测试：`skuId=5` 群聊即使 `chatList` 为空、配置为空、群 ID 未命中或 `roomWecomChatId` 为空，也仍会调用 `sop-reply`
 - [ ] T033 单元测试：异步 SOP 调用路径被开关门禁和群 ID 门禁拦截
 - [ ] T034 单元测试：同步 SOP 评估路径被开关门禁和群 ID 门禁拦截
 - [ ] T035 单元测试：门禁关闭且规则配置通用聊天 fallback 时仍按现有 `GENERAL_CHAT` 规则处理
@@ -62,7 +64,12 @@
 - 已补充群聊 SOP 点评需要校验 `roomWecomChatId` 命中 `chatList` 的任务。
 - 已补充后续实现必须增加单元测试，覆盖开关门禁、群 ID 门禁、单聊和非 SOP 链路场景。
 
-### D003 - 全 SKU 范围补充
+### D003 - 全 SKU 范围补充（已被 D004 调整）
 
-- 已将门禁范围从 `skuId=4` 扩展为所有命中 SOP 点评的 SKU。
-- 已补充 `skuId=5` 的实现和单元测试要求。
+- 曾将门禁范围从 `skuId=4` 扩展为所有命中 SOP 点评的 SKU。
+- 该范围已在 D004 中调整为 `skuId=5` 例外，除 `skuId=5` 外的其他 SOP SKU 仍必须经过门禁。
+
+### D004 - skuId=5 例外补充
+
+- 已将门禁范围调整为除 `skuId=5` 外的 SOP SKU。
+- 已补充 `skuId=5` 不校验开关状态和群 ID 白名单的实现与单元测试要求。
