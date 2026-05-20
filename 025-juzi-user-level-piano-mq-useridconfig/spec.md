@@ -146,5 +146,11 @@
 ### D004 - 权限信息调用切换为 aiFeign
 
 - 已将 `DelayMessageServiceImpl#sendExtendBaseInfoGenerate` 的权限信息获取从 endpoint 工具切换为 `aiFeign.getPermission(param)`。
-- 请求参数与 `UserCheckServiceImpl` 保持一致，至少包含 `external_user_id` 与 `user_id`，如已有 `cropId` 则一并携带。
+- 请求参数与 `UserCheckServiceImpl` 保持一致，至少包含 `external_user_id` 与 `user_id`，并先按 `getCropId(user_id, messageDto.getBotWxid())` 生成 `cropId` 后一并携带。
 - 已补充单元测试验证调用 `aiFeign.getPermission(param)`，并检查下游使用的是返回的真实 `UserInfoDto`。
+
+### D005 - 权限查询前补齐 cropId
+
+- 已在 `DelayMessageServiceImpl#selectUserInfo` 中补齐 `cropId` 生成逻辑，仿照 `MessageServiceImpl#getCropId` 的实现方式。
+- `cropId` 生成后会同步写回 `messageDto.setCropId(cropId)`，再组装 `aiFeign.getPermission(param)` 请求参数。
+- 已更新单元测试，验证权限查询参数中包含 `crop_id`，且 `messageDto.cropId` 被同步设置。

@@ -47,3 +47,4 @@
 
 - 扩展基础信息生成入口不再传入空的 `UserInfoDto` 占位对象。
 - `DelayMessageServiceImpl#sendExtendBaseInfoGenerate` 会在内部通过 `aiFeign.getPermission(param)` 获取真实用户信息，再触发用户等级和关单建议生成。
+- `DelayMessageServiceImpl#selectUserInfo` 会先按 `getCropId(user_id, messageDto.getBotWxid())` 补齐 `cropId`，并同步写回 `messageDto`。

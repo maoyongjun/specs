@@ -85,3 +85,10 @@
 - 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=DelayMessageServiceImplTest" test`
 - 测试结果：通过，`DelayMessageServiceImplTest` 覆盖 aiFeign 调用、参数构造和不完整返回值跳过逻辑。
 - 自检结论：权限信息获取已切换到统一的 `aiFeign` 调用路径，避免再依赖 endpoint 直连。
+
+### D005 - 权限查询前补齐 cropId
+
+- 实现内容：`DelayMessageServiceImpl#selectUserInfo` 在调用 `aiFeign.getPermission(param)` 前，先按 `getCropId(user_id, messageDto.getBotWxid())` 生成 `cropId` 并写回 `messageDto`。
+- 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=DelayMessageServiceImplTest" test`
+- 测试结果：通过，`DelayMessageServiceImplTest` 断言 `crop_id` 已进入权限查询参数，且 `messageDto.cropId` 已同步设置。
+- 自检结论：权限查询参数与 `MessageServiceImpl` 的 cropId 取值逻辑对齐。
