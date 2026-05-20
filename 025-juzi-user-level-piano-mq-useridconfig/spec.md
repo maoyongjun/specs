@@ -3,7 +3,7 @@
 **功能目录**: `025-juzi-user-level-piano-mq-useridconfig`  
 **创建日期**: 2026-05-20  
 **状态**: Implemented  
-**输入**: 用户要求先在 `C:\workspace\ju-chat\specs` 新建 Spec Kit 文档；后续修改 `juzi-service` 的 `UserInsightUpdateServiceImpl#userLevelGenerate`，使钢琴 `skuId=4` 用户等级生成发送 MQ 时不限制 `userIdConfig`；修改 `fc/rocket-mq-consumer` 的 `UserLevelUpdateTask`，消费端全量不再限制 `userIdConfig`；并将发送端用户等级生成 Redis 去重间隔从 10 分钟改为 30 分钟。
+**输入**: 用户要求先在 `C:\workspace\ju-chat\specs` 新建 Spec Kit 文档；后续修改 `juzi-service` 的 `UserInsightUpdateServiceImpl#userLevelGenerate`，使钢琴 `skuId=4` 用户等级生成发送 MQ 时不限制 `userIdConfig`；修改 `fc/rocket-mq-consumer` 的 `UserLevelUpdateTask`，消费端全量不再限制 `userIdConfig`；并将发送端用户等级生成 Redis 去重间隔从 10 分钟改为 30 分钟。后续又补充修复了 `delayMessageService.sendExtendBaseInfoGenerate(...)` 传入空 `UserInfoDto` 的问题，改为在服务内部解析真实用户信息后再触发扩展基础信息生成。
 
 ## 用户场景与测试 *(必填)*
 
@@ -56,10 +56,23 @@
 3. **Given** 命中去重拦截，**When** 记录日志，**Then** 日志文案表达为 30 分钟更新一次。
 4. **Given** 普通用户等级 MQ，**When** 设置 MQ 延迟投递时间，**Then** 保持现有延迟投递逻辑不变。
 
+### 用户故事 5 - 扩展基础信息生成不再依赖空的 UserInfoDto 占位参数（优先级：P2）
+
+当 `MessageServiceImpl` 触发扩展基础信息生成时，不应再传入空的 `UserInfoDto` 作为占位参数。`DelayMessageServiceImpl` 应在方法内部获取真实用户信息后，再调用用户等级和关单建议生成逻辑，避免把空对象直接传入下游。
+
+**独立测试**：构造空占位参数调用扩展基础信息生成入口，验证服务内部会重新解析真实 `UserInfoDto`；若解析结果缺少必要字段，则跳过后续生成，避免空数据流入下游。
+
+**验收场景**：
+
+1. **Given** `MessageServiceImpl` 触发扩展基础信息生成，**When** 入口调用完成，**Then** 不再向 `DelayMessageServiceImpl` 传递空的 `UserInfoDto` 占位对象。
+2. **Given** `DelayMessageServiceImpl` 能获取到完整的用户信息，**When** 执行扩展基础信息生成，**Then** 用户等级和关单建议使用真实 `UserInfoDto`。
+3. **Given** `DelayMessageServiceImpl` 获取到的用户信息缺少关键字段，**When** 执行扩展基础信息生成，**Then** 系统跳过后续生成并记录日志。
+
 ## 边界情况
 
 - `UserInfoDto.skuId` 为空。
 - `UserInfoDto.skuId` 为 4、字符串兼容字段为 `sku_id=4`。
+- `sendExtendBaseInfoGenerate` 入口收到空占位对象，或中心接口返回缺少关键字段的用户信息。
 - Redis `ai:info:qwUser:config:key` 为空、缺失、读取异常或不包含当前 `userId`。
 - `JuziMessageDto.signUpTushu` 为空、`false` 或 `true`。
 - 用户等级去重 key 已存在。
@@ -86,6 +99,8 @@
 - **FR-012**：消费端 MUST 保持 `external_user_id` 为空、day 范围、同步标签、等级计算和 OTS 更新的既有业务逻辑。
 - **FR-013**：后续实现 MUST 增加单元测试覆盖发送端钢琴不限白名单、非钢琴仍受控、30 分钟去重、MQ `sku_id` 字段和消费端全量不拦截。
 - **FR-014**：后续单元测试 MUST 避免真实访问 Redis、OTS、Center 或 RocketMQ。
+- **FR-015**：`DelayMessageServiceImpl#sendExtendBaseInfoGenerate` MUST 在内部获取真实 `UserInfoDto`，不得依赖调用方传入空占位对象。
+- **FR-016**：`MessageServiceImpl` MUST 不再向 `sendExtendBaseInfoGenerate` 传入空的 `new UserInfoDto()` 占位参数。
 
 ## 成功标准 *(必填)*
 
@@ -97,6 +112,7 @@
 - **SC-006**：旧消息不包含 `sku_id` 时，消费端仍能按现有字段处理。
 - **SC-007**：`juzi-service` 和 `rocket-mq-consumer` 后续实现包含可执行单元测试。
 - **SC-008**：本需求不新增数据库表、不新增对外 API、不修改用户等级判定规则。
+- **SC-009**：扩展基础信息生成入口不会把空 `UserInfoDto` 直接传入下游。
 
 ## 假设
 
@@ -120,3 +136,15 @@
 - 已将用户等级生成 Redis 去重间隔从 10 分钟改为 30 分钟，并同步日志文案。
 - 已取消 `UserLevelUpdateTask` 消费端 `userIdConfig` 拦截。
 - 已补充 `juzi-service` 与 `rocket-mq-consumer` 单元测试，覆盖发送端白名单、去重 TTL、MQ 字段和消费端不拦截逻辑。
+
+### D003 - 扩展基础信息兜底修复
+
+- 已修复 `MessageServiceImpl` 传入空 `new UserInfoDto()` 的问题。
+- 已调整 `DelayMessageServiceImpl#sendExtendBaseInfoGenerate`，改为方法内部重新获取真实 `UserInfoDto` 后再触发用户等级与关单建议生成。
+- 已补充 `DelayMessageServiceImplTest` 覆盖真实用户信息解析与空信息跳过场景。
+
+### D004 - 权限信息调用切换为 aiFeign
+
+- 已将 `DelayMessageServiceImpl#sendExtendBaseInfoGenerate` 的权限信息获取从 endpoint 工具切换为 `aiFeign.getPermission(param)`。
+- 请求参数与 `UserCheckServiceImpl` 保持一致，至少包含 `external_user_id` 与 `user_id`，如已有 `cropId` 则一并携带。
+- 已补充单元测试验证调用 `aiFeign.getPermission(param)`，并检查下游使用的是返回的真实 `UserInfoDto`。

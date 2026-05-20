@@ -71,3 +71,17 @@
 - 测试命令：`mvn -pl rocket-mq-consumer "-Dtest=UserLevelUpdateTaskTest" test`
 - 测试结果：通过，`Tests run: 4, Failures: 0, Errors: 0, Skipped: 0`。
 - 自检结论：目标测试均通过；单元测试通过测试替身避免真实 Redis、OTS、Center 和 RocketMQ 调用。
+
+### D003 - 扩展基础信息兜底修复
+
+- 实现内容：修复 `MessageServiceImpl` 传入空 `new UserInfoDto()` 的问题；`DelayMessageServiceImpl#sendExtendBaseInfoGenerate` 改为在方法内部重新获取真实 `UserInfoDto`，并在关键字段缺失时跳过后续生成。
+- 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=UserInsightUpdateServiceImplTest,DelayMessageServiceImplTest,MessageServiceImplSopGateTest" test`
+- 测试结果：通过，`Tests run: 10, Failures: 0, Errors: 0, Skipped: 0`。
+- 自检结论：扩展基础信息生成入口不再依赖空占位对象，且对完整/不完整用户信息均有单元测试覆盖。
+
+### D004 - 权限信息调用切换为 aiFeign
+
+- 实现内容：`DelayMessageServiceImpl#sendExtendBaseInfoGenerate` 不再走 endpoint 工具，改为调用 `aiFeign.getPermission(param)` 获取真实用户权限信息；参数至少包含 `external_user_id` 和 `user_id`。
+- 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=DelayMessageServiceImplTest" test`
+- 测试结果：通过，`DelayMessageServiceImplTest` 覆盖 aiFeign 调用、参数构造和不完整返回值跳过逻辑。
+- 自检结论：权限信息获取已切换到统一的 `aiFeign` 调用路径，避免再依赖 endpoint 直连。

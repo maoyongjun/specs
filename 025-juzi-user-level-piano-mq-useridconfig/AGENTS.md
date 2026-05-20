@@ -32,6 +32,8 @@
 ## 重点代码位置
 
 - `data-RC/juzi-service/src/main/java/com/drh/data/juzi/service/impl/UserInsightUpdateServiceImpl.java`
+- `data-RC/juzi-service/src/main/java/com/drh/data/juzi/service/impl/DelayMessageServiceImpl.java`
+- `data-RC/juzi-service/src/main/java/com/drh/data/juzi/service/impl/MessageServiceImpl.java`
 - `fc/rocket-mq-consumer/src/main/java/com/drh/mq/dto/UserLevelUpdateInput.java`
 - `fc/rocket-mq-consumer/src/main/java/com/drh/mq/service/UserLevelUpdateTask.java`
 
@@ -40,3 +42,8 @@
 - `spec.md` 描述用户场景、需求、边界、成功标准和假设。
 - `tasks.md` 记录后续实现和验证任务。
 - `checklists/requirements.md` 用于验证规格质量和实施就绪度。
+
+## 已完成补充
+
+- 扩展基础信息生成入口不再传入空的 `UserInfoDto` 占位对象。
+- `DelayMessageServiceImpl#sendExtendBaseInfoGenerate` 会在内部通过 `aiFeign.getPermission(param)` 获取真实用户信息，再触发用户等级和关单建议生成。
