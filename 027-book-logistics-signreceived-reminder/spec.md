@@ -186,17 +186,41 @@ LIMIT #{pageSize};
 ### 已签收链路
 
 1. 更新来源记录 `sign_status = 2`。
-2. 使用手机号调用 `otsUtil.getExternalUserIdByPhoneNumber(phone)` 获取 `externalUserId`。
-3. 调用现有 `getEmpExternalUserDO(externalUserId)` 获取 `EmpExternalUserDO`。
-4. 从 `EmpExternalUserDO.unionId` 获取 `unionId`；为空则可更新签收状态，但不打标签。
-5. 从 `EmpExternalUserDO.empId` 查询 `drh_kk_emp`，获取：
+2. 使用手机号优先调用 `otsUtil.getExternalUserIdByPhoneNumber(phone)` 获取 `externalUserId`。
+3. 如果 OTS 未命中，则按手机号查询 `drh_applet_user`，直接获取 `unionId` 和 `empId`；若仍未命中，再按手机号查询 `drh_live_user` 获取 `unionId`，并通过 `drh_emp_external_user` 最新好友关系补齐 `externalUserId` 和 `empId`。
+4. OTS 命中的场景下，通过现有 `getEmpExternalUserDO(externalUserId)` 获取 `EmpExternalUserDO`；兜底场景则直接使用查询结果中的 `unionId`、`empId`。
+5. 以获取到的 `unionId` 作为消息发送和用户识别关键标识；为空则可更新签收状态，但不打标签。
+6. 以获取到的 `empId` 查询 `drh_kk_emp`，获取：
    - `qyvxUserId`：打标签所需销售企微用户 id
    - `company`：主体 id，用于 `drh_qw_tag.source`
-6. 查询 `drh_qw_tag`：
+7. 查询 `drh_qw_tag`：
    - `name = '已签收'`
    - `source = company`
    - `is_del = 0` 或等价有效条件
-7. 使用查到的 `tagId` 调用现有打标签能力。
+8. 使用查到的 `tagId` 调用现有打标签能力。
+
+#### 兜底查询 SQL
+
+```sql
+SELECT *
+FROM drh_applet_user
+WHERE phone = #{phone}
+ORDER BY id DESC
+LIMIT 1;
+
+SELECT *
+FROM drh_live_user
+WHERE phone = #{phone}
+ORDER BY id DESC
+LIMIT 1;
+
+SELECT *
+FROM drh_emp_external_user
+WHERE union_id = #{unionId}
+  AND status = 0
+ORDER BY id DESC
+LIMIT 1;
+```
 
 ### 暂存提醒链路
 
@@ -217,7 +241,7 @@ LIMIT #{pageSize};
    - `taskObj.appType = 2`
    - 使用同步调用并解析返回文案
 4. 将文案回写到来源表 `notice_msg`。
-5. 使用手机号解析 `externalUserId`，再通过 `getEmpExternalUserDO` 获取 `unionId`、`empId`。
+5. 使用手机号优先解析 `externalUserId`；取不到时依次通过 `drh_applet_user` 和 `drh_live_user` 兜底获取 `unionId`、`empId`，再结合 `drh_emp_external_user` 最新好友关系补齐发送上下文。
 6. 如果 `unionId` 为空，不投递消息。
 7. 如果 `unionId` 存在，投递延迟消息，随机延迟 `0-40` 分钟。
 8. 延迟消息消费时，发送学员消息受 Nacos 配置 `book.logistics.notice.send-enabled` 控制，默认 `false`。默认只打印将要发送的学员消息日志，不实际调用发送接口；配置为 `true` 后才调用现有发送能力。
@@ -272,7 +296,7 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 - **FR-013**：暂存未签收时必须更新 `sign_status = 1`。
 - **FR-014**：暂存提醒文案必须由 agent workflow 基于最后一条物流轨迹改写。
 - **FR-015**：agent 改写后的文案必须保存到来源表 `notice_msg`。
-- **FR-016**：发送提醒前必须通过 `otsUtil.getExternalUserIdByPhoneNumber` 和 `getEmpExternalUserDO` 获取 `unionId`。
+- **FR-016**：发送提醒前必须通过 `otsUtil.getExternalUserIdByPhoneNumber` 获取 `externalUserId`，取不到时依次兜底 `drh_applet_user`、`drh_live_user` 和 `drh_emp_external_user` 获取 `unionId`。
 - **FR-017**：无法获取 `unionId` 时必须不发送提醒。
 - **FR-018**：提醒消息必须使用已有延迟队列并通过独立 tag 区分。
 - **FR-019**：提醒消息必须随机延迟 `0-40` 分钟。
@@ -328,7 +352,7 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 - 固定业务实现模块：`kkhc\kkhc-idc\ai`。
 - 固定延迟队列参考：`data-RC\juzi-service`，通过 tag 区分。
 - 固定 agent workflow 参考：`fc\homework-review\src\main\java\com\drh\homework`。
-- 固定 unionId 获取参考：`compensateBookQuestionRecordUnionIdAndSend` 中 `otsUtil.getExternalUserIdByPhoneNumber` 与 `getEmpExternalUserDO`。
+- 固定 unionId 获取参考：`compensateBookQuestionRecordUnionIdAndSend` 中 `otsUtil.getExternalUserIdByPhoneNumber` 与 `getEmpExternalUserDO`，并补充 `drh_applet_user` / `drh_live_user` / `drh_emp_external_user` 兜底链路。
 - 固定 tag 主体映射：`drh_emp_external_user.empId -> drh_kk_emp.company -> drh_qw_tag.source`。
 - 补充 ShowAPI 接口：`2650-6` 获取快递公司编码，`2650-3` 获取物流详情；appKey 需配置化。
 
@@ -336,6 +360,7 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 
 - 已新增 `BookLogisticsSignStatusJob` 和 schedule Feign 入口；仓库不配置 SchedulerX cron。
 - 已在 AI 模块实现 `GET /ai/book/logistics/sign-reminder/process`，按两张表、时间窗口、`l_ids`、`sign_status`、`notice_send_status` 和钢琴 `category = 4` 扫描。
+- 已补用户解析兜底链路：OTS -> `drh_applet_user` -> `drh_live_user` -> `drh_emp_external_user`。
 - 已固定 ShowAPI 最新轨迹状态：`104` 更新 `sign_status = 2` 并按主体打“已签收”标签；`112` 更新 `sign_status = 1`、调用 agent 改写提醒、保存 `notice_msg` 并投递延迟消息。
 - 已新增 AI 自建 delay consumer，订阅 `BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`，消费前按 `recordType + recordId` 重新查库并在签收后或 `notice_send_status = 1` 后跳过。
 - 已新增 Nacos 开关 `book.logistics.notice.send-enabled`，默认只打印暂存提醒学员消息日志，不实际发送。
@@ -347,11 +372,11 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 ### D004 - 测试完成
 
 - 已新增 `AiServiceImplBookLogisticsParsingTest`，覆盖 `l_ids` 解析、ShowAPI 参数构造、成功码解析、最新轨迹选择、agent 文案解析、workflow prompt 组装和 workflow 调用参数捕获。
-- 已新增 `AiServiceImplBookLogisticsProcessTest`，覆盖候选筛选条件、两张表扫描、钢琴过滤、签收打标签、tag 缺失、unionId 缺失、qywxUserId 缺失、暂存文案回写和无 unionId 不投递。
+- 已新增 `AiServiceImplBookLogisticsProcessTest`，覆盖候选筛选条件、两张表扫描、钢琴过滤、签收打标签、tag 缺失、unionId 缺失、qywxUserId 缺失、暂存文案回写、无 unionId 不投递，以及 `applet_user` / `live_user` 兜底解析。
 - 已新增 `BookLogisticsDelayMqTest`，覆盖延迟消息 tag、`0-40` 分钟随机延迟、producer 失败不计入 `delaySent`、consumer 在 `sign_status = 2` 时跳过发送、`notice_send_status = 1` 时跳过发送，以及 `book.logistics.notice.send-enabled` 默认关闭只打印日志、开启后实际发送和成功后回写 `notice_send_status`。
 - 已在 `ai/pom.xml` 显式覆盖父 POM 的 surefire `skip=true`，确保固定验证命令真实执行测试。
 - 预处理命令：`mvn -pl ai-common -am -DskipTests install`，用于将新增 `BookLogisticsDelayNoticeInput` 安装到本地仓库供 `ai` 模块单独测试引用。
 - 验证命令：
-  - `mvn -pl ai "-Dtest=AiServiceImplBookLogisticsParsingTest,AiServiceImplBookLogisticsProcessTest,BookLogisticsDelayMqTest" test`：通过，`25` 个用例全部通过。
+  - `mvn -pl ai "-Dtest=AiServiceImplBookLogisticsParsingTest,AiServiceImplBookLogisticsProcessTest,BookLogisticsDelayMqTest,AiServiceImplLogisticsTagCompensationTest" test`：通过，`31` 个用例全部通过。
   - `mvn -pl ai -am -DskipTests compile`：通过。
   - `mvn -pl schedule -am -DskipTests compile`：通过。

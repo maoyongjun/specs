@@ -56,8 +56,8 @@
 ## Phase 6：已签收打标签
 
 - [x] T035 已签收时更新来源表 `sign_status = 2`。
-- [x] T036 通过手机号调用 `otsUtil.getExternalUserIdByPhoneNumber` 获取 `externalUserId`。
-- [x] T037 调用现有 `getEmpExternalUserDO(externalUserId)` 获取 `unionId`、`empId`。
+- [x] T036 通过手机号优先调用 `otsUtil.getExternalUserIdByPhoneNumber` 获取 `externalUserId`，未命中时通过 `drh_applet_user` / `drh_live_user` 兜底解析。
+- [x] T037 OTS 命中时调用现有 `getEmpExternalUserDO(externalUserId)` 获取 `unionId`、`empId`；兜底场景通过 `drh_applet_user` / `drh_live_user` / `drh_emp_external_user` 补齐。
 - [x] T038 通过 `empId` 查询 `drh_kk_emp`，获取 `qyvxUserId` 和 `company`。
 - [x] T039 查询 `drh_qw_tag`：`name = '已签收' AND source = company AND is_del = 0`。
 - [x] T040 使用查到的 `tagId` 调用现有打标签能力；缺少 `unionId`、`qyvxUserId`、`company` 或 `tagId` 时不打标签。
@@ -72,7 +72,7 @@
 - [x] T046 agent 返回空、超时、解析失败时不投递消息，保留 `sign_status = 1` 以便后续补生成。
 - [x] T047 agent 成功后更新来源表 `sign_status = 1` 和 `notice_msg`。
 - [x] T048 `sign_status = 1` 且 `notice_msg` 非空时不重复投递；`notice_send_status = 1` 时也不重复投递；`notice_msg` 为空时允许补生成。
-- [x] T049 通过 `otsUtil.getExternalUserIdByPhoneNumber` 和 `getEmpExternalUserDO` 获取 `unionId`；缺失时不投递消息。
+- [x] T049 通过 `otsUtil.getExternalUserIdByPhoneNumber` 优先获取 `externalUserId`，并通过 `drh_applet_user` / `drh_live_user` 兜底解析 `unionId`；缺失时不投递消息。
 - [x] T050 通过 `EmpExternalUserDO.empId -> drh_kk_emp.qyvxUserId/company` 获取发送所需销售和主体信息。
 
 ## Phase 8：延迟队列

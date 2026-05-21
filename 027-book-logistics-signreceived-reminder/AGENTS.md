@@ -17,7 +17,7 @@
 - AI Controller 参考：`kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\crm\controller\AiController.java`
 - AI Service 参考：`kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\crm\service\ai\AiService.java`
 - AI Service 实现参考：`kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\crm\service\ai\impl\AiServiceImpl.java`
-- unionId 获取参考：`AiServiceImpl.compensateBookQuestionRecordUnionIdAndSend`
+- unionId 获取参考：`AiServiceImpl.compensateBookQuestionRecordUnionIdAndSend`，并补充 `drh_applet_user` / `drh_live_user` / `drh_emp_external_user` 兜底链路
 - OTS 手机号映射参考：`kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\lms\utils\OtsUtil.java`
 - 延迟队列参考：`data-RC\juzi-service\src\main\java\com\drh\data\juzi\service\impl\DelayMessageServiceImpl.java`
 - AI 模块延迟生产者：`kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\lms\mq\producer\DelayProducerBean.java`
@@ -56,8 +56,8 @@
 
 ## unionId 与主体映射
 
-- 通过手机号调用 `otsUtil.getExternalUserIdByPhoneNumber(phone)` 获取 `externalUserId`。
-- 通过现有 `getEmpExternalUserDO(externalUserId)` 获取 `EmpExternalUserDO`。
+- 通过手机号优先调用 `otsUtil.getExternalUserIdByPhoneNumber(phone)` 获取 `externalUserId`，未命中时按 `drh_applet_user` / `drh_live_user` 兜底。
+- OTS 命中时通过现有 `getEmpExternalUserDO(externalUserId)` 获取 `EmpExternalUserDO`；兜底时通过 `drh_emp_external_user` 最新好友关系补齐。
 - 从 `EmpExternalUserDO.unionId` 获取 `unionId`。
 - 从 `EmpExternalUserDO.empId` 查询 `drh_kk_emp`。
 - 从 `drh_kk_emp.qyvxUserId` 获取销售企微用户 id。
@@ -91,6 +91,7 @@
 - ShowAPI 签收/暂存识别规则固定为 `104/112`，不得改为文案模糊匹配。
 - 不得硬编码 tagId、workflow id。
 - 不得在未拿到 `unionId` 时发送暂存提醒。
+- 不得在 OTS 未命中时直接放弃解析，必须按 `drh_applet_user -> drh_live_user -> drh_emp_external_user` 兜底。
 - 不得跨主体查询或复用“已签收”标签。
 - 不得绕过 `drh_goods.category = 4` 过滤。
 - 不得让 `sign_status = 2` 的记录继续发送暂存提醒。

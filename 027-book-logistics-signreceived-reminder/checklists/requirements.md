@@ -30,9 +30,9 @@
 
 ## 参数完整性门禁
 
-- [x] `externalUserId` 来源明确：`otsUtil.getExternalUserIdByPhoneNumber(phone)`。
-- [x] `unionId` 来源明确：`getEmpExternalUserDO(externalUserId).unionId`。
-- [x] `empId` 来源明确：`getEmpExternalUserDO(externalUserId).empId`。
+- [x] `externalUserId` 来源明确：优先 `otsUtil.getExternalUserIdByPhoneNumber(phone)`，未命中时通过 `drh_applet_user` / `drh_live_user` 兜底解析。
+- [x] `unionId` 来源明确：优先 `getEmpExternalUserDO(externalUserId).unionId`，兜底时可来自 `drh_applet_user.unionId` 或 `drh_live_user.unionId`。
+- [x] `empId` 来源明确：优先 `getEmpExternalUserDO(externalUserId).empId`，兜底时可来自 `drh_applet_user.empId`，或由 `drh_emp_external_user` 最新好友关系补齐。
 - [x] `qywxUserId` 来源明确：`drh_kk_emp.qyvxUserId`。
 - [x] `company/source` 来源明确：`drh_kk_emp.company`。
 - [x] `tagId` 来源明确：`drh_qw_tag.tagId`。
@@ -44,6 +44,7 @@
 - [x] MQ body 已收敛为最小载荷 `recordType + recordId`。
 - [x] MQ tag 已定义为 `BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`。
 - [x] 已修正 AI 模块 `DelayProducerBean.sendTagMessage` 丢失自定义 tag 的实现风险。
+- [x] 用户解析兜底链路已覆盖 `applet_user` 和 `live_user`。
 
 ## 实施状态
 
@@ -81,7 +82,7 @@
 ## 验证结果
 
 - [x] `mvn -pl ai-common -am -DskipTests install` 通过。
-- [x] `mvn -pl ai "-Dtest=AiServiceImplBookLogisticsParsingTest,AiServiceImplBookLogisticsProcessTest,BookLogisticsDelayMqTest" test` 通过，`21` 个用例全部通过。
+- [x] `mvn -pl ai "-Dtest=AiServiceImplBookLogisticsParsingTest,AiServiceImplBookLogisticsProcessTest,BookLogisticsDelayMqTest,AiServiceImplLogisticsTagCompensationTest" test` 通过，`31` 个用例全部通过。
 - [x] `mvn -pl schedule -am -DskipTests compile` 通过。
 - [x] `mvn -pl ai -am -DskipTests compile` 通过。
 
