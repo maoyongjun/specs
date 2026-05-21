@@ -10,7 +10,7 @@
 - [x] 明确业务实现模块为 `kkhc\kkhc-idc\ai`。
 - [x] 明确数据源为 `drh_book_question_record` 和 `drh_external_book_question_record`。
 - [x] 明确只处理 `drh_goods.category = 4` 的钢琴物流。
-- [x] 明确新增字段 `sign_status`、`notice_msg`。
+- [x] 明确新增字段 `sign_status`、`notice_msg`、`notice_send_status`。
 - [x] 明确 `isOver` 不参与本需求物流状态流转。
 - [x] 明确仓库不配置 SchedulerX cron，由阿里云分布式任务平台每日 16:00 调度 Job。
 - [x] 明确暂存提醒使用 `0-40` 分钟随机延迟。
@@ -20,8 +20,10 @@
 
 - [x] 已签收链路包含状态回写、unionId 获取、主体映射、tag 查询和打标签。
 - [x] 暂存链路包含状态回写、物流上下文组装、agent 改写、`notice_msg` 回写和延迟消息投递。
+- [x] 暂存提醒成功发送后必须回写 `notice_send_status = 1`，后续扫描和重复消费不再提醒。
 - [x] 无 unionId 时不发送提醒。
 - [x] 延迟消息消费前重新检查 `sign_status`，签收后跳过。
+- [x] 已发送提醒的记录通过 `notice_send_status = 1` 跳过，不重复提醒。
 - [x] 标签查询按 `name='已签收'` 和 `source=company` 过滤。
 - [x] ShowAPI 两个接口已明确：`2650-6` 获取快递公司编码，`2650-3` 获取物流详情。
 - [x] ShowAPI 状态规则已固定：`104` 已签收，`112` 暂存待签收。
@@ -34,6 +36,7 @@
 - [x] `qywxUserId` 来源明确：`drh_kk_emp.qyvxUserId`。
 - [x] `company/source` 来源明确：`drh_kk_emp.company`。
 - [x] `tagId` 来源明确：`drh_qw_tag.tagId`。
+- [x] `notice_send_status` 来源明确：暂存提醒发送成功后回写为 `1`。
 - [x] 快递公司编码来源明确：ShowAPI `2650-6` 返回 `com`。
 - [x] 快递名称来源明确：ShowAPI `2650-3` 返回 `com_name` 或 `expTextName`。
 - [x] 最后一条物流轨迹来源明确：ShowAPI `2650-3` 返回 `data`。
@@ -67,10 +70,13 @@
 - [x] 已签收链路覆盖 `sign_status = 2` 和按主体查询 tag。
 - [x] tag 缺失、unionId 缺失、qywxUserId 缺失时不打标签。
 - [x] 暂存链路覆盖 agent 入参、`notice_msg` 回写和延迟消息投递。
+- [x] 暂存链路覆盖 `notice_send_status` 成功回写。
 - [x] unionId 缺失时不投递延迟消息。
+- [x] 已发送提醒的记录会在扫描和消费阶段跳过。
 - [x] 延迟消息 tag 和随机延迟范围有断言。
 - [x] consumer 覆盖 `sign_status = 2` 时跳过发送。
 - [x] consumer 覆盖 `book.logistics.notice.send-enabled=false` 时只打印日志不发送，配置为 `true` 时实际发送。
+- [x] consumer 覆盖 `notice_send_status = 1` 时跳过发送。
 
 ## 验证结果
 

@@ -17,10 +17,10 @@
 
 ## Phase 2：数据库与实体
 
-- [x] T009 `drh_book_question_record` 需增加 `sign_status`、`notice_msg`，DDL 已记录在 `spec.md`。
-- [x] T010 `drh_external_book_question_record` 需增加 `sign_status`、`notice_msg`，DDL 已记录在 `spec.md`。
-- [x] T011 `BookQuestionRecordDO` 已增加 `signStatus`、`noticeMsg`。
-- [x] T012 `ExternalBookQuestionRecordDO` 已增加 `signStatus`、`noticeMsg`、`createTime`。
+- [x] T009 `drh_book_question_record` 需增加 `sign_status`、`notice_msg`、`notice_send_status`，DDL 已记录在 `spec.md`。
+- [x] T010 `drh_external_book_question_record` 需增加 `sign_status`、`notice_msg`、`notice_send_status`，DDL 已记录在 `spec.md`。
+- [x] T011 `BookQuestionRecordDO` 已增加 `signStatus`、`noticeMsg`、`noticeSendStatus`。
+- [x] T012 `ExternalBookQuestionRecordDO` 已增加 `signStatus`、`noticeMsg`、`noticeSendStatus`、`createTime`。
 - [x] T013 AI 模块已新增 `QwTagMapper`，支持按 `name/source/isDel` 查询 `drh_qw_tag`。
 - [x] T014 两张表按 `createTime -> create_time` 使用 MyBatis-Plus 驼峰映射。
 - [x] T015 已新增最小延迟消息 DTO：`BookLogisticsDelayNoticeInput(recordType, recordId)`。
@@ -71,7 +71,7 @@
 - [x] T045 bot id 使用独立配置 `book.logistics.notice.bot-id`。
 - [x] T046 agent 返回空、超时、解析失败时不投递消息，保留 `sign_status = 1` 以便后续补生成。
 - [x] T047 agent 成功后更新来源表 `sign_status = 1` 和 `notice_msg`。
-- [x] T048 `sign_status = 1` 且 `notice_msg` 非空时不重复投递；`notice_msg` 为空时允许补生成。
+- [x] T048 `sign_status = 1` 且 `notice_msg` 非空时不重复投递；`notice_send_status = 1` 时也不重复投递；`notice_msg` 为空时允许补生成。
 - [x] T049 通过 `otsUtil.getExternalUserIdByPhoneNumber` 和 `getEmpExternalUserDO` 获取 `unionId`；缺失时不投递消息。
 - [x] T050 通过 `EmpExternalUserDO.empId -> drh_kk_emp.qyvxUserId/company` 获取发送所需销售和主体信息。
 
@@ -83,9 +83,10 @@
 - [x] T054 消息体只包含 `recordType`、`recordId`，消费时重新查库获取最新状态和发送上下文。
 - [x] T055 不改 `scrm`；AI 模块自建 ONS delay consumer。
 - [x] T056 AI consumer 订阅现有 `mq.delay.topic` 和 tag `BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`。
-- [x] T057 consumer 发送前重新读取来源记录；若记录不存在、`sign_status = 2`、`sign_status != 1` 或 `notice_msg` 为空，则跳过。
+- [x] T057 consumer 发送前重新读取来源记录；若记录不存在、`sign_status = 2`、`notice_send_status = 1`、`sign_status != 1` 或 `notice_msg` 为空，则跳过。
 - [x] T058 consumer 重新获取 `unionId`、`empId`、`qyvxUserId/company`，再调用现有 `sendJuzi` 发送。
 - [x] T058A consumer 发送学员消息受 Nacos 开关 `book.logistics.notice.send-enabled` 控制，默认 `false` 只打印日志。
+- [x] T058B consumer 发送成功后回写来源记录 `notice_send_status = 1`，后续扫描和重复消费跳过。
 
 ## Phase 9：测试与验证
 
@@ -132,7 +133,7 @@
 - 预处理命令：`mvn -pl ai-common -am -DskipTests install`。
 - 预处理结果：通过，用于将新增 `BookLogisticsDelayNoticeInput` 安装到本地仓库，供 `ai` 模块单独测试引用。
 - 验证命令：`mvn -pl ai "-Dtest=AiServiceImplBookLogisticsParsingTest,AiServiceImplBookLogisticsProcessTest,BookLogisticsDelayMqTest" test`。
-- 验证结果：通过，`23` 个用例全部通过，`0` failures，`0` errors，`0` skipped。
+- 验证结果：通过，`25` 个用例全部通过，`0` failures，`0` errors，`0` skipped。
 - 验证命令：`mvn -pl ai -am -DskipTests compile`。
 - 验证结果：通过。
 - 验证命令：`mvn -pl schedule -am -DskipTests compile`。

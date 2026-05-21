@@ -36,6 +36,7 @@
 3. **Given** agent 返回有效提醒文案，**When** 状态回写完成，**Then** 将文案保存到来源表的 `notice_msg` 字段。
 4. **Given** 手机号无法解析到 `unionId`，**When** 处理暂存记录，**Then** 不发送提醒，只保留 `sign_status`、`notice_msg` 和日志。
 5. **Given** 延迟消息到达消费时记录已经更新为 `sign_status = 2`，**When** consumer 准备发送提醒，**Then** 跳过发送，避免签收后仍提醒取件。
+6. **Given** 提醒已经成功发送过并且 `notice_send_status = 1`，**When** 后续任务再次扫描或消费同一记录，**Then** 不再重复发送提醒。
 
 ### 用户故事 3 - 只扫描目标时间窗口内的钢琴物流（P1）
 
@@ -57,17 +58,20 @@
 ```sql
 ALTER TABLE drh_book_question_record
   ADD COLUMN sign_status TINYINT NOT NULL DEFAULT 0 COMMENT '物流签收处理状态:0已发货,1已暂存待签收,2已签收',
-  ADD COLUMN notice_msg VARCHAR(1024) DEFAULT NULL COMMENT '暂存提醒文案';
+  ADD COLUMN notice_msg VARCHAR(1024) DEFAULT NULL COMMENT '暂存提醒文案',
+  ADD COLUMN notice_send_status TINYINT NOT NULL DEFAULT 0 COMMENT '暂存提醒发送状态:0未发送,1已发送';
 
 ALTER TABLE drh_external_book_question_record
   ADD COLUMN sign_status TINYINT NOT NULL DEFAULT 0 COMMENT '物流签收处理状态:0已发货,1已暂存待签收,2已签收',
-  ADD COLUMN notice_msg VARCHAR(1024) DEFAULT NULL COMMENT '暂存提醒文案';
+  ADD COLUMN notice_msg VARCHAR(1024) DEFAULT NULL COMMENT '暂存提醒文案',
+  ADD COLUMN notice_send_status TINYINT NOT NULL DEFAULT 0 COMMENT '暂存提醒发送状态:0未发送,1已发送';
 ```
 
 - `sign_status = 0`：已发货，待物流状态处理。
 - `sign_status = 1`：已暂存待签收，已生成或准备发送暂存提醒。
 - `sign_status = 2`：已签收，已进入签收处理闭环。
 - `notice_msg`：仅保存 agent 改写后的最终提醒文案，不保存完整物流轨迹。
+- `notice_send_status`：暂存提醒发送状态，`0` 表示未发送，`1` 表示已发送。
 - `isOver`：保持现有“用户确认收货/业务完成”含义，不作为本任务的物流状态字段。
 
 ### 实体映射
@@ -85,6 +89,7 @@ SELECT *
 FROM drh_book_question_record
 WHERE l_ids IS NOT NULL
   AND sign_status IN (0, 1)
+  AND notice_send_status = 0
   AND create_time >= #{todayMinus10Start}
   AND create_time < #{todayMinus3Start}
 ORDER BY id ASC
@@ -94,6 +99,7 @@ SELECT *
 FROM drh_external_book_question_record
 WHERE l_ids IS NOT NULL
   AND sign_status IN (0, 1)
+  AND notice_send_status = 0
   AND create_time >= #{todayMinus10Start}
   AND create_time < #{todayMinus3Start}
 ORDER BY id ASC
@@ -105,6 +111,7 @@ LIMIT #{pageSize};
 - 处理前必须通过 `goodsId` 关联 `drh_goods`，仅保留 `category = 4` 的钢琴记录。
 - 单条记录取 `l_ids` 中最后一个非空物流单号作为本次查询单号，解析失败则跳过并记录原因。
 - `sign_status = 2` 的记录不进入候选集。
+- `notice_send_status = 1` 的记录不进入候选集。
 
 ## 物流接口
 
@@ -214,6 +221,7 @@ LIMIT #{pageSize};
 6. 如果 `unionId` 为空，不投递消息。
 7. 如果 `unionId` 存在，投递延迟消息，随机延迟 `0-40` 分钟。
 8. 延迟消息消费时，发送学员消息受 Nacos 配置 `book.logistics.notice.send-enabled` 控制，默认 `false`。默认只打印将要发送的学员消息日志，不实际调用发送接口；配置为 `true` 后才调用现有发送能力。
+9. 学员消息成功发送后，必须将来源记录 `notice_send_status` 更新为 `1`；后续扫描和消费都要跳过 `notice_send_status = 1` 的记录。
 
 ## 延迟队列
 
@@ -270,6 +278,7 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 - **FR-019**：提醒消息必须随机延迟 `0-40` 分钟。
 - **FR-020**：延迟消息消费前必须重新检查 `sign_status`，签收后不得继续发送暂存提醒。
 - **FR-021**：暂存提醒实际发送必须受 Nacos 配置 `book.logistics.notice.send-enabled` 控制，默认 `false`，仅打印发送日志。
+- **FR-022**：学员暂存提醒成功发送后必须回写 `notice_send_status = 1`，重复扫描和重复消费都不得再次发送。
 
 ## 边界情况
 
@@ -282,6 +291,7 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 - 已签收但缺少当前主体“已签收”标签：不打标签，不跨主体 fallback。
 - 暂存但 agent 返回空文案或超时：保持或更新 `sign_status = 1`，不投递消息，后续扫描可在 `notice_msg` 为空时补生成。
 - 延迟消息发送失败：保留 `notice_msg`，记录失败，后续可通过 `sign_status = 1` 重新补偿。
+- 暂存提醒发送成功后必须将 `notice_send_status` 更新为 `1`，避免后续扫描或重复消费再次发送。
 - 多次扫描同一条暂存记录：不得重复生成多条提醒；如需要重试，只允许针对发送失败或 `notice_msg` 为空的记录补偿。
 
 ## 成功标准
@@ -293,6 +303,7 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 - **SC-005**：延迟消息使用独立 tag，且随机延迟范围为 `0-40` 分钟。
 - **SC-006**：延迟消息消费前记录已签收时不会继续发送提醒。
 - **SC-007**：ShowAPI appKey、agent workflow id、MQ tag 均通过配置或集中常量管理，不散落硬编码。
+- **SC-008**：暂存提醒发送成功后会回写 `notice_send_status = 1`，后续扫描/消费不会再次发送。
 
 ## 假设与待补充
 
@@ -324,9 +335,9 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 ### D003 - 实现完成
 
 - 已新增 `BookLogisticsSignStatusJob` 和 schedule Feign 入口；仓库不配置 SchedulerX cron。
-- 已在 AI 模块实现 `GET /ai/book/logistics/sign-reminder/process`，按两张表、时间窗口、`l_ids`、`sign_status` 和钢琴 `category = 4` 扫描。
+- 已在 AI 模块实现 `GET /ai/book/logistics/sign-reminder/process`，按两张表、时间窗口、`l_ids`、`sign_status`、`notice_send_status` 和钢琴 `category = 4` 扫描。
 - 已固定 ShowAPI 最新轨迹状态：`104` 更新 `sign_status = 2` 并按主体打“已签收”标签；`112` 更新 `sign_status = 1`、调用 agent 改写提醒、保存 `notice_msg` 并投递延迟消息。
-- 已新增 AI 自建 delay consumer，订阅 `BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`，消费前按 `recordType + recordId` 重新查库并在签收后跳过。
+- 已新增 AI 自建 delay consumer，订阅 `BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`，消费前按 `recordType + recordId` 重新查库并在签收后或 `notice_send_status = 1` 后跳过。
 - 已新增 Nacos 开关 `book.logistics.notice.send-enabled`，默认只打印暂存提醒学员消息日志，不实际发送。
 - 已修复 AI `DelayProducerBean.sendTagMessage`，确保自定义 tag 真正发送。
 - 验证命令：
@@ -337,10 +348,10 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 
 - 已新增 `AiServiceImplBookLogisticsParsingTest`，覆盖 `l_ids` 解析、ShowAPI 参数构造、成功码解析、最新轨迹选择、agent 文案解析、workflow prompt 组装和 workflow 调用参数捕获。
 - 已新增 `AiServiceImplBookLogisticsProcessTest`，覆盖候选筛选条件、两张表扫描、钢琴过滤、签收打标签、tag 缺失、unionId 缺失、qywxUserId 缺失、暂存文案回写和无 unionId 不投递。
-- 已新增 `BookLogisticsDelayMqTest`，覆盖延迟消息 tag、`0-40` 分钟随机延迟、producer 失败不计入 `delaySent`、consumer 在 `sign_status = 2` 时跳过发送，以及 `book.logistics.notice.send-enabled` 默认关闭只打印日志、开启后实际发送。
+- 已新增 `BookLogisticsDelayMqTest`，覆盖延迟消息 tag、`0-40` 分钟随机延迟、producer 失败不计入 `delaySent`、consumer 在 `sign_status = 2` 时跳过发送、`notice_send_status = 1` 时跳过发送，以及 `book.logistics.notice.send-enabled` 默认关闭只打印日志、开启后实际发送和成功后回写 `notice_send_status`。
 - 已在 `ai/pom.xml` 显式覆盖父 POM 的 surefire `skip=true`，确保固定验证命令真实执行测试。
 - 预处理命令：`mvn -pl ai-common -am -DskipTests install`，用于将新增 `BookLogisticsDelayNoticeInput` 安装到本地仓库供 `ai` 模块单独测试引用。
 - 验证命令：
-  - `mvn -pl ai "-Dtest=AiServiceImplBookLogisticsParsingTest,AiServiceImplBookLogisticsProcessTest,BookLogisticsDelayMqTest" test`：通过，`21` 个用例全部通过。
+  - `mvn -pl ai "-Dtest=AiServiceImplBookLogisticsParsingTest,AiServiceImplBookLogisticsProcessTest,BookLogisticsDelayMqTest" test`：通过，`25` 个用例全部通过。
   - `mvn -pl ai -am -DskipTests compile`：通过。
   - `mvn -pl schedule -am -DskipTests compile`：通过。

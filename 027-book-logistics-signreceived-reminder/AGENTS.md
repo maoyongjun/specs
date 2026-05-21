@@ -37,6 +37,9 @@
   - `1`：已暂存待签收
   - `2`：已签收
 - `notice_msg` 只保存 agent 改写后的最终提醒文案。
+- `notice_send_status` 字段固定为：
+  - `0`：未发送
+  - `1`：已发送
 - `isOver` 不参与本需求物流状态流转。
 
 ## ShowAPI 口径
@@ -70,7 +73,7 @@
 - `DelayProducerBean.sendTagMessage` 已修正为显式发送带自定义 tag 的 `Message`。
 - MQ payload 只放 `recordType`、`recordId`，消费时重新查库取最新状态和上下文。
 - 延迟时间为当前时间加随机 `0-40` 分钟。
-- consumer 发送前必须重新读取记录，`sign_status = 2` 时跳过。
+- consumer 发送前必须重新读取记录，`sign_status = 2` 或 `notice_send_status = 1` 时跳过。
 
 ## agent workflow 口径
 
@@ -91,6 +94,8 @@
 - 不得跨主体查询或复用“已签收”标签。
 - 不得绕过 `drh_goods.category = 4` 过滤。
 - 不得让 `sign_status = 2` 的记录继续发送暂存提醒。
+- 不得让 `notice_send_status = 1` 的记录继续发送暂存提醒。
+- 不得在发送成功后不回写 `notice_send_status = 1`。
 - 不得只断言最终结果；测试必须断言 ShowAPI 参数、agent 入参、MQ tag、打标签 tagId 和发送前幂等检查。
 
 ## 文档维护
