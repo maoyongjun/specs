@@ -83,6 +83,7 @@
 - [x] T054 消息体只包含 `recordType`、`recordId`，消费时重新查库获取最新状态和发送上下文。
 - [x] T055 不改 `scrm`；AI 模块自建 ONS delay consumer。
 - [x] T056 AI consumer 订阅现有 `mq.delay.topic` 和 tag `BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`。
+- [x] T056A AI consumer 使用独立消费组 `book.logistics.notice.delay-consumer-group`，避免和 `GID_delay` 现有 `delay || sop` 订阅关系不一致。
 - [x] T057 consumer 发送前重新读取来源记录；若记录不存在、`sign_status = 2`、`notice_send_status = 1`、`sign_status != 1` 或 `notice_msg` 为空，则跳过。
 - [x] T058 consumer 重新获取 `unionId`、`empId`、`qyvxUserId/company`，再调用现有 `sendJuzi` 发送。
 - [x] T058A consumer 发送学员消息受 Nacos 开关 `book.logistics.notice.send-enabled` 控制，默认 `false` 只打印日志。

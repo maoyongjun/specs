@@ -53,6 +53,7 @@
 - [x] 数据库字段变更已在 `spec.md` 记录，需随发布流程执行。
 - [x] 实体映射变更已实现。
 - [x] 延迟队列 topic 复用现有配置，不新增 topic。
+- [x] 图书物流延迟 consumer 使用独立消费组 `book.logistics.notice.delay-consumer-group`，避免同一 Group ID 下订阅 tag 不一致。
 - [x] ShowAPI appKey 使用 `book.logistics.showapi.app-key`，并保留现有 appKey 默认兼容值。
 - [x] workflow id 使用独立配置 `book.logistics.notice.workflow-id`。
 - [x] bot id 使用独立配置 `book.logistics.notice.bot-id`。

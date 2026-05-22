@@ -257,6 +257,9 @@ LIMIT 1;
   - `tag`：`BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`
   - `startDeliverTime`：当前时间加随机 `0-40` 分钟
   - `body`：JSON
+- 图书物流 AI 自建 consumer 必须使用独立消费组，避免和已有 `GID_delay` 下的 `delay || sop` 订阅关系不一致：
+  - 配置项：`book.logistics.notice.delay-consumer-group`
+  - 默认值：`GID_delay_book_logistics`
 - AI 模块 `DelayProducerBean.sendTagMessage` 已修正为显式发送带自定义 tag 的 `Message`，确保业务 tag 真正生效。
 
 消息体使用最小载荷，外层由 `MqMessage` 包装 `MessageType.BOOK_LOGISTICS_TEMP_NOTICE`：
@@ -268,7 +271,7 @@ LIMIT 1;
 }
 ```
 
-AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
+AI 模块自建 ONS delay consumer，订阅 `mq.delay.topic` 和 `BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`，消费组使用 `book.logistics.notice.delay-consumer-group`，发送前必须重新读取来源记录：
 
 - 记录不存在：跳过。
 - `sign_status = 2`：跳过。
@@ -298,7 +301,7 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 - **FR-015**：agent 改写后的文案必须保存到来源表 `notice_msg`。
 - **FR-016**：发送提醒前必须通过 `otsUtil.getExternalUserIdByPhoneNumber` 获取 `externalUserId`，取不到时依次兜底 `drh_applet_user`、`drh_live_user` 和 `drh_emp_external_user` 获取 `unionId`。
 - **FR-017**：无法获取 `unionId` 时必须不发送提醒。
-- **FR-018**：提醒消息必须使用已有延迟队列并通过独立 tag 区分。
+- **FR-018**：提醒消息必须使用已有延迟队列并通过独立 tag 区分，AI 自建 consumer 必须使用独立消费组，不能复用已订阅 `delay || sop` 的 `GID_delay`。
 - **FR-019**：提醒消息必须随机延迟 `0-40` 分钟。
 - **FR-020**：延迟消息消费前必须重新检查 `sign_status`，签收后不得继续发送暂存提醒。
 - **FR-021**：暂存提醒实际发送必须受 Nacos 配置 `book.logistics.notice.send-enabled` 控制，默认 `false`，仅打印发送日志。
@@ -336,7 +339,7 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 - ShowAPI 状态规则固定为：`104` 已签收，`112` 暂存待签收。
 - agent workflow id 使用独立配置 `book.logistics.notice.workflow-id`，不复用作业识别 workflow；bot 使用 `book.logistics.notice.bot-id`。
 - 学员暂存提醒发送开关使用 `book.logistics.notice.send-enabled`，默认 `false`，需要实际发送时通过 Nacos 改为 `true`。
-- 延迟队列 topic 沿用现有配置，只新增本业务 tag。
+- 延迟队列 topic 沿用现有配置，只新增本业务 tag；consumer 使用独立消费组 `book.logistics.notice.delay-consumer-group`。
 
 ## 执行记录
 
@@ -362,7 +365,7 @@ AI 模块自建 ONS delay consumer，发送前必须重新读取来源记录：
 - 已在 AI 模块实现 `GET /ai/book/logistics/sign-reminder/process`，按两张表、时间窗口、`l_ids`、`sign_status`、`notice_send_status` 和钢琴 `category = 4` 扫描。
 - 已补用户解析兜底链路：OTS -> `drh_applet_user` -> `drh_live_user` -> `drh_emp_external_user`。
 - 已固定 ShowAPI 最新轨迹状态：`104` 更新 `sign_status = 2` 并按主体打“已签收”标签；`112` 更新 `sign_status = 1`、调用 agent 改写提醒、保存 `notice_msg` 并投递延迟消息。
-- 已新增 AI 自建 delay consumer，订阅 `BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`，消费前按 `recordType + recordId` 重新查库并在签收后或 `notice_send_status = 1` 后跳过。
+- 已新增 AI 自建 delay consumer，使用独立消费组订阅 `BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`，消费前按 `recordType + recordId` 重新查库并在签收后或 `notice_send_status = 1` 后跳过。
 - 已新增 Nacos 开关 `book.logistics.notice.send-enabled`，默认只打印暂存提醒学员消息日志，不实际发送。
 - 已修复 AI `DelayProducerBean.sendTagMessage`，确保自定义 tag 真正发送。
 - 验证命令：

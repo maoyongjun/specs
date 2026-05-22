@@ -70,6 +70,7 @@
 - 使用已有 ONS 延迟队列，不新增 topic。
 - 本业务使用独立 tag：`BOOK_LOGISTICS_TEMP_STORAGE_NOTICE`。
 - AI 模块自建 delay consumer，不改 `scrm`。
+- AI 模块自建 delay consumer 必须使用独立消费组 `book.logistics.notice.delay-consumer-group`，不得复用已有 `GID_delay`，避免和 `delay || sop` 订阅关系不一致。
 - `DelayProducerBean.sendTagMessage` 已修正为显式发送带自定义 tag 的 `Message`。
 - MQ payload 只放 `recordType`、`recordId`，消费时重新查库取最新状态和上下文。
 - 延迟时间为当前时间加随机 `0-40` 分钟。
