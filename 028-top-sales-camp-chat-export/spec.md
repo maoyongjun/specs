@@ -1,8 +1,10 @@
-# 近三期封闭营 Top 销售聊天记录导出
+# 功能规格：近三期封闭营 Top 销售聊天记录导出
 
-**状态**：Draft  
-**范围**：仅输出规格文档，不创建项目，不写实现代码  
-**目标**：导出指定销售在近 3 期封闭营中的完整私聊记录，补齐营期、阶段、标签、到课/完课/作业与付费状态，供后续 AI Agent 训练与策略优化使用
+**功能目录**：`028-top-sales-camp-chat-export`  
+**创建日期**：`2026-05-22`  
+**状态**：Implemented  
+**输入**：用户要求在 `C:\workspace\ju-chat\specs\028-top-sales-camp-chat-export` 补全 Spec Kit 文档，并已在 `C:\workspace\ju-chat\top-sales-camp-chat-export` 落地独立项目，实现 9 位指定销售近 3 期已结束封闭营的完整私聊记录导出。  
+**范围**：记录需求、实现口径和验收标准；对应独立项目已落地到 `top-sales-camp-chat-export`，本文档作为规格与实现回填的统一说明。
 
 ## 1. 背景
 
@@ -299,13 +301,19 @@
 
 先导课不参与 `day_phase` 计算，群聊消息不进入导出结果。
 
-## 11. 风险与待确认
+## 11. 残余风险
 
-1. `paid_time` 的权威来源需要最终确认，当前规格默认使用首个有效订单时间。
-2. 封闭营的识别条件需要和营期配置进一步对齐。
-3. `drh_live` 中先导课的排除标记需要在实现时落到具体字段或课程名称规则。
-4. 若某学员同时命中多个营期标签，必须以当前导出营期为准，不允许串营。
+1. `paid_time` 当前按 ClickHouse `drh_collect_order.create_time` 的首个有效订单时间落地，若订单表后续权威字段变化，需要同步修订解析逻辑。
+2. 封闭营识别当前按 `campDateStatus=4` 为主、`end_time < now()` 为兜底，若营期配置口径变化，需要同步修订筛选条件。
+3. 先导课排除当前按 `isBeforeClass=1` 实现，若源表字段语义变化，需要同步修订课程窗口计算。
 
 ## 12. 记录
 
 - D001 - 2026-05-22 - 完成本需求的规格化整理，覆盖销售范围、营期范围、字段定义、时间规则、标签规则、订单规则与输出结构
+- D002 - 2026-05-22 - 独立项目 `top-sales-camp-chat-export` 已落地并完成验证，`mvn test` 与 `mvn package` 通过
+- D003 - 2026-05-22 - ClickHouse 连接改为读取 `application.properties`，并保留环境变量/系统属性覆盖能力
+- D004 - 2026-05-22 - 补充运行进度日志，输出销售、营期、学员、消息、行数和剩余数量
+- D005 - 2026-05-22 - 项目改造为 Spring Boot CLI，使用 `logback-spring.xml` 输出控制台和滚动文件日志，并修复 OTS Search limit 上限
+- D006 - 2026-05-22 - 移除 OTS 订单查询的 `createTime` 索引排序，改为查询后内存排序，修复 `field_name[createTime] is not existed`
+- D007 - 2026-05-22 - 日志声明改为 Lombok `@Slf4j`，打包时排除 Lombok 运行库
+- D008 - 2026-05-22 - 订单来源切换为 ClickHouse `drh_collect_order`，`paid_time` 对齐 `create_time`，并过滤 1997/1970 等异常 epoch 时间

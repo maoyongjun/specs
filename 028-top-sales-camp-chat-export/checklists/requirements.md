@@ -13,5 +13,13 @@
 - [x] 已定义 `user_attend_today`、`user_complete_today`、`user_hw_today`、`user_total_attend`、`user_paid`、`paid_time`，且按消息时间截面计算。
 - [x] 已定义导出排序规则：`camp_id + union_id + timestamp`。
 - [x] 已定义两级文件夹输出结构：销售昵称 / 营期名称。
-- [x] 已记录待确认项，包括 `paid_time` 权威来源、封闭营识别条件与先导课排除字段。
-- [x] 已明确当前阶段只做规格文档，不创建项目、不写实现代码。
+- [x] 已记录待确认项，并在实现中按 `paid_time` 首个有效订单时间、`campDateStatus=4`、`isBeforeClass=1` 完成口径落地。
+- [x] 已确认 ClickHouse 连接信息写入独立项目的 `application.properties`，程序启动时从配置文件读取。
+- [x] 已补充运行进度日志，能查看销售、营期、学员、消息、行数和剩余数量。
+- [x] 已改造成 Spring Boot CLI 项目，使用 `logback-spring.xml` 输出控制台和文件日志。
+- [x] 日志声明已使用 Lombok `@Slf4j`。
+- [x] 已修复 OTS Search `limit` 上限问题，分页查询限制为小于 100。
+- [x] 已修复 OTS 订单索引缺少 `createTime` 排序字段的问题，订单读取改为查询后内存排序。
+- [x] 订单来源已切换为 ClickHouse `drh_collect_order`，`paid_time` 对齐 `create_time` 并过滤异常 epoch 时间。
+- [x] 已确认独立项目 `top-sales-camp-chat-export` 落地完成，并通过 `mvn test` / `mvn package`。
+- [x] 已明确当前状态为规格、实现和验证回填阶段，不再是纯文档阶段。
