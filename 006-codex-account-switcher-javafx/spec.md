@@ -25,6 +25,13 @@
 - 因此工具启动 Codex Desktop 时 MUST 传入匹配最近会话的 workspace path，优先使用 `codex.switcher.codexWorkspace` 显式覆盖；未配置时从所选账号最近会话文件的 `session_meta.cwd` 推断；最后才回退用户目录。
 - 同时工具在激活默认 `.codex` 后 MUST 从所选账号最近 `session_index.jsonl` 与会话文件回填 `.codex-global-state.json`：将最近会话 ID 写入 `projectless-thread-ids`，并将对应 `session_meta.cwd` 写入 `thread-workspace-root-hints`，让 Codex Desktop 左侧“对话”列表可以展示从 Cursor/Codex 插件同步来的最近会话。
 - Codex Desktop 归档页通过本地服务 `thread/list archived=true` 读取归档列表。若迁移来的 `archived_sessions` 中存在归档文件，但这些归档 ID 缺失于 `session_index.jsonl`，归档页会显示为空。因此工具在启动 Codex Desktop 前 MUST 将缺失的归档会话 ID 补入 `session_index.jsonl`。
+- 若 `archived_sessions`、`session_index.jsonl` 与 `state_5.sqlite` 中的归档记录都存在，但 Codex Desktop 设置页的归档列表仍为空，优先按“可见会话”的元数据形态修复本地展示缓存，而不是删除并重建缓存。已验证可行的救援策略如下：
+  - 先完整备份 `%USERPROFILE%\.codex\state_5.sqlite`、`state_5.sqlite-wal`、`state_5.sqlite-shm` 和即将修改的 `archived_sessions/*.jsonl`。
+  - 在 `state_5.sqlite` 的 `threads` 表中，仅针对 `archived=1` 的记录对齐展示相关字段：`source='vscode'`、`thread_source='user'`、`model_provider='custom'`、`cwd='\\?\C:\workspace\ju-chat'`，并按当前可见会话补齐 `model`、`reasoning_effort`、`sandbox_policy`、`approval_mode`、`memory_mode`。
+  - 为归档记录生成唯一的 `updated_at_ms` 游标值，并同步 `updated_at`、`archived_at`，避免 Desktop 的 `thread/list archived=true` 游标/排序在大量相同时间戳上失效。
+  - 同步每个归档 JSONL 第一行 `session_meta.payload`：`cwd='C:\workspace\ju-chat'`、`originator='Codex Desktop'`、`source='vscode'`、`thread_source='user'`、`model_provider='custom'`，`cli_version` 以当前可见会话为参考。
+  - 修复后执行 SQLite `PRAGMA integrity_check`，确认结果为 `ok`，再刷新或重开 Codex Desktop 设置页。
+  - 本策略用于“数据仍在但 UI 不展示”的恢复，不应删除 `state_5.sqlite` 或清空 `archived_sessions`。
 
 ## 用户场景与测试 *(必填)*
 
@@ -112,6 +119,7 @@
 - **FR-019**：Codex 桌面启动 MUST 携带 workspace path；优先使用 `codex.switcher.codexWorkspace`，否则从所选账号最近会话 `session_meta.cwd` 推断，避免 Desktop 打开 projectless workspace 后左侧列表过滤掉最近对话。
 - **FR-020**：Codex 桌面启动前 MUST 回填默认 `.codex\.codex-global-state.json` 的 `projectless-thread-ids` 与 `thread-workspace-root-hints`，并且不得依赖 `.codex-global-state.json` 作为共享硬链接文件。
 - **FR-021**：Codex 桌面启动前 MUST 扫描所选账号 `archived_sessions`，将缺失于 `session_index.jsonl` 的归档会话 ID 补入索引，确保 Desktop 归档页可以列出迁移来的归档会话。
+- **FR-022**：当归档文件、索引和 `state_5.sqlite` 均存在但归档页仍为空时，修复流程 MUST 先备份，再按可见 Codex Desktop 会话对齐 `state_5.sqlite` 归档记录字段和归档 JSONL `session_meta` 元数据，并通过 SQLite 完整性检查。
 
 ## 成功标准 *(必填)*
 
