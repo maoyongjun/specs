@@ -107,3 +107,10 @@
 - 测试命令：`mvn -f codex-account-switcher\pom.xml test`
 - 测试结果：BUILD SUCCESS；14 个 JUnit 测试通过。
 - 自检结论：通过。新测试覆盖默认 Codex home 激活时补齐归档会话索引。
+
+### B009
+
+- 执行内容：调整账号切换逻辑，不再删除 Codex Desktop 本地展示缓存 `state_5.sqlite`、`state_5.sqlite-shm`、`state_5.sqlite-wal`。历史本体仍以共享的 `sessions`、`archived_sessions`、`session_index.jsonl` 为准，切换账号只切换登录态与权限配置，尽量保留 Desktop 已构建好的归档展示缓存。
+- 测试命令：`mvn -f codex-account-switcher\pom.xml test`；`mvn -f codex-account-switcher\pom.xml package`
+- 测试结果：BUILD SUCCESS；15 个 JUnit 测试通过；已重新生成 `target\codex-account-switcher-1.0.0.jar` 并同步到 `target\dist\CodexAccountSwitcher\app\codex-account-switcher-1.0.0.jar`。
+- 自检结论：通过。新测试覆盖默认 Codex home 激活时保留账号目录、默认 `.codex` 和共享目录中的 `state_5.sqlite` 缓存。
