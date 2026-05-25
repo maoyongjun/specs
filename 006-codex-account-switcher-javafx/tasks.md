@@ -28,6 +28,7 @@
 - [x] T011c 排查并修正 Codex Desktop 左侧最近对话按 workspace 过滤导致不展示的问题
 - [x] T011d 回填 Codex Desktop `.codex-global-state.json` 侧栏索引，修正搜索可见但左侧对话为空的问题
 - [x] T011e 补齐迁移归档会话的 `session_index.jsonl` 索引，修正归档页为空的问题
+- [x] T011f 记录归档文件与索引存在但归档页仍为空时的字段对齐恢复策略
 
 ## Phase 4：JavaFX UI 与打包
 
@@ -114,3 +115,10 @@
 - 测试命令：`mvn -f codex-account-switcher\pom.xml test`；`mvn -f codex-account-switcher\pom.xml package`
 - 测试结果：BUILD SUCCESS；15 个 JUnit 测试通过；已重新生成 `target\codex-account-switcher-1.0.0.jar` 并同步到 `target\dist\CodexAccountSwitcher\app\codex-account-switcher-1.0.0.jar`。
 - 自检结论：通过。新测试覆盖默认 Codex home 激活时保留账号目录、默认 `.codex` 和共享目录中的 `state_5.sqlite` 缓存。
+
+### B010
+
+- 执行内容：记录 Codex Desktop 归档页仍为空时的二次救援策略。已验证场景为：`archived_sessions` 文件存在、`session_index.jsonl` 已补齐、`state_5.sqlite` 中 `threads.archived=1` 记录存在，但设置页归档列表仍为空。处理方式为先备份 `state_5.sqlite`、WAL/SHM 和归档 JSONL，再按当前 Codex Desktop 可见会话的元数据形态对齐归档记录：`source=vscode`、`thread_source=user`、`model_provider=custom`、`cwd=\\?\C:\workspace\ju-chat`，并同步 `model`、`reasoning_effort`、权限字段、唯一 `updated_at_ms` 游标和 JSONL 第一行 `session_meta`。
+- 测试命令：`PRAGMA integrity_check`；人工刷新 Codex Desktop 设置页归档列表。
+- 测试结果：SQLite 完整性检查结果为 `ok`；归档列表恢复展示。
+- 自检结论：通过。后续遇到同类问题时，优先保留并修复 Desktop 本地展示缓存，不再通过删除 `state_5.sqlite` 触发重建。
