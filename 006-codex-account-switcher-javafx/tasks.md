@@ -27,6 +27,7 @@
 - [x] T011b 修正 Codex 桌面 MSIX 不继承 `CODEX_HOME` 时的默认 `.codex` 激活逻辑
 - [x] T011c 排查并修正 Codex Desktop 左侧最近对话按 workspace 过滤导致不展示的问题
 - [x] T011d 回填 Codex Desktop `.codex-global-state.json` 侧栏索引，修正搜索可见但左侧对话为空的问题
+- [x] T011e 补齐迁移归档会话的 `session_index.jsonl` 索引，修正归档页为空的问题
 
 ## Phase 4：JavaFX UI 与打包
 
@@ -92,3 +93,17 @@
 - 测试命令：`mvn -f codex-account-switcher\pom.xml test`
 - 测试结果：BUILD SUCCESS；12 个 JUnit 测试通过。
 - 自检结论：通过。新测试覆盖默认 Codex home 激活时回填 Desktop 侧栏状态。
+
+### B007
+
+- 执行内容：将账号槽位上限从 15 提升到 20，新导出包写入 `maxAccounts=20`，恢复逻辑继续兼容历史 `maxAccounts=15` 导出包，并同步规格文档。
+- 测试命令：`mvn -f codex-account-switcher\pom.xml test package`；`powershell -NoProfile -ExecutionPolicy Bypass -File codex-account-switcher\scripts\package-app.ps1`
+- 测试结果：BUILD SUCCESS；13 个 JUnit 测试通过；目标 exe 已重新生成。
+- 自检结论：通过。测试覆盖 20 槽位、新 manifest 和旧 15 槽位导出包恢复。
+
+### B008
+
+- 执行内容：排查 Codex Desktop 归档页为空。确认归档文件存在于 `.codex\archived_sessions` 与共享目录，但部分归档 ID 缺失于 `session_index.jsonl`；Desktop 归档页通过本地服务 `thread/list archived=true` 读取索引候选。实现启动 Codex 前扫描 `archived_sessions`，将缺失归档 ID 补入 `session_index.jsonl`。
+- 测试命令：`mvn -f codex-account-switcher\pom.xml test`
+- 测试结果：BUILD SUCCESS；14 个 JUnit 测试通过。
+- 自检结论：通过。新测试覆盖默认 Codex home 激活时补齐归档会话索引。

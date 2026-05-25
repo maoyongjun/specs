@@ -24,6 +24,7 @@
 - `.codex-global-state.json` 还包含窗口、主题、onboarding 等 UI 状态，且 Codex Desktop 会原子重写该文件，硬链接/符号链接容易被打断。因此该文件不再作为账号共享文件处理。
 - 因此工具启动 Codex Desktop 时 MUST 传入匹配最近会话的 workspace path，优先使用 `codex.switcher.codexWorkspace` 显式覆盖；未配置时从所选账号最近会话文件的 `session_meta.cwd` 推断；最后才回退用户目录。
 - 同时工具在激活默认 `.codex` 后 MUST 从所选账号最近 `session_index.jsonl` 与会话文件回填 `.codex-global-state.json`：将最近会话 ID 写入 `projectless-thread-ids`，并将对应 `session_meta.cwd` 写入 `thread-workspace-root-hints`，让 Codex Desktop 左侧“对话”列表可以展示从 Cursor/Codex 插件同步来的最近会话。
+- Codex Desktop 归档页通过本地服务 `thread/list archived=true` 读取归档列表。若迁移来的 `archived_sessions` 中存在归档文件，但这些归档 ID 缺失于 `session_index.jsonl`，归档页会显示为空。因此工具在启动 Codex Desktop 前 MUST 将缺失的归档会话 ID 补入 `session_index.jsonl`。
 
 ## 用户场景与测试 *(必填)*
 
@@ -110,11 +111,12 @@
 - **FR-018**：Codex 桌面启动前 MUST 将所选槽位 `auth.json` 与 `config.toml` 复制到默认 `.codex`，以兼容 MSIX 桌面端自行启动的后台服务。
 - **FR-019**：Codex 桌面启动 MUST 携带 workspace path；优先使用 `codex.switcher.codexWorkspace`，否则从所选账号最近会话 `session_meta.cwd` 推断，避免 Desktop 打开 projectless workspace 后左侧列表过滤掉最近对话。
 - **FR-020**：Codex 桌面启动前 MUST 回填默认 `.codex\.codex-global-state.json` 的 `projectless-thread-ids` 与 `thread-workspace-root-hints`，并且不得依赖 `.codex-global-state.json` 作为共享硬链接文件。
+- **FR-021**：Codex 桌面启动前 MUST 扫描所选账号 `archived_sessions`，将缺失于 `session_index.jsonl` 的归档会话 ID 补入索引，确保 Desktop 归档页可以列出迁移来的归档会话。
 
 ## 成功标准 *(必填)*
 
 - **SC-001**：`mvn -f codex-account-switcher\pom.xml clean test package` 成功。
-- **SC-002**：单元测试覆盖 JWT 解析、账号准备、默认 config、旧版 auth 导入、导出 manifest、备份后替换恢复。
+- **SC-002**：单元测试覆盖 JWT 解析、账号准备、默认 config、旧版 auth 导入、导出 manifest、备份后替换恢复和归档会话索引补齐。
 - **SC-003**：打包脚本成功调用 JDK17 `jpackage` 并生成目标 exe。
 - **SC-004**：应用启动后可刷新并展示 20 个账号状态。
 - **SC-005**：导出 zip 包包含指定 manifest，且共享数据只在 `shared` 下出现。
