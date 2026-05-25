@@ -14,7 +14,7 @@
 
 - [x] T004 实现用户目录定位，支持测试覆盖 `codex.switcher.userHome`
 - [x] T005 实现 JWT `id_token` 邮箱和过期时间解析
-- [x] T006 实现账号状态读取与固定 1-15 槽位列表
+- [x] T006 实现账号状态读取与固定 1-20 槽位列表
 - [x] T007 实现账号目录准备、旧版 auth 导入和默认 config 创建
 - [x] T008 实现共享目录初始化、junction/符号链接/硬链接创建和已有文件备份
 
@@ -55,7 +55,7 @@
 - 执行内容：新增 `codex-account-switcher` Maven JavaFX 项目，完成账号读取/准备、共享链接、Cursor 启动、明文 zip 导出、备份后替换恢复、JavaFX 主界面和 jpackage 打包脚本。
 - 测试命令：`mvn -f codex-account-switcher\pom.xml clean test package`
 - 测试结果：BUILD SUCCESS；6 个 JUnit 测试通过。
-- 自检结论：通过。测试覆盖 JWT 解析、固定 15 槽位、默认 config、旧版 auth 导入、导出 manifest、跳过账号共享目录和恢复备份替换。
+- 自检结论：通过。测试覆盖 JWT 解析、固定 20 槽位、默认 config、旧版 auth 导入、导出 manifest、跳过账号共享目录和恢复备份替换。
 
 ### B002
 

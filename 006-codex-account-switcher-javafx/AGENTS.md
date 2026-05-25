@@ -12,7 +12,7 @@
 
 - 应用使用 Java 17 与 JavaFX，源码落在 `C:\workspace\ju-chat\codex-account-switcher`。
 - 主类为 `com.juchat.codexswitcher.CodexAccountSwitcherApp`，另提供非 JavaFX `Launcher` 作为打包入口。
-- 账号槽位固定为 1-15，账号目录为 `%USERPROFILE%\.codex-accountN`。
+- 账号槽位固定为 1-20，账号目录为 `%USERPROFILE%\.codex-accountN`。
 - 共享数据目录为 `%USERPROFILE%\.codex-shared`，共享 `sessions`、`archived_sessions`、`session_index.jsonl`。
 - 启动账号时必须准备目录、停止现有 Cursor/Codex 进程，并以 `CODEX_HOME` 与 `CODEX_ACCOUNT_SLOT` 启动 Cursor。
 - 导出包为明文 zip，包含所有账号目录、共享数据、旧版 `.codex` 兼容文件和固定 manifest 字段。
