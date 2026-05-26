@@ -66,6 +66,20 @@
 - [x] T039 更新 `NewAgentVerifyServiceTest`，覆盖无权限通过营期标签解析、resolver miss 跳过、权限字段优先和幂等前置跳过。
 - [x] T040 运行目标测试、编译和 diff 检查，并同步更新文档状态。
 
+## Phase 7：Coze 前缀与异步 MDC 修正
+
+- [x] T041 修正新 Agent Coze 消息构造：历史消息不追加销售前缀，仅最后一条学员消息追加 `"&&" + request.getUserId() + "&&  "`；最后一条为销售自己发送时跳过 Coze 请求。
+- [x] T042 在触发新 Agent 异步验证前补齐 `JuziMessageDto.requestId`，并在 `NewAgentVerifyService#verify` 异步入口绑定和清理 MDC `requestId`。
+- [x] T043 新增 `DefaultNewAgentCozeClientTest` 并更新现有测试，覆盖最新消息前缀、重复前缀保护、销售最后消息跳过、异步 MDC 绑定和触发前 MDC 补齐。
+- [x] T044 运行目标测试、编译和 diff 检查，并同步更新文档状态。
+
+## Phase 8：当前消息类型门禁补充
+
+- [x] T045 在 `NewAgentVerifyService#shouldProcess` 增加消息类型门禁，仅允许 `MessageType.TEXT(7)` 与 `MessageType.VOICE(2)` 进入新 Agent 验证。
+- [x] T046 确认图片、视频、表情、文件、图文等其他类型在入口跳过，避免当前图片消息无文本时拿历史老师消息误触发 Coze。
+- [x] T047 更新 `NewAgentVerifyServiceTest`，覆盖文字/语音允许，图片/视频/表情跳过，以及 `type=null/messageType=5` 不查询历史、不调用 Coze、不落库。
+- [x] T048 运行目标测试、编译和 diff 检查，并同步更新文档状态。
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -84,8 +98,8 @@
 
 ### D003 - 纠正记录
 
-- 当前无已确认的口径纠正项。
-- 后续如有用户补充、代码审查发现或实现测试失败，追加新的 Dxxx 记录并同步规格、任务与 checklist。
+- D003 创建时无已确认的口径纠正项。
+- 后续用户补充已分别记录到 D004、D005、D007、D008，并同步规格、任务与 checklist。
 
 ### D004 - 默认销售 user_id 补充
 
@@ -107,3 +121,18 @@
 - 编译命令：`mvn -pl juzi-service -DskipTests compile`。
 - 测试结果：目标测试通过，`Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`；`juzi-service` 编译通过。
 - 自检结论：营期标签提取、缓存 key 隔离、Redis 命中、DB 加载缓存、resolver miss 跳过、无权限影子调用和幂等前置跳过均已覆盖；DDL 未执行。
+
+### D008 - Coze 前缀与异步 MDC 修正
+
+- 执行内容：修正新 Agent Coze 请求消息构造，保持历史消息不加前缀，只给最后一条学员消息加 `"&&" + request.getUserId() + "&&  "`；最后一条为销售自己消息时跳过 Coze；异步验证入口补齐并绑定 MDC `requestId`。
+- 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=DefaultNewAgentCozeClientTest,NewAgentVerifyPropertiesTest,NewAgentCampDateResolverTest,NewAgentVerifyServiceTest,MessageServiceImplManualReplySilenceTest" test`。
+- 编译命令：`mvn -pl juzi-service -DskipTests compile`。
+- 测试结果：目标测试通过，`Tests run: 25, Failures: 0, Errors: 0, Skipped: 0`；`juzi-service` 编译通过。
+- 自检结论：前缀逻辑与原代码保持一致，历史消息未被加前缀，异步日志跟踪 ID 已补齐；DDL 未执行。
+
+### D009 - 当前消息类型门禁补充
+
+- 执行内容：新 Agent 入口仅允许当前学员文字和语音消息，图片、视频、表情等其他消息类型直接跳过，防止图片消息无文本时只用历史老师消息请求 Coze。
+- 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=NewAgentVerifyServiceTest" test`。
+- 测试结果：目标测试通过，`Tests run: 8, Failures: 0, Errors: 0, Skipped: 0`。
+- 自检结论：文字/语音门禁、图片/视频/表情跳过、企业级 `messageType=5` 图片不查历史不调 Coze 不落库均已覆盖；DDL 未执行。

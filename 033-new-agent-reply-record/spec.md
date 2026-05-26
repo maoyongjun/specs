@@ -153,6 +153,9 @@
 - **FR-014**：实现阶段 MUST NOT 执行 DDL、连接生产数据库或发起真实外部 Coze 联调；数据库变更仍按 DBA 审核流程执行。
 - **FR-015**：实现 MUST 在原 AI 权限 `return` 前触发新 Agent 验证；当 `permission=false` 但验证上下文可通过 `IdSetDto.empId`、企微“营期”标签映射和营期接口补齐时，仍执行影子验证。
 - **FR-016**：实现 MUST 保持 `permission=false` 不走原 `sendDelayMessage`，不得因为新 Agent 验证恢复或绕过原 AI 回复权限。
+- **FR-017**：Coze 请求消息构造 MUST 与原逻辑保持一致：历史消息不追加销售前缀；仅最后一条学员消息追加 `"&&" + request.getUserId() + "&&  "` 前缀；若最后一条消息为销售自己发送，则跳过本次 Coze 请求。
+- **FR-018**：异步新 Agent 验证 MUST 绑定日志跟踪 `requestId` 到 MDC；触发异步前若 `JuziMessageDto.requestId` 为空，应从当前线程 MDC 补入，异步方法结束后必须清理 MDC。
+- **FR-019**：新 Agent 当前 MUST 仅处理学员文字与语音消息，即 `MessageType.TEXT(7)` 和 `MessageType.VOICE(2)`；图片、视频、表情、文件、图文等其他消息类型 MUST 在验证入口跳过，不查询历史、不调用 Coze、不落库。
 
 ## 成功标准
 
@@ -162,6 +165,8 @@
 - **SC-004**：规格明确新 Agent 回复只落库，不发送给学员，且原回复链路保持不变。
 - **SC-005**：规格包含 `drh_new_agent_reply_record` DDL 提案，当前实现未执行该 DDL。
 - **SC-006**：实现已按文档补齐 service、Coze 调用、历史消息查询、落库和测试，核心业务口径无需重新确认。
+- **SC-007**：实现已按原逻辑修正 Coze 消息前缀：历史消息不加前缀，最后一条学员消息加前缀，最后一条销售消息跳过；异步日志可继承 `requestId`。
+- **SC-008**：实现已限制新 Agent 只处理文字和语音；图片、视频等媒体消息不会因为历史最后一条是老师消息而误触发 Coze。
 
 ## 假设
 
@@ -172,6 +177,8 @@
 - `union_id` 可从 `OtsUtil.selectExternalUser` 或同等 OTS 查询能力获取；为空时允许记录空值。
 - 新 Agent 验证表使用 MySQL，后续由 MyBatis-Plus Entity/Mapper 写入。
 - Coze SDK 已加入 `juzi-service`，版本与 `fc/delay-mq` 的 `com.coze:coze-api` 保持兼容。
+- Coze 请求中的销售前缀只属于“最新学员问题”的内容协议，不属于历史消息回放协议。
+- 新 Agent 当前不上收图片、视频等媒体消息；语音处理依赖现有消息内容/转写字段可形成有效 Coze 输入。
 
 ## 执行记录
 
@@ -188,8 +195,8 @@
 
 ### D003 - 纠正记录
 
-- 当前无已确认的口径纠正项。
-- 后续如发生用户补充、代码审查发现或实现测试失败，需追加新的 Dxxx 记录并同步 `spec.md`、`tasks.md`、`AGENTS.md` 与 checklist。
+- D003 创建时无已确认的口径纠正项。
+- 后续用户补充已分别记录到 D004、D006、D007、D008，并同步 `spec.md`、`tasks.md`、`AGENTS.md` 与 checklist。
 
 ### D004 - 默认销售 user_id 补充
 
@@ -220,3 +227,16 @@
 - 已使用独立 Redis key `ai:juzi:new-agent:camp-date-id-map:v1` 和 lock key `ai:juzi:new-agent:camp-date-id-map:lock:v1`，本地缓存与 Redis TTL 为 35 分钟。
 - 已调整上下文优先级：`empId` 仍可由 `IdSetDto.empId` 兜底；`campDateId` 不再使用 `IdSetDto.campDateId`，改为 `UserInfoDto.campDateId || 企微营期标签映射`。
 - 已新增 `NewAgentCampDateResolverTest` 并更新 `NewAgentVerifyServiceTest`，目标测试通过 `Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`；`juzi-service` 编译通过。
+
+### D008 - Coze 前缀与异步 MDC 修正
+
+- 用户补充：新 Agent 请求缺少 `"&&" + request.getUserId() + "&&  "` 前缀，但历史消息不需要加；需要确认不要改变原代码逻辑。
+- 已按原逻辑修正 `DefaultNewAgentCozeClient`：仅最后一条学员消息追加前缀，历史学员消息保持原内容，历史销售消息作为 assistant 内容传入；如果最后一条消息是销售自己发送，则跳过本次 Coze 请求。
+- 已在 `MessageServiceImpl#triggerNewAgentVerifySafely` 中把当前线程 MDC 的 `requestId` 补入 `JuziMessageDto`，并在 `NewAgentVerifyService#verify` 异步入口绑定 `requestId` 到 MDC，结束后清理，避免异步日志丢失跟踪 ID。
+- 已新增 `DefaultNewAgentCozeClientTest`，并更新 `NewAgentVerifyServiceTest` 与 `MessageServiceImplManualReplySilenceTest`，覆盖前缀只作用于最新学员消息、最后一条销售消息跳过、异步 MDC 绑定与触发前 requestId 补齐。
+
+### D009 - 当前消息类型门禁补充
+
+- 用户补充：新 Agent 当前只需要处理文字、语音；学员发送图片时 `messageType=5`，当前消息没有文本，会导致实际 Coze messages 只剩历史老师消息，因此图片、视频等都不用处理。
+- 已在 `NewAgentVerifyService#shouldProcess` 增加当前消息类型门禁，仅允许 `MessageType.TEXT(7)` 与 `MessageType.VOICE(2)`；其他类型在入口跳过，不查询历史、不调用 Coze、不写结果表。
+- 已更新 `NewAgentVerifyServiceTest`，覆盖文字和语音允许处理，图片、视频、表情跳过，以及企业级图片消息 `type=null/messageType=5` 时不会触发历史查询、Coze 调用或落库。
