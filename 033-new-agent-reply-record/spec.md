@@ -240,3 +240,4 @@
 - 用户补充：新 Agent 当前只需要处理文字、语音；学员发送图片时 `messageType=5`，当前消息没有文本，会导致实际 Coze messages 只剩历史老师消息，因此图片、视频等都不用处理。
 - 已在 `NewAgentVerifyService#shouldProcess` 增加当前消息类型门禁，仅允许 `MessageType.TEXT(7)` 与 `MessageType.VOICE(2)`；其他类型在入口跳过，不查询历史、不调用 Coze、不写结果表。
 - 已更新 `NewAgentVerifyServiceTest`，覆盖文字和语音允许处理，图片、视频、表情跳过，以及企业级图片消息 `type=null/messageType=5` 时不会触发历史查询、Coze 调用或落库。
+- 已运行包含前缀、MDC、营期解析和消息类型门禁的目标测试，结果为 `Tests run: 26, Failures: 0, Errors: 0, Skipped: 0`；代码与文档 diff 检查通过。

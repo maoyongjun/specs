@@ -133,6 +133,8 @@
 ### D009 - 当前消息类型门禁补充
 
 - 执行内容：新 Agent 入口仅允许当前学员文字和语音消息，图片、视频、表情等其他消息类型直接跳过，防止图片消息无文本时只用历史老师消息请求 Coze。
-- 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=NewAgentVerifyServiceTest" test`。
-- 测试结果：目标测试通过，`Tests run: 8, Failures: 0, Errors: 0, Skipped: 0`。
-- 自检结论：文字/语音门禁、图片/视频/表情跳过、企业级 `messageType=5` 图片不查历史不调 Coze 不落库均已覆盖；DDL 未执行。
+- 子集测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=NewAgentVerifyServiceTest" test`。
+- 完整目标测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=DefaultNewAgentCozeClientTest,NewAgentVerifyPropertiesTest,NewAgentCampDateResolverTest,NewAgentVerifyServiceTest,MessageServiceImplManualReplySilenceTest" test`。
+- 静态检查命令：`git -C C:\workspace\ju-chat\data-RC diff --check -- juzi-service/src/main/java/com/drh/data/juzi/newagentverify juzi-service/src/test/java/com/drh/data/juzi/newagentverify`；`git -C C:\workspace\ju-chat\specs diff --check -- 033-new-agent-reply-record`。
+- 测试结果：子集测试通过，`Tests run: 8, Failures: 0, Errors: 0, Skipped: 0`；完整目标测试通过，`Tests run: 26, Failures: 0, Errors: 0, Skipped: 0`。
+- 自检结论：文字/语音门禁、图片/视频/表情跳过、企业级 `messageType=5` 图片不查历史不调 Coze 不落库均已覆盖；前缀、MDC、营期解析相关测试未回归；代码与文档 diff 检查通过；DDL 未执行。
