@@ -60,6 +60,9 @@
 - 实施内容：已远程核查 `60.205.247.168`（主机名 `cy-cicd`），确认存在 Jumpserver 安装目录、数据目录、安装器目录和 Jumpserver 镜像，但未发现运行中的 `jms_*` 容器或监听端口。
 - 验证方式：`docker ps -a`、`docker images`、`ls -la /opt/jumpserver`、`ls -la /data/jumpserver`、`find /opt/jumpserver-installer-v4.0.1 ...`、`bash /opt/jumpserver-installer-v4.0.1/jmsctl.sh status`、`ss -lntp`。
 - 自检结论：该服务器已确认存在 Jumpserver 安装痕迹，但当前不是可用的在线堡垒机服务；如需继续使用，需要进一步确认是否应启动/恢复该堆栈。
+- 实施内容：已远程核查 `182.92.157.63`（主机名 `drh-test`），未发现 Jumpserver 安装目录、控制脚本、系统服务、运行进程、Docker 运行容器或 Jumpserver 相关 RPM 包。
+- 验证方式：`systemctl`、`ss -lntp`、`rpm -qa`、`find /opt`、`find /etc`、`find /usr/local`、`find /`、`mysql` 数据库检查。
+- 自检结论：该服务器当前没有 Jumpserver 安装证据，结论应记为“未安装/未发现安装痕迹”，而不是在线堡垒机。
 
 ### D003 - 纠正记录模板
 
@@ -67,3 +70,10 @@
 - 修正内容：写清楚旧口径和新口径。
 - 文档同步：说明同步了哪些文件。
 - 验证结果：说明证据或现场确认结果。
+
+### D004 - 安装启动记录
+
+- 触发原因：用户要求在 `60.205.247.168` 上安装并启动 Jumpserver。
+- 实施内容：复用现有 `/opt/jumpserver-installer-v4.0.1` 安装器执行 `start`，创建 `jms_net` 网络并启动 `jms_web`、`jms_core`、`jms_celery`、`jms_koko`、`jms_lion`、`jms_chen`、`jms_mysql`、`jms_redis`。
+- 验证方式：`bash /opt/jumpserver-installer-v4.0.1/jmsctl.sh start`、`bash /opt/jumpserver-installer-v4.0.1/jmsctl.sh status`、`docker ps`、`ss -lntp`、`curl http://127.0.0.1`。
+- 自检结论：Jumpserver 已成功启动并提供 Web 入口，当前监听 `80` 和 `2222`，容器健康状态已转为 `healthy`。

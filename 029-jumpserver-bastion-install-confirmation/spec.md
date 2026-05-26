@@ -152,6 +152,10 @@
 - 远程核查结果：该服务器存在 Jumpserver 安装目录 `/opt/jumpserver`、数据目录 `/data/jumpserver`、安装器目录 `/opt/jumpserver-installer-v4.0.1`、Jumpserver 镜像 `jumpserver/web`、`jumpserver/core`、`jumpserver/koko`、`jumpserver/lion`、`jumpserver/chen`，并且 `jmsctl.sh` 可执行、`jmsctl status` 存在但当前无运行中容器。
 - 证据摘要：`docker ps -a` 未看到 `jms_*` 运行容器；`jmsctl.sh status` 仅返回表头；`ss -lntp` 未看到 Jumpserver 常见端口监听；配置中可见默认 `HTTP_PORT=80`、`SSH_PORT=2222`。
 - 自检结论：可确认该服务器上“已安装/曾部署过 Jumpserver”，但当前处于“未运行或已下线”状态，不能把它误判成正在提供服务的堡垒机。
+- 远程核查主机：`182.92.157.63`（主机名 `drh-test`，CentOS Linux 7）。
+- 远程核查结果：未发现 Jumpserver 安装目录、控制脚本、系统服务、运行进程、Docker 运行容器或 Jumpserver 相关 RPM 包；`docker` 进程守护不可用，`jmsctl.sh` 不存在，`find /` 仅扫到空的 MySQL 目录 `/var/lib/mysql/jumpserver`，未发现 Jumpserver 数据库表。
+- 证据摘要：`systemctl` 仅显示 nginx；`ss -lntp` 仅看到 nginx 和本地 8080 监听；`rpm -qa`、`find /opt`、`find /etc`、`find /usr/local` 均无 Jumpserver 关键词命中。
+- 自检结论：该服务器当前没有 Jumpserver 安装证据，不能认定为已安装堡垒机。
 
 ### D003 - 纠正记录模板
 
@@ -159,3 +163,10 @@
 - 修正内容：写清楚旧口径和新口径。
 - 文档同步：记录已同步的 `spec`、`tasks`、`AGENTS` 或 `checklist` 文件。
 - 验证结果：记录命令、页面、截图或现场确认结果。
+
+### D004 - 安装启动记录
+
+- 触发原因：用户要求在 `60.205.247.168` 上安装并启动 Jumpserver。
+- 执行内容：通过 `bash /opt/jumpserver-installer-v4.0.1/jmsctl.sh start` 启动现有 Jumpserver 安装堆栈。
+- 验证结果：`jms_web`、`jms_core`、`jms_celery`、`jms_koko`、`jms_lion`、`jms_chen`、`jms_mysql`、`jms_redis` 全部启动，最终状态均为 `healthy`；`jmsctl status` 显示 80 端口和 2222 端口已映射；`curl http://127.0.0.1` 返回 Jumpserver Web 页面。
+- 文档同步：已同步 `tasks.md` 的执行记录。
