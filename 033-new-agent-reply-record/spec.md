@@ -3,13 +3,13 @@
 **功能目录**：`033-new-agent-reply-record`
 **创建日期**：`2026-05-26`
 **状态**：Implemented
-**输入**：新的 agent 上线验证，agentId 是 `7638948127407636514`。需要将指定销售企业微信 `user_id` 配置到走新 Agent，默认销售 `user_id` 为 `ZhangFuYi02`、`liuyongqi02`、`DengPiaoPiao_1`、`ShuDie2`、`LiXin9_1`；接收到结果后不用发送，而是记录到数据库。只有私聊消息回复，群消息不用处理。数据库表字段：`externalUserId`、`unionId`、用户昵称、学员消息 `message_id`、学员发送的消息、AI 回复的消息、生成时间、`dayN`、销售企业微信 id。从 `juzi-service` 调用单独 service 方法，Coze agent 调用逻辑仿照原 `delay-mq`，包括获取历史消息。当前已按文档完成 `juzi-service` 实现，DDL 仍只作为提案未执行。
+**输入**：新的 agent 上线验证，agentId 是 `7638948127407636514`。需要将指定销售企业微信 `user_id` 配置到走新 Agent，默认销售 `user_id` 为 `ZhangFuYi02`、`liuyongqi02`、`DengPiaoPiao_1`、`ShuDie2`、`LiXin9_1`；接收到结果后不用发送，而是记录到数据库。只有私聊消息回复，群消息不用处理。数据库表字段：`externalUserId`、`unionId`、用户昵称、学员消息 `message_id`、学员发送的消息、AI 回复的消息、生成时间、`dayN`、销售企业微信 id。从 `juzi-service` 调用单独 service 方法，Coze agent 调用逻辑仿照原 `delay-mq`，包括获取历史消息。当前已按文档完成 `juzi-service` 实现，并支持无 AI 权限但可通过 `IdSetDto.empId`、企微营期标签和营期 `dayNum` 补齐验证上下文的私聊影子流量；DDL 仍只作为提案未执行。
 
 ## 背景
 
 - 当前问题：新 Agent 需要上线前验证回复质量，但不能影响学员实际收到的原 AI 回复。
 - 当前行为：`juzi-service` 接收消息并写入 OTS 后，按权限、路由和延迟逻辑调用原延迟 MQ / FC 链路，由 `fc/delay-mq` 调用 Coze 并发送回复。
-- 目标行为：`juzi-service` 对命中 Nacos 销售 `user_id` 白名单的私聊学员消息额外执行新 Agent 影子调用，将新 Agent 回复结果写入 MySQL 表 `drh_new_agent_reply_record`，不发送给学员，且不阻断原回复链路。
+- 目标行为：`juzi-service` 对命中 Nacos 销售 `user_id` 白名单的私聊学员消息额外执行新 Agent 影子调用；即使原 AI 权限为 `false`，只要能补齐验证上下文，也调用新 Agent 并将结果写入 MySQL 表 `drh_new_agent_reply_record`，不发送给学员，且不阻断原回复链路。
 - 非目标：不执行 DDL，不连接生产数据库，不替代原延迟 MQ / AI 回复链路，不处理群聊新 Agent 验证。
 
 ## 用户场景与测试
@@ -25,6 +25,7 @@
 1. **Given** `new-agent.verify.enabled=true` 且销售 `user_id` 命中白名单，**When** 学员发送私聊消息，**Then** 系统额外调用新 Agent 并写入验证记录。
 2. **Given** 新 Agent 返回可用回复，**When** 回复生成完成，**Then** 系统记录 `external_user_id`、`union_id`、`nick_name`、`message_id`、`student_message`、`ai_reply`、`generated_time`、`day_n`、`sales_qw_user_id` 和 `agent_id`。
 3. **Given** 原路由仍应执行，**When** 新 Agent 影子调用成功或失败，**Then** 原 `sendDelayMessage` / 原 AI 回复链路不被取消、不被替代。
+4. **Given** 权限接口返回 `permission=false` 且 `UserInfoDto` 缺少 `empId/campDateId/day`，**When** `IdSetDto` 可补齐 `empId`、企微“营期”标签名可映射到 `campDateId` 且营期接口可返回 `dayNum`，**Then** 仍执行新 Agent 影子调用，但原 AI 回复链路继续按无权限返回。
 
 ### 用户故事 2 - 群聊消息不做新 Agent 验证（优先级：P1）
 
@@ -71,14 +72,16 @@
 - `student_message`：本次学员发送的消息文本；多消息合并时记录传给新 Agent 的最终用户消息内容。
 - `ai_reply`：新 Agent 返回的 AI 回复文本。
 - `generated_time`：新 Agent 回复生成完成时间。
-- `day_n`：`UserInfoDto.day` 的数字值。
+- `day_n`：优先使用 `UserInfoDto.day` 的数字值；为空时使用 `AiFeign#getCampInfoByCampDateId(campDateId).data.dayNum` 兜底。
 - `sales_qw_user_id`：销售企业微信 `user_id`，来源为 `JuziMessageDto.botWeixin`。
 - `agent_id`：实际调用的新 Agent ID，默认 `7638948127407636514`。
 
 ## 目标实现路径
 
-- 在 `juzi-service` 中新增单独 service，例如 `NewAgentVerifyService`，由 `MessageServiceImpl#doSendMessage` 在私聊、非自己发送、权限通过并获得 `UserInfoDto` 后调用。
+- 在 `juzi-service` 中新增单独 service，例如 `NewAgentVerifyService`，由 `MessageServiceImpl#doSendMessage` 在 `selectUserPermission` 返回后、原 AI 权限 `return` 前调用。
 - 新 service 内部完成配置判断、历史消息查询、新 Agent 调用和结果落库；调用失败只记录日志，不向外抛出影响主链路的异常。
+- 新 service 通过 `UserInfoDto`、`IdSetDto.empId`、企微“营期”标签名到 `drh_live_camp_date.name -> id` 的缓存映射，以及营期接口补齐验证上下文；原 AI 权限为 `false` 时仍允许影子验证，但不得恢复或绕过原 AI 回复权限。
+- `campDateId` 解析优先级：优先使用 `UserInfoDto.campDateId`；为空时使用当前销售跟进标签中 `group_name` 包含“营期”的第一个标签 `tag_name`，再通过独立缓存 key `ai:juzi:new-agent:camp-date-id-map:v1` 映射到 `drh_live_camp_date.id`；`IdSetDto.campDateId` 不再作为新 Agent 验证的兜底来源。
 - Coze agent 调用逻辑仿照 `fc/delay-mq`：
   - 使用 OTS 查询历史消息，私聊按 `external_user_id + user_id` 查询。
   - 复用类似 `ai:coze:conversation:key:v3:{day}:{externalUserId}:{empId}:{campDateId}:{userId}` 的会话缓存思路，但建议为验证链路增加独立前缀，避免污染原会话。
@@ -91,7 +94,7 @@
 - 关键参数来源和赋值时机：
   - `sales_qw_user_id`：来源 `JuziMessageDto.botWeixin`；在 `MessageServiceImpl` 进入验证 service 前已存在；下游用于白名单判断和落库。
   - `external_user_id`：来源 `messageDto.createOtsDto()` 或 `imContactId` 转换结果；在权限判断前后已补齐；下游用于历史消息查询和落库。
-  - `userInfoDto.day`：来源 `userCheckService.selectUserPermission`；权限通过后已存在；下游落库为 `day_n`，并参与 conversation key。
+  - `empId/campDateId/dayN`：优先来源 `userCheckService.selectUserPermission` 返回的 `UserInfoDto`；若无权限返回导致字段为空，则用权限接口前已获得的 `IdSetDto.empId` 补齐 `empId`，用企微“营期”标签名映射补齐 `campDateId`，并通过 `AiFeign#getCampInfoByCampDateId(campDateId).data.dayNum` 补齐 `dayN`；下游落库为 `day_n`，并参与 conversation key。
   - `message_id`：来源 `JuziMessageDto.messageId`；消息入 OTS 前已存在；下游用于幂等和落库。
   - `student_message`：来源 `Payload.text` 或历史消息合并结果；下游用于 Coze 请求和落库。
   - `union_id` / `nick_name`：来源 OTS 外部联系人查询或当前消息；下游只用于记录，不作为是否调用新 Agent 的前置门禁。
@@ -104,7 +107,7 @@
   - 不允许用空历史消息 DTO 或空 Coze 请求继续调用；至少当前 `message_id` 对应的学员消息必须存在。
   - `union_id`、`nick_name` 为空时允许落库为空，但不得阻断验证。
 - 调用顺序风险：
-  - 验证 service 必须在已获得 `external_user_id`、`user_id`、`UserInfoDto` 后调用。
+  - 验证 service 必须在已获得 `external_user_id`、`user_id`，且 `selectUserPermission` 已返回后调用；触发点必须位于原 AI 权限 `return` 之前。
   - 新 Agent 调用必须包裹异常，不得阻断后续 `sendDelayMessage`。
   - 结果落库必须发生在 Coze 回复生成完成后，`generated_time` 使用当前完成时间。
 - 旧逻辑保持：
@@ -122,7 +125,8 @@
 - `enabled=false`、配置缺失或销售白名单为空：跳过验证链路。
 - `sales-user-ids` 存在空格或多余逗号：实现应 trim 后忽略空值。
 - 销售 `user_id` 为空：跳过验证链路并记录可检索日志。
-- `external_user_id`、`message_id` 或 `UserInfoDto` 为空：跳过验证链路，不能构造空请求。
+- `external_user_id`、`message_id` 为空：跳过验证链路，不能构造空请求。
+- `empId/campDateId/dayN` 经 `UserInfoDto`、`IdSetDto.empId`、企微营期标签映射和营期接口兜底后仍为空：跳过验证链路并记录 `new_agent_verify_context_incomplete_skip`。
 - 群聊字段 `roomWecomChatId` 或 `roomTopic` 任一非空：跳过验证链路。
 - OTS 历史消息查询为空：不得调用新 Agent；记录日志。
 - Coze 调用异常、超时、返回空或错误事件：不发送给学员，不影响原链路；当前实现为空回复不落库，异常只记录日志并保持不阻断主流程。若 Coze 返回非空文本，包括无法回答类文本，按验证样本落库。
@@ -147,6 +151,8 @@
 - **FR-012**：实现 MUST 对 `message_id + agent_id` 做幂等保护。
 - **FR-013**：实现 MUST 增加单元测试，覆盖白名单命中、未命中、群聊跳过、影子调用不阻断原链路、落库字段完整和 Coze 参数构造。
 - **FR-014**：实现阶段 MUST NOT 执行 DDL、连接生产数据库或发起真实外部 Coze 联调；数据库变更仍按 DBA 审核流程执行。
+- **FR-015**：实现 MUST 在原 AI 权限 `return` 前触发新 Agent 验证；当 `permission=false` 但验证上下文可通过 `IdSetDto.empId`、企微“营期”标签映射和营期接口补齐时，仍执行影子验证。
+- **FR-016**：实现 MUST 保持 `permission=false` 不走原 `sendDelayMessage`，不得因为新 Agent 验证恢复或绕过原 AI 回复权限。
 
 ## 成功标准
 
@@ -160,7 +166,9 @@
 ## 假设
 
 - `JuziMessageDto.botWeixin` 与延迟任务中的 `user_id` 是本需求所说的销售企业微信 `user_id`。
-- `UserInfoDto.day` 数字值可直接作为 `day_n`。
+- `UserInfoDto.day` 数字值可直接作为 `day_n`；为空时使用营期接口返回的 `dayNum`。
+- `UserInfoDto.campDateId` 若权限接口已返回则优先可信；为空时按当前销售 `user_id` 下第一个 `group_name` 包含“营期”的企微标签 `tag_name` 转换为 `campDateId`。
+- `juzi-service` 当前 MySQL datasource 可读取 `drh_live_camp_date` 的 `id/name` 映射。
 - `union_id` 可从 `OtsUtil.selectExternalUser` 或同等 OTS 查询能力获取；为空时允许记录空值。
 - 新 Agent 验证表使用 MySQL，后续由 MyBatis-Plus Entity/Mapper 写入。
 - Coze SDK 已加入 `juzi-service`，版本与 `fc/delay-mq` 的 `com.coze:coze-api` 保持兼容。
@@ -196,3 +204,19 @@
 - 当前实现对 `message_id + agent_id` 插入前查重，插入时捕获 `DuplicateKeyException`；Coze 返回空时只记录日志不落库。
 - 已新增单元测试覆盖默认配置解析、销售白名单解析、群聊/自己发送/未命中跳过、命中私聊调用 Coze 并落库、重复消息幂等跳过、新 Agent 触发异常不阻断。
 - 已执行目标测试与编译验证；DDL 提案未执行，未连接生产数据库。
+
+### D006 - 无 AI 权限影子验证补充
+
+- 用户补充：`triggerNewAgentVerifySafely` 原来在 AI 权限判断后，无权限用户无法进入；现在要求 `permission=false` 时依然可执行新 Agent 影子验证，并想办法获取验证依赖字段。
+- 已将 `MessageServiceImpl` 触发点调整到 `selectUserPermission` 返回后、原 AI 权限 `return` 前；原 `permission=false` 仍不走 `sendDelayMessage`。
+- 已将 `NewAgentVerifyService` 上下文补齐改为优先使用 `UserInfoDto`；后续 D007 已将缺失时的 `campDateId` 兜底从 `IdSetDto.campDateId` 调整为企微“营期”标签映射。
+- 若 `empId/campDateId/dayN` 兜底后仍不完整，记录 `new_agent_verify_context_incomplete_skip` 并跳过，不构造空 Coze 请求。
+- 已新增测试覆盖 `permission=false` 的上下文兜底、上下文不完整跳过、`UserInfoDto.day` 优先、权限失败仍触发验证、权限通过只触发一次。
+
+### D007 - 营期标签解析补充
+
+- 用户补充：`campDateId` 获取需仿照 `kkhc-idc-ai` 的 `AiServiceImpl#getCampDateName` 和 `getCampDateIds`，通过企微“营期”标签名映射到 `campDateId`，缓存 key 不得与其他项目重复。
+- 已新增 `NewAgentCampDateResolver`，从当前销售跟进标签中提取 `group_name` 包含“营期”的第一个 `tag_name`，再通过 `drh_live_camp_date.name -> id` 映射补齐 `campDateId`。
+- 已使用独立 Redis key `ai:juzi:new-agent:camp-date-id-map:v1` 和 lock key `ai:juzi:new-agent:camp-date-id-map:lock:v1`，本地缓存与 Redis TTL 为 35 分钟。
+- 已调整上下文优先级：`empId` 仍可由 `IdSetDto.empId` 兜底；`campDateId` 不再使用 `IdSetDto.campDateId`，改为 `UserInfoDto.campDateId || 企微营期标签映射`。
+- 已新增 `NewAgentCampDateResolverTest` 并更新 `NewAgentVerifyServiceTest`，目标测试通过 `Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`；`juzi-service` 编译通过。

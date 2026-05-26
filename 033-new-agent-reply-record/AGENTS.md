@@ -14,6 +14,7 @@
 - 对配置的销售企业微信 `user_id` 做新 Agent `7638948127407636514` 上线验证。
 - 默认销售 `user_id` 白名单为 `ZhangFuYi02`、`liuyongqi02`、`DengPiaoPiao_1`、`ShuDie2`、`LiXin9_1`，Nacos 配置为空时使用该默认值。
 - 只处理私聊学员消息，群聊消息不进入验证链路。
+- 原 AI 权限为 `false` 时，只要可通过 `IdSetDto.empId`、企微“营期”标签名映射出的 `campDateId` 和营期 `dayNum` 补齐验证上下文，也进入新 Agent 影子验证。
 - 新 Agent 回复只写入 `drh_new_agent_reply_record`，不发送给学员。
 - 原延迟 MQ / AI 回复链路保持不变，新 Agent 是影子调用。
 
@@ -33,7 +34,9 @@
 实现前必须完成以下检查，并记录到 `tasks.md` 或 `checklists/requirements.md`：
 
 - 参数来源：销售 `user_id`、`external_user_id`、`message_id`、`student_message`、`day_n`、`agent_id` 从哪里来。
-- 赋值时机：验证 service 调用前必须已经获取 `UserInfoDto` 和 `external_user_id`。
+- 赋值时机：验证 service 调用前必须已经获取 `external_user_id`、销售 `user_id`，且 `selectUserPermission` 已返回；触发点必须在原 AI 权限 `return` 前。
+- 无权限上下文：`UserInfoDto` 缺少 `empId/campDateId/day` 时，必须优先使用 `IdSetDto.empId`、企微“营期”标签名到 `drh_live_camp_date.name -> id` 的缓存映射和营期接口 `dayNum` 兜底，仍不允许用空值调用 Coze。
+- 营期缓存：新 Agent 验证必须使用独立 Redis key `ai:juzi:new-agent:camp-date-id-map:v1` 和 lock key `ai:juzi:new-agent:camp-date-id-map:lock:v1`，不得复用 `kkhc-idc-ai` 的 `ai:camp_date_id_list`。
 - 占位对象：不得把空 DTO、空历史消息列表、空 Coze 请求或空落库对象当作有效输入。
 - 下游读取：Coze 请求和落库字段必须全部有来源，允许 `union_id`、`nick_name` 为空但要记录来源策略。
 - 旧逻辑保持：原 MQ body、发送逻辑、路由表契约和群聊现有行为不变。
@@ -56,3 +59,4 @@
 - `checklists/requirements.md` 用于验证规格质量、参数完整性和实施就绪度。
 - `create-new-agent-reply-record.sql` 是未执行 DDL 提案，执行前必须重新审核并由 DBA 或发布流程确认。
 - 每次用户纠正、补充或推翻前一版口径，都必须追加 Dxxx 执行记录，并同步更新相关文档。
+- 最新执行记录为 D007：`campDateId` 已由 `IdSetDto.campDateId` 兜底调整为企微“营期”标签名映射，`IdSetDto` 只补 `empId`。

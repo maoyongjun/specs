@@ -46,6 +46,26 @@
 - [x] T025 运行 `mvn -pl juzi-service test` 或目标测试类，并记录结果。
 - [x] T026 搜索确认没有新增任何发送学员消息的调用点，例如 `sendJuzi`、`sendDelayMessage`、`sendWarningMessage` 或原 MQ body 变更；新包内 `FcInvokeUtils` 仅用于 `ai-service/jwt` 获取 Coze token。
 
+## Phase 5：无 AI 权限影子验证补充
+
+- [x] T027 将新 Agent 触发点前移到 `selectUserPermission` 返回后、原 AI 权限 `return` 前。
+- [x] T028 扩展 `NewAgentVerifyService#verify` 入参，传入 `IdSetDto` 作为无权限场景的验证上下文来源。
+- [x] T029 新增验证上下文解析：优先 `UserInfoDto.empId/campDateId/day`，缺失时使用 `IdSetDto.empId`、企微营期标签映射出的 `campDateId` 和 `AiFeign#getCampInfoByCampDateId(campDateId).data.dayNum`。
+- [x] T030 保持原 AI 权限语义：`permission=false` 仍不进入 `sendDelayMessage`，新 Agent 回复仍只落库不发送。
+- [x] T031 新增无权限场景测试：上下文可补齐时调用 Coze 并落库，上下文不完整时跳过，`UserInfoDto.day` 优先于营期接口。
+- [x] T032 新增入口测试：权限失败仍触发新 Agent 验证并返回，权限通过只触发一次并继续原链路。
+- [x] T033 同步更新 `spec.md`、`tasks.md`、`AGENTS.md` 和 checklist。
+
+## Phase 6：营期标签解析补充
+
+- [x] T034 新增 `NewAgentCampDateResolver`，按企微标签 `group_name` 包含“营期”的第一个 `tag_name` 获取营期名称。
+- [x] T035 新增 `NewAgentLiveCampDateEntity` 与 `NewAgentLiveCampDateMapper`，查询 `drh_live_camp_date` 的 `id/name` 映射。
+- [x] T036 为营期 name/id 映射增加本地缓存、Redis 缓存和短锁，Redis key 使用 `ai:juzi:new-agent:camp-date-id-map:v1`，lock key 使用 `ai:juzi:new-agent:camp-date-id-map:lock:v1`。
+- [x] T037 调整上下文解析：`IdSetDto` 只补 `empId`；`campDateId` 使用 `UserInfoDto.campDateId || 企微营期标签映射`。
+- [x] T038 新增 `NewAgentCampDateResolverTest`，覆盖标签提取、Redis 命中、DB 加载缓存和异常安全返回。
+- [x] T039 更新 `NewAgentVerifyServiceTest`，覆盖无权限通过营期标签解析、resolver miss 跳过、权限字段优先和幂等前置跳过。
+- [x] T040 运行目标测试、编译和 diff 检查，并同步更新文档状态。
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -59,8 +79,8 @@
 - 实现内容：新增 `NewAgentVerifyProperties`、`NewAgentVerifyService`、历史消息查询、Coze token / stream 调用、外部联系人资料读取、验证记录 Entity/Mapper，并在 `MessageServiceImpl` 中触发影子验证。
 - 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=NewAgentVerifyPropertiesTest,NewAgentVerifyServiceTest,MessageServiceImplManualReplySilenceTest" test`。
 - 编译命令：`mvn -pl juzi-service -DskipTests compile`。
-- 测试结果：目标测试通过，`Tests run: 10, Failures: 0, Errors: 0, Skipped: 0`；`juzi-service` 编译通过。
-- 自检结论：默认白名单、私聊命中、群聊跳过、幂等、落库字段、Coze 参数和异常不阻断已覆盖；DDL 未执行。
+- 测试结果：基础实现目标测试通过，`Tests run: 10, Failures: 0, Errors: 0, Skipped: 0`；无权限补充后目标测试通过，`Tests run: 14, Failures: 0, Errors: 0, Skipped: 0`；营期标签解析补充后目标测试通过，`Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`；`juzi-service` 编译通过。
+- 自检结论：默认白名单、私聊命中、无权限上下文兜底、企微营期标签映射、群聊跳过、幂等、落库字段、Coze 参数和异常不阻断已覆盖；DDL 未执行。
 
 ### D003 - 纠正记录
 
@@ -72,3 +92,18 @@
 - 执行内容：补充默认销售 `user_id` 白名单为 `ZhangFuYi02,liuyongqi02,DengPiaoPiao_1,ShuDie2,LiXin9_1`。
 - 验证方式：同步检查 `spec.md`、`tasks.md`、`AGENTS.md`、`checklists/requirements.md`。
 - 自检结论：默认白名单已写入配置、需求和实施任务口径。
+
+### D005 - 无 AI 权限影子验证补充
+
+- 执行内容：将新 Agent 验证触发点前移到原 AI 权限返回前；新增无权限上下文兜底；保持原 `permission=false` 不走原 AI 回复。D007 已将 `campDateId` 兜底细化为企微营期标签映射。
+- 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=NewAgentVerifyPropertiesTest,NewAgentVerifyServiceTest,MessageServiceImplManualReplySilenceTest" test`。
+- 测试结果：目标测试通过，`Tests run: 14, Failures: 0, Errors: 0, Skipped: 0`。
+- 自检结论：无权限但上下文可补齐时可影子调用并落库；上下文不可补齐时安全跳过；权限通过路径只触发一次新 Agent。
+
+### D007 - 营期标签解析补充
+
+- 执行内容：新增营期标签解析和 `drh_live_camp_date.name -> id` 缓存映射；`IdSetDto` 只补 `empId`，`campDateId` 改由 `UserInfoDto.campDateId || 企微营期标签映射` 获取。
+- 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=NewAgentVerifyPropertiesTest,NewAgentCampDateResolverTest,NewAgentVerifyServiceTest,MessageServiceImplManualReplySilenceTest" test`。
+- 编译命令：`mvn -pl juzi-service -DskipTests compile`。
+- 测试结果：目标测试通过，`Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`；`juzi-service` 编译通过。
+- 自检结论：营期标签提取、缓存 key 隔离、Redis 命中、DB 加载缓存、resolver miss 跳过、无权限影子调用和幂等前置跳过均已覆盖；DDL 未执行。

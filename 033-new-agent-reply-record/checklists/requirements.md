@@ -24,6 +24,7 @@
 
 - [x] 已列出关键参数来源和赋值时机。
 - [x] 已列出下游读取字段清单。
+- [x] 已明确无 AI 权限场景下 `empId/campDateId/dayN` 的兜底来源：`IdSetDto.empId`、企微营期标签映射与营期 `dayNum`。
 - [x] 没有未解释的 `new XxxDto()`、空 JSON、空 Map 或占位参数。
 - [x] 下游读取字段在调用前已赋值，或在当前层现算现用。
 - [x] 不存在未处理的调用后赋值风险。
@@ -46,10 +47,13 @@
 - [x] 销售白名单口径已明确：销售企业微信 `user_id`，多个用英文逗号分隔；默认值为 `ZhangFuYi02,liuyongqi02,DengPiaoPiao_1,ShuDie2,LiXin9_1`。
 - [x] 表名已明确：`drh_new_agent_reply_record`。
 - [x] 幂等口径已明确：`message_id + agent_id` 唯一或等价幂等保护。
+- [x] 营期 name/id 缓存 key 已明确并与其他项目隔离：`ai:juzi:new-agent:camp-date-id-map:v1`。
 
 ## 实现验证
 
 - [x] 已新增配置解析、验证 service 和异常不阻断相关单元测试。
+- [x] 已新增 `permission=false` 仍触发影子验证、上下文补齐和上下文不完整跳过测试。
+- [x] 已新增企微营期标签解析、Redis 缓存命中、DB 加载缓存和 resolver miss 跳过测试。
 - [x] 已运行目标测试类并通过。
 - [x] 已运行 `juzi-service` 编译验证并通过。
 - [x] 已静态搜索新包内发送能力调用；新包只通过 `FcInvokeUtils` 获取 Coze JWT，不调用发送学员消息逻辑。
@@ -58,4 +62,5 @@
 ## 备注
 
 - 强制门禁已完成并进入实现记录阶段。
+- D007 已将 `campDateId` 兜底来源更新为企微“营期”标签名映射，`IdSetDto` 只补 `empId`。
 - 若后续继续调整代码，必须先复核 `fc/delay-mq` 当前 Coze SDK 版本和 `juzi-service` 依赖兼容性。
