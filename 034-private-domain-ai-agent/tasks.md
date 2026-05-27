@@ -82,6 +82,19 @@
 - [x] T040 运行 `mvn -pl ai-reply -am test` 或目标测试类，并记录结果。
 - [x] T041 执行 `git diff --check`，确认没有空白和格式问题。
 
+## Phase 5：select_user_info 插件私域兼容
+
+- [x] T042 在 `spec.md` 和 `tasks.md` 记录 `select_user_info` 私域 key、双表查询、字段返回和测试计划。
+- [x] T043 在 `external-info-select AppTask` 中识别 `private-domain:{agentId}:{externalUserId}:{userId}:{env}`，并在旧 key 解析前分流。
+- [x] T044 新增私域 key 解析 helper，严格校验 5 段参数，缺少关键字段时返回空 JSON 并记录日志。
+- [x] T045 私域分支按 `external_user_id` 单行查询 `drh_external_user_info`。
+- [x] T046 私域分支按 `external_user_id` 搜索 `drh_ai_external_base_info`，使用 `drh_ai_external_base_info_index`，`limit=1`，多条取第一条。
+- [x] T047 私域返回体合并外部联系人表和基础信息表，基础信息表覆盖同名字段，并过滤为通用画像字段。
+- [x] T048 私域返回体固定包含 `private_domain`、`ai_scene`、`agent_id`、`external_user_id`、`user_id`、`env`、`current_time`、`today`。
+- [x] T049 私域返回体不返回 `day`、`camp_date_id`、`transfer_amount`、`class_info`、`song`、`week_num`、`task_class_session`。
+- [x] T050 新增 `AppTaskPrivateDomainTest` 覆盖私域解析、双表合并、多条基础信息取第一条、字段过滤和非私域不接管。
+- [x] T051 运行 `mvn -pl external-info-select -am -Dmaven.test.skip=false -DskipTests=false test` 与目标 `diff --check`，并回填 D004。
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -110,3 +123,15 @@
 - 修正内容：说明具体修正。
 - 文档同步：说明同步了哪些文件。
 - 验证结果：说明测试或静态验证。
+
+### D004 - select_user_info 私域兼容
+
+- 实现内容：已在 `coze_plugin/external-info-select` 的 `AppTask` 中新增私域 `external_key` 前置分流，支持 `private-domain:{agentId}:{externalUserId}:{userId}:{env}`；私域路径按 `external_user_id` 读取 `drh_external_user_info`，并通过 `drh_ai_external_base_info_index` 搜索 `drh_ai_external_base_info`，`limit=1`，返回首条基础信息。
+- 实现内容：私域返回体先合并外部联系人信息，再合并基础信息，基础信息覆盖同名字段；固定返回 `private_domain`、`ai_scene`、`agent_id`、`external_user_id`、`user_id`、`env`、`current_time`、`today`，并仅输出通用画像字段与必要补充字段。
+- 实现内容：私域路径不调用旧 `CenterUtil.selectUserJson`、`CropService#getCropIdByEmpIdFromCache`、`DayEnum.createCozeJson`、`setTushu`、`setChatMoney`，不返回 `day/camp_date_id/transfer_amount/class_info/song/week_num/task_class_session`。
+- 测试命令：`mvn -pl external-info-select -am "-Dmaven.test.skip=false" "-DskipTests=false" test`
+- 测试命令：`git -C C:\workspace\ju-chat\coze_plugin diff --check -- external-info-select`
+- 测试命令：`git -C C:\workspace\ju-chat\specs diff --check -- 034-private-domain-ai-agent`
+- 测试结果：`external-info-select` 目标验证 BUILD SUCCESS；`AppTaskPrivateDomainTest` 7 tests 通过；`common` 现有 `OtsUtilIntegrationTest` 2 tests 运行，1 skipped，0 failures，0 errors。
+- 测试结果：`coze_plugin` 与 `specs` 目标 `diff --check` 均通过；仅有 Windows 工作区 LF/CRLF 提示，无空白错误。
+- 自检结论：私域 `select_user_info` 已绕开旧营期 key、`day`、营期和转账依赖；非 `private-domain` key 不被私域分支接管；当前未触碰 `external-info-save/dependency-reduced-pom.xml`、`voice-send/dependency-reduced-pom.xml` 等无关改动。

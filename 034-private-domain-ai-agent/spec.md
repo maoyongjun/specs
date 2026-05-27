@@ -55,6 +55,19 @@
 3. **Given** 旁路新 Agent 验证白名单命中，**When** 非私域消息进入原流程，**Then** 旁路记录 AI 回复验证仍按当前逻辑触发或跳过，不被私域配置影响。
 4. **Given** 销售手动发送消息，**When** 系统处理该消息，**Then** 仍执行现有人工回复清理/静默逻辑，不触发私域 AI 回复。
 
+### 用户故事 4 - 私域 Agent 查询通用用户画像（优先级：P1）
+
+私域 Agent 调用 `select_user_info` 插件时，使用 `private-domain:{agentId}:{externalUserId}:{userId}:{env}` 作为 `external_key`，插件不再按旧营期 key 解析，而是按 `external_user_id` 查询通用用户画像。
+
+**独立测试**：构造私域 key，mock `drh_external_user_info` 单行结果和 `drh_ai_external_base_info` 多条搜索结果，断言返回通用画像字段，不返回 `day/campDateId/transfer_amount` 等营期字段。
+
+**验收场景**：
+
+1. **Given** `external_key=private-domain:7644449532675866662:wmQcc1XAAAMcqWzuGhnxeimIFnLjFpHA:15311073569:default`，**When** 插件处理请求，**Then** 解析出 `agent_id`、`external_user_id`、`user_id` 和 `env`。
+2. **Given** `drh_external_user_info` 中存在 `external_user_id` 对应记录，**When** 私域插件查询，**Then** 返回 `name` 等外部联系人通用信息。
+3. **Given** `drh_ai_external_base_info` 中同一个 `external_user_id` 可能命中多条基础信息，**When** 私域插件查询，**Then** 搜索 `limit=1` 并取其中一条即可。
+4. **Given** 私域无营期和天数概念，**When** 返回插件结果，**Then** 不返回 `day`、`camp_date_id`、`transfer_amount`、`class_info`、`song`、`week_num`、`task_class_session`。
+
 ## 历史问题防漏分析
 
 - 关键参数来源和赋值时机：
@@ -70,6 +83,9 @@
 - `DelayMessageServiceImpl#createJSONObject` 当前读取 `UserInfoDto.campDateId`、`empId`、`day`、`routeExecutionPlanDto.skuId`、`agentDecision.agentId` 并写入 FC payload。
 - `fc/ai-reply AppTask` 当前读取 `redisKey`、`timestamp`、`agent_id`、`sku_id`、`day`、`isGroup`、`msgType`、`messageId`，并按 OTS 历史消息构造 Coze 请求。
 - `fc/ai-reply CozeUtil` 当前读取 `agent_id` 作为 Coze `botID`，读取 `DayEnum` 构建旧 conversation key 和部分后置逻辑。
+- `coze_plugin/external-info-select AppTask` 当前按旧 `external_key=external_user_id:emp_id:camp_date_id:user_id...` 解析，随后调用 `CenterUtil.selectUserJson`、`DayEnum.createCozeJson` 和 `setChatMoney`；私域 key 必须在旧解析前分流。
+- 私域 `select_user_info` key：`private-domain:{agentId}:{externalUserId}:{userId}:{env}`，例如 `private-domain:7644449532675866662:wmQcc1XAAAMcqWzuGhnxeimIFnLjFpHA:15311073569:default`。
+- 私域用户画像来源：`drh_external_user_info` 可按 `external_user_id` 单行读取；`drh_ai_external_base_info` 需按 `external_user_id` 搜索，可能多条，取任意一条即可。
 - 空对象 / 占位对象风险：
 - 当前旧 FC payload 默认写入 `sku_id=null`、`agent_id=null`，命中路由时才赋值；私域不能沿用这种“空字段继续传递”方式，必须在当前层构造明确的私域 payload。
 - 私域配置读取到空白字符串时不能视为有效配置，必须回退默认值。
@@ -93,6 +109,8 @@
 - 销售自发消息：不触发私域 Agent，仍保留现有 `removeCache` 和人工回复静默相关行为。
 - 撤回消息、招呼语、当前已被旧前置过滤 return 的消息：不新增私域处理能力。
 - 私域消息不读取 SOP 作业点评 gate，不触发 `sop-reply`，不构造 `routeParams.day` 或 `actualDayNum` 作为私域必需参数。
+- 私域 `select_user_info` 不调用旧营期权限接口，不构造 `DayEnum` 返回体，不伪造 `day0`。
+- 私域 `select_user_info` 若 `drh_ai_external_base_info` 未命中或搜索异常，仍返回 `drh_external_user_info` 中可用的通用字段。
 - Redis 读取异常：记录日志并使用默认配置；Redis 写入异常：配置接口返回失败，避免页面误报保存成功。
 - `ai-reply` 私域 Agent 调用失败：由 `ai-reply` 记录错误，不回退到旧钢琴/声乐/SOP/路由分支。
 
@@ -116,6 +134,10 @@
 - **FR-014**：`ai-reply` 私域分支 MUST 使用独立 conversation key，不包含 `dayN` 维度。
 - **FR-015**：系统 MUST NOT 修改或删除旁路新 Agent 验证链路；非私域下该链路行为必须不回归。
 - **FR-016**：单元测试 MUST 覆盖默认配置、Redis 保存、白名单命中、旧权限 false 仍走私域、非私域旧链路不变、`ai-reply` 私域无 `day/sku` 仍调用 Agent。
+- **FR-017**：`select_user_info` 插件 MUST 识别 `private-domain:{agentId}:{externalUserId}:{userId}:{env}` 格式的私域 `external_key`。
+- **FR-018**：私域 `select_user_info` MUST 按 `external_user_id` 查询 `drh_external_user_info` 和 `drh_ai_external_base_info`，其中 `drh_ai_external_base_info` 使用搜索并 `limit=1`。
+- **FR-019**：私域 `select_user_info` MUST 返回 `name`、`age`、`gender`、`base` 等通用画像字段，并返回私域标记字段。
+- **FR-020**：私域 `select_user_info` MUST NOT 返回或伪造 `day`、`camp_date_id`、`transfer_amount`、`class_info`、`song`、`week_num`、`task_class_session`。
 
 ## 成功标准
 
@@ -124,6 +146,7 @@
 - **SC-003**：白名单未命中的声乐、钢琴、SOP/路由消息关键调用和 FC payload 与改造前保持一致。
 - **SC-004**：私域路径不触发 SOP 作业点评，不读取 `dayN`，不构造依赖 `dayN` 的 conversation key。
 - **SC-005**：目标测试通过，且测试中断言 Redis key、FC service/function、`agent_id`、私域标记、`external_user_id`、`user_id`、`messageId` 等关键下游参数。
+- **SC-006**：私域 Agent 调用 `select_user_info` 时，示例 key 能返回 `drh_external_user_info.name` 和 `drh_ai_external_base_info` 中一条通用基础信息，且不依赖 `day/campDateId`。
 
 ## 假设
 
@@ -131,7 +154,9 @@
 - “以前 juzi-service 的配置页面”指 `src/main/resources/static/index.html` 所在配置中心，新增入口使用普通配置页面访问密码。
 - 私域配置使用 `juzi-service` 现有 Redis 连接；实现前可根据已有配置页使用的 RedisTemplate 选择具体 Bean，但必须无 TTL。
 - 私域 `ai-reply` payload 可以增加私域标记字段；若后续决定只复用旧字段，必须证明不会被旧 `skuId/day` 逻辑误判。
-- 当前阶段只修改 `specs` 文档；如假设被推翻，需要追加 Dxxx 纠正记录。
+- `drh_ai_external_base_info` 存在可按 `external_user_id` 搜索的索引，默认名为 `drh_ai_external_base_info_index`。
+- 私域 `select_user_info` 多条基础信息无需排序，任意取一条即可。
+- 如以上假设被推翻，需要追加 Dxxx 纠正记录。
 
 ## 执行记录
 
@@ -188,3 +213,22 @@
 - 修正内容：写清楚旧口径和新口径。
 - 文档同步：说明 `spec.md`、`tasks.md`、`AGENTS.md`、checklist 是否已同步。
 - 验证结果：记录测试或静态检查结果。
+
+### D004 - select_user_info 私域兼容
+
+- 实现内容：
+- `coze_plugin/external-info-select AppTask` 已在旧 `external_key` 解析前识别 `private-domain:{agentId}:{externalUserId}:{userId}:{env}` 并前置返回私域画像。
+- 私域路径按 `external_user_id` 查询 `drh_external_user_info`，并通过 `drh_ai_external_base_info_index` 搜索 `drh_ai_external_base_info`，`limit=1`，多条时使用第一条。
+- 私域返回合并顺序为外部联系人表在前、基础信息表在后，基础信息表覆盖同名字段；返回 `private_domain`、`ai_scene=PRIVATE_DOMAIN`、`agent_id`、`external_user_id`、`user_id`、`env`、`current_time`、`today` 与通用画像字段。
+- 私域路径保留设备品牌和敏感词补充，但不返回 `day`、`camp_date_id`、`campDateId`、`transfer_amount`、`class_info`、`song`、`week_num`、`task_class_session`。
+- 影响范围：
+- 仅修改 `coze_plugin/external-info-select` 的 `AppTask` 和新增 `AppTaskPrivateDomainTest`；不触碰 `external-info-save/dependency-reduced-pom.xml`、`voice-send/dependency-reduced-pom.xml` 等既有无关改动。
+- 测试命令：
+- `mvn -pl external-info-select -am "-Dmaven.test.skip=false" "-DskipTests=false" test`
+- `git -C C:\workspace\ju-chat\coze_plugin diff --check -- external-info-select`
+- `git -C C:\workspace\ju-chat\specs diff --check -- 034-private-domain-ai-agent`
+- 测试结果：
+- `external-info-select` 目标验证 BUILD SUCCESS；`AppTaskPrivateDomainTest` 7 tests 通过；`common` 现有 `OtsUtilIntegrationTest` 2 tests 运行，1 skipped，0 failures，0 errors。
+- `coze_plugin` 与 `specs` 目标 `diff --check` 均通过；仅有 Windows 工作区 LF/CRLF 提示，无空白错误。
+- 自检结论：
+- 私域 `select_user_info` 不再进入旧营期权限、DayEnum、图书物流、转账金额逻辑；非私域 key 保持旧链路入口；私域返回只包含通用画像和私域上下文字段。
