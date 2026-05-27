@@ -68,6 +68,19 @@
 3. **Given** `drh_ai_external_base_info` 中同一个 `external_user_id` 可能命中多条基础信息，**When** 私域插件查询，**Then** 搜索 `limit=1` 并取其中一条即可。
 4. **Given** 私域无营期和天数概念，**When** 返回插件结果，**Then** 不返回 `day`、`camp_date_id`、`transfer_amount`、`class_info`、`song`、`week_num`、`task_class_session`。
 
+### 用户故事 5 - 配置私域 AI 允许回复时间（优先级：P1）
+
+运营或开发在“私域AI配置”页面维护私域 AI 允许回复时间段；命中私域白名单的学员消息只有在允许时间窗口内才提交 `ai-reply`。
+
+**独立测试**：通过配置 service/controller 测试验证默认值、保存、非法格式和时间窗口边界；通过消息入口测试验证不在窗口内不调用私域 AI 且不回落旧链路。
+
+**验收场景**：
+
+1. **Given** Redis 中没有私域回复时间配置，**When** 页面加载当前配置，**Then** 返回默认 `05:00-00:00`，并标记来源为默认值。
+2. **Given** 当前时间为 `05:00` 或 `23:59`，**When** 私域白名单命中且收到学员消息，**Then** 允许调用私域 AI。
+3. **Given** 当前时间为 `00:00` 或 `04:59`，**When** 私域白名单命中且收到学员消息，**Then** 不调用私域 AI，打印 `private_domain_ai_reply_time_blocked` 日志，并不进入旧 `skuId/day/SOP/route` 链路。
+4. **Given** 页面提交非法时间格式，**When** 保存配置，**Then** 接口返回失败，不写入无效时间配置。
+
 ## 历史问题防漏分析
 
 - 关键参数来源和赋值时机：
@@ -75,6 +88,7 @@
 - `external_user_id`：来源 `otsDto.getString("external_user_id")`，必要时通过 `imContactId` 兜底回填；为空时沿用现有 `user_info_empty_ignore` 跳过。
 - 私域白名单：来源 Redis key `ai:private-domain:config:white-list:v1`；读取为空或缺失时使用默认 `15311073569`；写入时无 TTL。
 - 私域 `agent_id`：来源 Redis key `ai:private-domain:config:agent-id:v1`；读取为空或缺失时使用默认 `7644079727246065664` 并记录日志；写入时无 TTL。
+- 私域回复时间：来源 Redis key `ai:private-domain:config:reply-time-range:v1`；读取为空或非法时默认 `05:00-00:00` 并记录日志；写入时无 TTL。
 - `fc.common_function_name/common_service_name`：来源 `FcConfig`；私域仍调用 `ai-reply` 函数计算，具体函数名必须实现前确认当前环境配置。
 - `skuId`：来源 `UserInfoDto.getSkuId()`，只允许非私域旧链路使用；私域不得通过 `skuId` 判定权限。
 - `day` / `dayN`：来源 `UserInfoDto.getDay()`，只允许旧链路使用；私域不得依赖或伪造 `dayN`。
@@ -93,6 +107,7 @@
 - 当前 `triggerNewAgentVerifyAndShouldSkipForNoAiPermission` 同时触发旁路验证和旧权限早退；实现私域时不得让旧权限早退阻断白名单命中的私域 AI。
 - 当前销售自发消息的清理逻辑在旧权限判断后；实现私域时必须保证自发消息仍不会触发私域 AI。
 - 当前 `ai-reply` conversation key 绑定 `day`；私域无 `dayN` 时必须使用独立私域 conversation key。
+- 私域回复时间窗口必须在私域白名单命中后、读取 Agent ID 和提交 FC 前判断；不在窗口内要消费私域消息并返回，不能回落旧链路。
 - 旧逻辑保持：
 - 非私域消息继续执行 `userCheckService.selectUserPermission`、无权限跳过、声乐默认分支、钢琴 SOP/路由分支、延迟合并、撤回检查、人工回复静默、媒体跳过、Redis 幂等和告警。
 - 旁路 `NewAgentVerifyService` 相关逻辑不得被私域配置替换或删除。
@@ -103,7 +118,10 @@
 
 - Redis 白名单 key 不存在、值为空、全是空格或全是逗号：使用默认 `15311073569`。
 - Redis Agent ID key 不存在、值为空或全是空格：使用默认 `7644079727246065664`，打印包含 key、默认值、触发场景的日志。
+- Redis 私域回复时间 key 不存在、值为空或非法：使用默认 `05:00-00:00`，打印包含 key、默认值、原始值和触发场景的日志。
 - 白名单项前后有空格：匹配前 trim；空项忽略；重复项不影响匹配。
+- 私域回复时间格式固定为 `HH:mm-HH:mm`；保存空白归一为默认值，保存非法格式返回失败。
+- 私域回复时间判定含起不含止，支持跨午夜窗口；`05:00-00:00` 表示 `05:00` 含起到当天 `24:00` 前允许，`00:00-04:59` 不允许。
 - `user_id` 为空：沿用现有空用户跳过逻辑，不进入私域 Agent。
 - `external_user_id` 为空：沿用现有空用户跳过逻辑，不进入私域 Agent。
 - 销售自发消息：不触发私域 Agent，仍保留现有 `removeCache` 和人工回复静默相关行为。
@@ -138,6 +156,10 @@
 - **FR-018**：私域 `select_user_info` MUST 按 `external_user_id` 查询 `drh_external_user_info` 和 `drh_ai_external_base_info`，其中 `drh_ai_external_base_info` 使用搜索并 `limit=1`。
 - **FR-019**：私域 `select_user_info` MUST 返回 `name`、`age`、`gender`、`base` 等通用画像字段，并返回私域标记字段。
 - **FR-020**：私域 `select_user_info` MUST NOT 返回或伪造 `day`、`camp_date_id`、`transfer_amount`、`class_info`、`song`、`week_num`、`task_class_session`。
+- **FR-021**：系统 MUST 在“私域AI配置”页面新增私域回复时间配置，字段格式为 `HH:mm-HH:mm`。
+- **FR-022**：系统 MUST 将私域回复时间写入 Redis 永久缓存，不设置 TTL；默认值为 `05:00-00:00`。
+- **FR-023**：私域白名单命中后，系统 MUST 在读取 Agent ID 和提交 `ai-reply` 前判断当前时间是否处于允许回复窗口。
+- **FR-024**：不在允许回复窗口内时，系统 MUST 不调用私域 AI，打印可定位日志，并消费私域消息不回退旧链路。
 
 ## 成功标准
 
@@ -147,6 +169,7 @@
 - **SC-004**：私域路径不触发 SOP 作业点评，不读取 `dayN`，不构造依赖 `dayN` 的 conversation key。
 - **SC-005**：目标测试通过，且测试中断言 Redis key、FC service/function、`agent_id`、私域标记、`external_user_id`、`user_id`、`messageId` 等关键下游参数。
 - **SC-006**：私域 Agent 调用 `select_user_info` 时，示例 key 能返回 `drh_external_user_info.name` 和 `drh_ai_external_base_info` 中一条通用基础信息，且不依赖 `day/campDateId`。
+- **SC-007**：默认 `05:00-00:00` 下，`05:00` 和 `23:59` 允许私域 AI，`00:00` 和 `04:59` 阻断私域 AI，且阻断时旧链路不执行。
 
 ## 假设
 
@@ -156,6 +179,8 @@
 - 私域 `ai-reply` payload 可以增加私域标记字段；若后续决定只复用旧字段，必须证明不会被旧 `skuId/day` 逻辑误判。
 - `drh_ai_external_base_info` 存在可按 `external_user_id` 搜索的索引，默认名为 `drh_ai_external_base_info_index`。
 - 私域 `select_user_info` 多条基础信息无需排序，任意取一条即可。
+- “私域回复时间”表示允许 AI 回复的时间段，不是禁用时间段；默认允许回复时间为 `05:00-00:00`。
+- 时间按服务运行时本地时区判断，当前环境为 Asia/Shanghai。
 - 如以上假设被推翻，需要追加 Dxxx 纠正记录。
 
 ## 执行记录
@@ -232,3 +257,24 @@
 - `coze_plugin` 与 `specs` 目标 `diff --check` 均通过；仅有 Windows 工作区 LF/CRLF 提示，无空白错误。
 - 自检结论：
 - 私域 `select_user_info` 不再进入旧营期权限、DayEnum、图书物流、转账金额逻辑；非私域 key 保持旧链路入口；私域返回只包含通用画像和私域上下文字段。
+
+### D005 - 私域回复时间窗口配置
+
+- 实现内容：
+- `juzi-service` 私域配置新增 Redis key `ai:private-domain:config:reply-time-range:v1`，默认允许回复时间为 `05:00-00:00`。
+- `PrivateDomainAiConfigDto` 新增 `replyTimeRange`、`replyTimeRangeDefaulted`；配置接口和页面复用现有 `/admin/private-domain-ai-config/config` 读写新增字段。
+- `PrivateDomainAiConfigService` 支持 `HH:mm-HH:mm` 格式校验、永久保存、空白保存默认、非法保存失败、Redis 空/非法回退默认并记录日志；时间判定为含起不含止并支持跨午夜。
+- `MessageServiceImpl#handlePrivateDomainAiIfMatched` 在私域白名单命中且非自发消息时，先判断允许回复时间；窗口外打印 `private_domain_ai_reply_time_blocked`，不调用私域 AI，并消费消息不回落旧链路。
+- 影响范围：
+- 仅影响 `juzi-service` 的私域配置页面、配置 DTO/service 和私域消息入口；非私域声乐、钢琴、SOP/路由、旁路验证链路保持不变。
+- 测试命令：
+- `mvn -pl juzi-service -DskipTests=false "-Dtest=PrivateDomainAiConfigServiceTest,PrivateDomainAiConfigAdminControllerTest,MessageServiceImplManualReplySilenceTest" test`
+- `mvn -pl juzi-service -DskipTests=false test`
+- `git -C C:\workspace\ju-chat\data-RC\juzi-service diff --check`
+- `git -C C:\workspace\ju-chat\specs diff --check -- 034-private-domain-ai-agent`
+- 测试结果：
+- 目标测试通过，23 tests，0 failures，0 errors，0 skipped。
+- 完整 `juzi-service` 测试通过，87 tests，0 failures，0 errors，1 skipped。
+- `juzi-service` 与 `specs` 目标 `diff --check` 均通过；仅有 Windows 工作区 LF/CRLF 提示，无空白错误。
+- 自检结论：
+- 默认 `05:00-00:00` 下，`05:00` 和 `23:59` 允许，`00:00` 和 `04:59` 阻断；窗口外私域消息不会调用 `ai-reply`，也不会进入旧权限、旁路验证、SOP 或路由。

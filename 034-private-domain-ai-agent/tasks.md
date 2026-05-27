@@ -95,6 +95,20 @@
 - [x] T050 新增 `AppTaskPrivateDomainTest` 覆盖私域解析、双表合并、多条基础信息取第一条、字段过滤和非私域不接管。
 - [x] T051 运行 `mvn -pl external-info-select -am -Dmaven.test.skip=false -DskipTests=false test` 与目标 `diff --check`，并回填 D004。
 
+## Phase 6：私域回复时间窗口配置
+
+- [x] T052 在 `spec.md` 和 `tasks.md` 记录私域回复时间 Redis key、默认值、边界规则、测试计划和 D005。
+- [x] T053 在 `PrivateDomainAiConstants` 增加回复时间 Redis key 和默认 `05:00-00:00`。
+- [x] T054 在 `PrivateDomainAiConfigDto` 增加 `replyTimeRange` 和 `replyTimeRangeDefaulted` 字段。
+- [x] T055 在 `PrivateDomainAiConfigService` 增加时间配置读取、保存、格式校验、默认回退和永久写入。
+- [x] T056 在 `PrivateDomainAiConfigService` 增加可测试的允许回复时间判断，支持含起不含止和跨午夜窗口。
+- [x] T057 在 `private-domain-ai-config.html` 增加私域回复时间输入、默认标记、加载和保存字段。
+- [x] T058 在 `MessageServiceImpl#handlePrivateDomainAiIfMatched` 中，私域白名单命中且非自发消息时先判断时间窗口。
+- [x] T059 不在允许回复窗口内时打印 `private_domain_ai_reply_time_blocked` 日志，不调用私域 AI，并消费消息不回落旧链路。
+- [x] T060 补充配置 service/controller 测试，覆盖默认值、保存、非法格式、空白默认和边界时间。
+- [x] T061 补充消息入口测试，覆盖窗口内调用私域 AI、窗口外阻断且不触发旁路验证、私域自发消息保持不触发 AI。
+- [x] T062 运行目标 Maven 测试、完整 `juzi-service` 测试和目标 `diff --check`，并回填 D005。
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -135,3 +149,17 @@
 - 测试结果：`external-info-select` 目标验证 BUILD SUCCESS；`AppTaskPrivateDomainTest` 7 tests 通过；`common` 现有 `OtsUtilIntegrationTest` 2 tests 运行，1 skipped，0 failures，0 errors。
 - 测试结果：`coze_plugin` 与 `specs` 目标 `diff --check` 均通过；仅有 Windows 工作区 LF/CRLF 提示，无空白错误。
 - 自检结论：私域 `select_user_info` 已绕开旧营期 key、`day`、营期和转账依赖；非 `private-domain` key 不被私域分支接管；当前未触碰 `external-info-save/dependency-reduced-pom.xml`、`voice-send/dependency-reduced-pom.xml` 等无关改动。
+
+### D005 - 私域回复时间窗口配置
+
+- 实现内容：已在 `juzi-service` 私域配置中新增 Redis key `ai:private-domain:config:reply-time-range:v1` 和默认允许回复时间 `05:00-00:00`；`PrivateDomainAiConfigDto` 新增 `replyTimeRange`、`replyTimeRangeDefaulted`。
+- 实现内容：`PrivateDomainAiConfigService` 已支持时间配置读取、永久保存、空白保存默认、非法格式保存失败、Redis 空/非法回退默认并打印日志；时间窗口按 `HH:mm-HH:mm`、含起不含止、支持跨午夜判定。
+- 实现内容：`private-domain-ai-config.html` 已新增“私域回复时间”输入；`MessageServiceImpl#handlePrivateDomainAiIfMatched` 在私域白名单命中且非自发消息时，先判断允许回复时间，不在窗口内打印 `private_domain_ai_reply_time_blocked` 并消费消息，不回落旧链路。
+- 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=PrivateDomainAiConfigServiceTest,PrivateDomainAiConfigAdminControllerTest,MessageServiceImplManualReplySilenceTest" test`
+- 测试命令：`mvn -pl juzi-service -DskipTests=false test`
+- 测试命令：`git -C C:\workspace\ju-chat\data-RC\juzi-service diff --check`
+- 测试命令：`git -C C:\workspace\ju-chat\specs diff --check -- 034-private-domain-ai-agent`
+- 测试结果：目标测试通过，23 tests，0 failures，0 errors，0 skipped。
+- 测试结果：完整 `juzi-service` 测试通过，87 tests，0 failures，0 errors，1 skipped。
+- 测试结果：`juzi-service` 与 `specs` 目标 `diff --check` 均通过；仅有 Windows 工作区 LF/CRLF 提示，无空白错误。
+- 自检结论：私域时间窗口只影响白名单命中的学员消息；自发消息仍清理缓存且不触发 AI；窗口外私域消息不会调用 `ai-reply`，也不会触发旧权限、旁路验证、SOP 或路由。
