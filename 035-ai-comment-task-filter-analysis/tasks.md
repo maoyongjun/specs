@@ -39,6 +39,8 @@
 - [x] T018 解释 `479 - 203 - 109 = 167` 的剩余过滤来自人工点评或已有评分分支。
 - [x] T019 明确目标不是 `已点评过无需点评` 分支，而是 `已人工点评过跳过AI点评` 分支。
 - [x] T020 搜索确认本次未修改业务代码。
+- [x] T021 追加 `8823989 / oNGxt58zLAx0AeQsiiflgW9IScTo` 状态过滤案例，记录旧版本 `status=1` 与当前 `status=0` 的差异。
+- [x] T022 补充通用排查手册，覆盖日志分支、接口当前值、ClickHouse 多版本、`history_pic` 和 `song_score`。
 
 ## 执行记录
 
@@ -47,3 +49,9 @@
 - 执行内容：创建 `035-ai-comment-task-filter-analysis` 并记录源码、接口和 ClickHouse 分析结论。
 - 验证方式：源码静态检查、HTTP 接口调用、ClickHouse 查询。
 - 自检结论：目标 unionId 被 `hasManualComment` 过滤，未进入 `batchInsertFcTasks`，因此 `drh_fc_task` 未写入。
+
+### D002 - 状态过滤案例记录
+
+- 执行内容：追加 `workpic=8823989` 的排查记录和复用排查手册。
+- 验证方式：`getOneById`、`pageQueryWorks`、`querySongScoreList`、ClickHouse `drh_works_pic`、ClickHouse `drh_history_pic`。
+- 自检结论：该日志来自历史运行时的 `status=1`；当前数据已回改为 `status=0`，因此当前结果不能直接解释历史日志。

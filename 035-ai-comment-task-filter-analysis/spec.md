@@ -139,6 +139,40 @@ id=3993498, pic_id=8701676, union_id=oNGxt59B6vrFI1LqeuKgtsrQ2_E4, message_class
 - `status=0` 且无人工点评，但 `drh_song_score` 已有同 `classId + unionId`：会被 `scoredMap` 过滤，当前没有日志。
 - ClickHouse `drh_works_pic` 可能能看到同 id 的更新历史行；以接口当前返回为本次链路判断依据。
 
+## 排查手册
+
+遇到 `handleAiCommentTask` 没有写入 `drh_fc_task` 时，按下面顺序排查：
+
+1. 先确认日志命中了哪一层过滤。
+   - `workpic={},unionId={},已点评过无需点评`：只说明 `worksPicDO.status != 0`。
+   - `workPicId={},unionId={},已人工点评过跳过AI点评`：说明 `historyPicDO.picId` 和 `historyPicDO.unionId` 与作业匹配。
+   - 没有这两类日志但未写入任务：重点查 `querySongScoreList(classId)` 返回的 `scoredMap`，该分支当前无日志。
+2. 用当前接口查主记录。
+   - `GET /kkhc-idc-app/works/getOneById?id={picId}`
+   - `POST /kkhc-idc-app/works/pageQueryWorks`，入参带 `liveId`、`unionId`、`pageCurrent=1`、`pageSize=20`
+3. 用 ClickHouse 查 `drh_works_pic` 同 `id` 的多版本状态。
+   - 如果旧版本 `status=1`，新版本 `status=0`，而日志时间早于回改时间，则日志按旧状态过滤是正常的。
+4. 查 `drh_history_pic`。
+   - 只要存在 `pic_id={picId}` 且 `union_id={unionId}` 的记录，当前 `pageQueryWorks` 可能会填充 `historyPicDO`，后续 `hasManualComment` 会过滤。
+5. 查 `querySongScoreList`。
+   - 如果 `classId + unionId` 已有评分记录，即使当前作业 `status=0` 且无人工点评，也会被 `scoredMap` 过滤。
+
+常用 SQL：
+
+```sql
+SELECT id, status, comment_time, ai_check, update_time, _sign, _version
+FROM drh_works_pic
+WHERE id = {picId}
+ORDER BY _version DESC, update_time DESC;
+
+SELECT id, pic_id, union_id, message_class, history_id, create_time
+FROM drh_history_pic
+WHERE pic_id = {picId}
+   OR union_id = '{unionId}'
+ORDER BY create_time DESC, id DESC
+LIMIT 30;
+```
+
 ## 需求
 
 ### 功能需求
@@ -168,3 +202,13 @@ id=3993498, pic_id=8701676, union_id=oNGxt59B6vrFI1LqeuKgtsrQ2_E4, message_class
 - 已完成 `handleAiCommentTask` 过滤链路分析。
 - 已确认目标作业命中 `hasManualComment`，不是命中 `status != 0`。
 - 本阶段未修改业务代码。
+
+### D002 - `8823989 / oNGxt58zLAx0AeQsiiflgW9IScTo` 状态过滤案例
+
+- 用户问题：日志出现 `workpic=8823989,unionId=oNGxt58zLAx0AeQsiiflgW9IScTo,已点评过无需点评`，需要确认原因。
+- 代码结论：该日志只会在 `worksPicDO.status != PicMessageStatus.NOT_EVALUATE(0)` 时打印。
+- 历史数据证据：ClickHouse `drh_works_pic` 中 `id=8823989` 有旧版本 `status=1`、`comment_time=2026-05-08 18:36:02`、`update_time=2026-05-08 18:36:02`。
+- 人工点评证据：`drh_history_pic` 存在 `id=4027067`、`pic_id=8823989`、`union_id=oNGxt58zLAx0AeQsiiflgW9IScTo`、`create_time=2026-05-08 18:36:02`。
+- 当前状态证据：`getOneById?id=8823989` 和当前 `pageQueryWorks` 已返回 `status=0`；ClickHouse 最新版本显示 `status=0`、`update_time=2026-05-27 13:37:36`。
+- 解释：日志对应的是回改之前的运行，当时 `status=1`，所以命中“已点评过无需点评”；当前再跑不应继续命中状态过滤，但如果 `historyPicDO` 仍匹配，可能改由人工点评过滤拦截。
+- 排查提醒：遇到历史日志和当前接口状态不一致时，必须先查 `drh_works_pic` 多版本记录或更新时间，避免用当前状态反推历史日志。
