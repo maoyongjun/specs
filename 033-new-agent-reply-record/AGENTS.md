@@ -39,6 +39,7 @@
 - 营期缓存：新 Agent 验证必须使用独立 Redis key `ai:juzi:new-agent:camp-date-id-map:v1` 和 lock key `ai:juzi:new-agent:camp-date-id-map:lock:v1`，不得复用 `kkhc-idc-ai` 的 `ai:camp_date_id_list`。
 - Coze 消息前缀：历史消息不得追加 `"&&" + request.getUserId() + "&&  "`；该前缀只追加到最后一条学员消息，最后一条为销售自己消息时跳过 Coze。
 - 当前消息类型：新 Agent 仅处理文字 `MessageType.TEXT(7)` 与语音 `MessageType.VOICE(2)`；图片、视频、表情、文件、图文等其他类型必须在验证入口跳过。
+- 多段回复落库：Coze stream 中多个 `CONVERSATION_MESSAGE_COMPLETED + ANSWER` 事件必须按顺序合并记录到 `ai_reply`，不得覆盖成最后一条。
 - 异步日志：新 Agent 异步入口必须绑定 MDC `requestId`，触发异步前应从当前线程 MDC 补齐 DTO requestId，异步结束后清理。
 - 占位对象：不得把空 DTO、空历史消息列表、空 Coze 请求或空落库对象当作有效输入。
 - 下游读取：Coze 请求和落库字段必须全部有来源，允许 `union_id`、`nick_name` 为空但要记录来源策略。
@@ -62,4 +63,4 @@
 - `checklists/requirements.md` 用于验证规格质量、参数完整性和实施就绪度。
 - `create-new-agent-reply-record.sql` 是未执行 DDL 提案，执行前必须重新审核并由 DBA 或发布流程确认。
 - 每次用户纠正、补充或推翻前一版口径，都必须追加 Dxxx 执行记录，并同步更新相关文档。
-- 最新执行记录为 D009：新 Agent 当前仅处理文字和语音，图片、视频等其他消息类型在入口跳过，不再因历史老师消息误触发 Coze。
+- 最新执行记录为 D010：Coze 多个 completed answer 事件已按顺序合并落库，不再只记录最后一条 Agent 回复。

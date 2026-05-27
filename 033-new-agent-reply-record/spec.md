@@ -156,6 +156,7 @@
 - **FR-017**：Coze 请求消息构造 MUST 与原逻辑保持一致：历史消息不追加销售前缀；仅最后一条学员消息追加 `"&&" + request.getUserId() + "&&  "` 前缀；若最后一条消息为销售自己发送，则跳过本次 Coze 请求。
 - **FR-018**：异步新 Agent 验证 MUST 绑定日志跟踪 `requestId` 到 MDC；触发异步前若 `JuziMessageDto.requestId` 为空，应从当前线程 MDC 补入，异步方法结束后必须清理 MDC。
 - **FR-019**：新 Agent 当前 MUST 仅处理学员文字与语音消息，即 `MessageType.TEXT(7)` 和 `MessageType.VOICE(2)`；图片、视频、表情、文件、图文等其他消息类型 MUST 在验证入口跳过，不查询历史、不调用 Coze、不落库。
+- **FR-020**：Coze stream 中若出现多个 `CONVERSATION_MESSAGE_COMPLETED + ANSWER` 事件，`ai_reply` MUST 按事件顺序记录全部非空 answer 内容，不得只保留最后一条。
 
 ## 成功标准
 
@@ -167,6 +168,7 @@
 - **SC-006**：实现已按文档补齐 service、Coze 调用、历史消息查询、落库和测试，核心业务口径无需重新确认。
 - **SC-007**：实现已按原逻辑修正 Coze 消息前缀：历史消息不加前缀，最后一条学员消息加前缀，最后一条销售消息跳过；异步日志可继承 `requestId`。
 - **SC-008**：实现已限制新 Agent 只处理文字和语音；图片、视频等媒体消息不会因为历史最后一条是老师消息而误触发 Coze。
+- **SC-009**：实现已修复多段 Agent 回复落库：多个 completed answer 事件会按顺序合并写入 `ai_reply`。
 
 ## 假设
 
@@ -179,6 +181,7 @@
 - Coze SDK 已加入 `juzi-service`，版本与 `fc/delay-mq` 的 `com.coze:coze-api` 保持兼容。
 - Coze 请求中的销售前缀只属于“最新学员问题”的内容协议，不属于历史消息回放协议。
 - 新 Agent 当前不上收图片、视频等媒体消息；语音处理依赖现有消息内容/转写字段可形成有效 Coze 输入。
+- 多段 Agent 回复在同一条验证记录内用换行合并，保持 `message_id + agent_id` 一行记录的幂等模型不变。
 
 ## 执行记录
 
@@ -241,3 +244,10 @@
 - 已在 `NewAgentVerifyService#shouldProcess` 增加当前消息类型门禁，仅允许 `MessageType.TEXT(7)` 与 `MessageType.VOICE(2)`；其他类型在入口跳过，不查询历史、不调用 Coze、不写结果表。
 - 已更新 `NewAgentVerifyServiceTest`，覆盖文字和语音允许处理，图片、视频、表情跳过，以及企业级图片消息 `type=null/messageType=5` 时不会触发历史查询、Coze 调用或落库。
 - 已运行包含前缀、MDC、营期解析和消息类型门禁的目标测试，结果为 `Tests run: 26, Failures: 0, Errors: 0, Skipped: 0`；代码与文档 diff 检查通过。
+
+### D010 - 多段 Agent 回复落库修复
+
+- 用户补充：Agent 回复存在多次响应事件，当前数据库只记录了最后一条消息。
+- 已将 `DefaultNewAgentCozeClient` 从 `AtomicReference` 覆盖保存改为按顺序收集所有 `CONVERSATION_MESSAGE_COMPLETED + ANSWER` 的非空内容，并用换行合并返回给落库字段 `ai_reply`。
+- 已新增 `DefaultNewAgentCozeClientTest#shouldMergeMultipleCompletedAnswerEventsInOrder`，覆盖多条 completed answer 事件按顺序合并、空内容忽略、非 completed 事件忽略。
+- 已运行完整目标测试，结果为 `Tests run: 31, Failures: 0, Errors: 0, Skipped: 0`；`juzi-service` 编译通过；代码 diff 检查通过。

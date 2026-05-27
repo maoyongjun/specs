@@ -80,6 +80,13 @@
 - [x] T047 更新 `NewAgentVerifyServiceTest`，覆盖文字/语音允许，图片/视频/表情跳过，以及 `type=null/messageType=5` 不查询历史、不调用 Coze、不落库。
 - [x] T048 运行目标测试、编译和 diff 检查，并同步更新文档状态。
 
+## Phase 9：多段 Agent 回复落库修复
+
+- [x] T049 修复 `DefaultNewAgentCozeClient` 的 Coze stream answer 收集逻辑，避免多个 completed answer 事件互相覆盖。
+- [x] T050 保持 `drh_new_agent_reply_record` 一行记录模型不变，将多个 answer 内容按顺序换行合并到 `ai_reply`。
+- [x] T051 新增 Coze answer 合并单元测试，覆盖多段按序合并、空内容忽略、非 completed 事件忽略。
+- [x] T052 运行目标测试、编译和 diff 检查，并同步更新文档状态。
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -138,3 +145,13 @@
 - 静态检查命令：`git -C C:\workspace\ju-chat\data-RC diff --check -- juzi-service/src/main/java/com/drh/data/juzi/newagentverify juzi-service/src/test/java/com/drh/data/juzi/newagentverify`；`git -C C:\workspace\ju-chat\specs diff --check -- 033-new-agent-reply-record`。
 - 测试结果：子集测试通过，`Tests run: 8, Failures: 0, Errors: 0, Skipped: 0`；完整目标测试通过，`Tests run: 26, Failures: 0, Errors: 0, Skipped: 0`。
 - 自检结论：文字/语音门禁、图片/视频/表情跳过、企业级 `messageType=5` 图片不查历史不调 Coze 不落库均已覆盖；前缀、MDC、营期解析相关测试未回归；代码与文档 diff 检查通过；DDL 未执行。
+
+### D010 - 多段 Agent 回复落库修复
+
+- 执行内容：将 Coze stream 中多个 `CONVERSATION_MESSAGE_COMPLETED + ANSWER` 事件由覆盖保存改为顺序收集，并以换行合并为 `ai_reply`。
+- 子集测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=DefaultNewAgentCozeClientTest" test`。
+- 完整目标测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=DefaultNewAgentCozeClientTest,NewAgentVerifyPropertiesTest,NewAgentCampDateResolverTest,NewAgentVerifyServiceTest,MessageServiceImplManualReplySilenceTest" test`。
+- 编译命令：`mvn -pl juzi-service -DskipTests compile`。
+- 静态检查命令：`git -C C:\workspace\ju-chat\data-RC diff --check -- juzi-service/src/main/java/com/drh/data/juzi/newagentverify juzi-service/src/test/java/com/drh/data/juzi/newagentverify`。
+- 测试结果：子集测试通过，`Tests run: 4, Failures: 0, Errors: 0, Skipped: 0`；完整目标测试通过，`Tests run: 31, Failures: 0, Errors: 0, Skipped: 0`；`juzi-service` 编译通过。
+- 自检结论：多段 Agent 回复不再丢失前序内容；只收 completed answer 事件，空内容和非 completed 事件不会进入 `ai_reply`；DDL 未执行。

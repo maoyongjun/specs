@@ -28,6 +28,7 @@
 - [x] 已明确 Coze 请求前缀只作用于最后一条学员消息，历史消息不加前缀，最后一条销售消息跳过请求。
 - [x] 已明确异步新 Agent 验证需要 MDC `requestId` 绑定、触发前补齐和结束清理。
 - [x] 已明确新 Agent 当前只处理文字和语音，图片、视频、表情等其他消息类型入口跳过。
+- [x] 已明确多个 Coze completed answer 事件需要按顺序合并到 `ai_reply`，不得只保存最后一条。
 - [x] 没有未解释的 `new XxxDto()`、空 JSON、空 Map 或占位参数。
 - [x] 下游读取字段在调用前已赋值，或在当前层现算现用。
 - [x] 不存在未处理的调用后赋值风险。
@@ -60,7 +61,8 @@
 - [x] 已新增 Coze 消息前缀测试：历史消息不加前缀、最新学员消息加前缀、重复前缀不重复追加、最后一条销售消息跳过。
 - [x] 已新增异步 MDC 测试：触发前从当前 MDC 补齐 `requestId`，异步入口绑定并在结束后清理。
 - [x] 已新增消息类型门禁测试：文字/语音允许进入，图片/视频/表情跳过，`type=null/messageType=5` 图片不查询历史、不调用 Coze、不落库。
-- [x] 已运行目标测试类并通过：`Tests run: 26, Failures: 0, Errors: 0, Skipped: 0`。
+- [x] 已新增多段 Agent 回复合并测试：多个 completed answer 按序合并、空内容忽略、非 completed 事件忽略。
+- [x] 已运行目标测试类并通过：`Tests run: 31, Failures: 0, Errors: 0, Skipped: 0`。
 - [x] 已运行 `juzi-service` 编译验证并通过。
 - [x] 已静态搜索新包内发送能力调用；新包只通过 `FcInvokeUtils` 获取 Coze JWT，不调用发送学员消息逻辑。
 - [x] DDL 提案未执行，生产执行前仍需 DBA 审核。
@@ -71,4 +73,5 @@
 - D007 已将 `campDateId` 兜底来源更新为企微“营期”标签名映射，`IdSetDto` 只补 `empId`。
 - D008 已将 Coze 前缀和异步 MDC 跟踪修正纳入实现状态。
 - D009 已将当前消息类型限制为文字和语音，图片、视频等媒体消息不进入新 Agent。
+- D010 已将多段 Agent 回复改为顺序合并落库，不再只记录最后一条。
 - 若后续继续调整代码，必须先复核 `fc/delay-mq` 当前 Coze SDK 版本和 `juzi-service` 依赖兼容性。
