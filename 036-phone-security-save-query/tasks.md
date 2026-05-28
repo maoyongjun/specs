@@ -125,20 +125,28 @@
 
 ### D004 - 实现记录
 
+- 已被 D006 替代：本轮范围由 2 张表扩展为 7 张表，并按 `phone` 后续可清空的口径补全。
+
+### D006 - 手机号安全字段补全与真实地址记录追加
+
+- 触发原因：用户补充目标表为 `drh_h5_order`、`drh_live_user`、`drh_applet_user`、`drh_book_question_record`、`drh_external_book_question_record`、`drh_book_edit_address_compensation`，并追加 `drh_real_address_record`；`app_phone` 明确不处理。
 - 实现内容：
-  - **实体类**：H5Order / BookQuestionRecord（drh-common）和 H5OrderDO / BookQuestionRecordDO（ai-common）各增加 `phoneMask`、`phoneMd5`、`phoneAes` 持久化字段和 `createAesInfo()` 方法（含前端明文/密文兼容 try-catch）。
-  - **ai-common DataSecurity 工具**：新建 `com.kkhc.idc.lms.common.module.datasec` 包（DataSecurityInput / DataSecurityOutput / DataSecurityUtil / DataSecurityInvoke），使用 base-common 的 FcInvokeUtils 调用远程 FC，与 drh-common 同密钥同IV。
-  - **drh 保存链路**：drh-pay `insertH5Order()` / `insertOpenH5Order()`、drh-endpoint `editAddress()` / `editAddressV2()`、drh-kk-cms `editAddress()` / `editAddressV2()` 共 6 处 save 前增加 `createAesInfo()` 调用。
-  - **drh 查询链路**：drh-pay `selectIsPay()`、drh-endpoint `queryLeads()` / `editAddress()` / `editAddressV2()`、drh-kk-cms `editAddressV2()` / `getCallbackH5Order()` 共 6 处 `.eq(::getPhone, ...)` 改为 `.eq(::getPhoneMd5, computePhoneMd5(...))`。
-  - **ju-chat 查询链路**：ai 模块 `BookQuestionRecordServiceImpl.getBookQuestionRecordByAppletUserId()`、`AiServiceImpl.getBookOrderByPhone()`、`BookEditAddressCompensationServiceImpl` 共 3 处改为 phoneMd5 查询。
-  - **单元测试**：drh-common 和 ai-common 各创建 `DataSecurityUtilTest.java`，覆盖 AES 往返、脱敏、明文异常、computePhoneMd5 空值/降级。
-- 测试命令：`mvn compile -pl <module>` / `mvn test -pl drh-common`
-- 测试结果：drh-common / drh-pay / drh-endpoint / drh-kk-cms / ai-common / ai 全部编译通过（BUILD SUCCESS）。
-- 自检结论：
-  - 所有保存链路 `createAesInfo()` 调用均在 `save()` 之前。
-  - 所有查询链路 `.eq(::getPhone, ...)` 已替换为 `.eq(::getPhoneMd5, computePhoneMd5(...))`。
-  - 前端兼容：`aesDecrypt()` 抛 RuntimeException 时 try-catch 降级使用原始明文，再继续 FC 调用。
-  - 剩余风险：批量 `in` 查询（`getPhoneResult()` / `getPhoneChannelSet()`）未改造（已标记 TODO）；历史数据 `phone_md5` 为 NULL 的记录无法被新查询命中（需后续 backfill）。
+  - **统一工具**：DRH 与 IDC AI 侧 `DataSecurityInvoke` 增加 `buildPhoneSecurity`、`computePhoneMd5`、`decryptPhoneAes`、`phoneMaskForDisplay`。
+  - **实体补齐**：DRH 补齐 `H5Order`、`BookQuestionRecord`、`AppletUser`、`LiveUser`、`ExternalBookQuestionRecord`、`RealGoodsAddressRecord`；IDC AI 补齐 `H5OrderDO`、`BookQuestionRecordDO`、`AppletUserDo`、`LiveUserDO`、`ExternalBookQuestionRecordDO`、`BookEditAddressCompensationDO`、`RealGoodsAddressRecordDO`。
+  - **保存/更新链路**：H5Order 创建、支付回调线索更新、图书登记、非留资、真实地址记录、补偿记录、学员/线索手机号更新均同步写 `phone_mask/phone_md5/phone_aes`。
+  - **查询/读取链路**：目标表手机号等值/批量匹配改用 `phone_md5`；需要明文时从方法入参或 `phone_aes` 解密；展示/列表/订单查询返回 `phone_mask` 或本地掩码。
+  - **真实地址记录**：`RealGoodsAddressRecord` 保存前调用 `createAesInfo()`，ERP 下发手机号通过 `phone_aes` 解密兜底，AI 订单地址展示返回掩码手机号。
+- 接口影响：
+  - 支付/订单：`/h5/order/pay`、`/h5/order/open/pay`、`/h5/order/wx/notify`、`/h5/order/query/phone`、`/ali/pay/*`。
+  - 图书登记：DRH `editAddress`、`editAddressV2`、`queryLeads`，AI `/book/getBookQuestionRecordByAppletUserId`。
+  - 非留资/补偿：`/external/bookQuestionRecord/create`、`/count`、`/queryHistoryPage`、`/queryHistoryExpressNo`，AI `/book-edit-address-compensation/saveOne`、`/compensationRun`。
+  - 真实地址/物流：`/realGoodsAddressRecord/*`、`/bookPath/queryTrackNumOrder` 及订单物流展示链路。
+- 测试建议：
+  - 7 张表新增/更新后校验 `phone_mask`、`phone_md5`、`phone_aes`。
+  - 手动清空目标表 `phone` 后验证支付回调、订单手机号查询、图书登记查询、物流/ERP 推送、补偿任务仍可用。
+  - SQL 日志确认目标表手机号匹配不再依赖 `phone = ?`。
+  - 展示/导出返回掩码，不返回明文；`app_phone` 相关接口不纳入本次验证。
+- 非目标表静态提示：广告分配、客服记录、外呼/短信任务、订单售后/补发等非目标表仍存在 `phone` 查询或展示，本次未改业务逻辑。
 
 ### D005 - 纠正记录模板
 

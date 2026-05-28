@@ -11,7 +11,8 @@
 
 ## 当前目标
 
-- 在 `H5Order`（drh-common）/ `H5OrderDO`（ai-common）和 `BookQuestionRecord`（drh-common）/ `BookQuestionRecordDO`（ai-common）的实体类中增加 `phoneMask`、`phoneMd5`、`phoneAes` 持久化字段。
+- 目标表扩展为 7 张：`drh_h5_order`、`drh_live_user`、`drh_applet_user`、`drh_book_question_record`、`drh_external_book_question_record`、`drh_book_edit_address_compensation`、`drh_real_address_record`。
+- 在目标表对应实体中增加/补齐 `phoneMask`、`phoneMd5`、`phoneAes` 持久化字段和 `createAesInfo()` / 安全字段生成能力。
 - 改造保存链路：所有新增 / 修改手机号的场景，在入库前调用 `createAesInfo()` 同步计算安全字段。
 - 改造查询链路：所有按手机号等值查询的场景，改为使用 `phone_md5` 字段匹配。
 - 改造展示链路：列表和导出接口返回 `phone_mask` 而非明文 `phone`。
@@ -23,14 +24,17 @@
 | 数据库表 | drh 工程实体 | ju-chat 工程实体 |
 |---------|-------------|-----------------|
 | `drh_h5_order` | `H5Order`（drh-common） | `H5OrderDO`（ai-common） |
+| `drh_live_user` | `LiveUser`（drh-common） | `LiveUserDO`（ai-common） |
+| `drh_applet_user` | `AppletUser`（drh-common） | `AppletUserDo`（ai-common） |
 | `drh_book_question_record` | `BookQuestionRecord`（drh-common） | `BookQuestionRecordDO`（ai-common） |
+| `drh_external_book_question_record` | `ExternalBookQuestionRecord`（drh-common） | `ExternalBookQuestionRecordDO`（ai-common） |
+| `drh_book_edit_address_compensation` | - | `BookEditAddressCompensationDO`（ai-common） |
+| `drh_real_address_record` | `RealGoodsAddressRecord`（drh-common） | `RealGoodsAddressRecordDO`（ai-common） |
 
 ## 不涉及（本次排除）
 
-- `drh_applet_user`：整改已完成。
-- `drh_live_user`（含 `app_phone`）：由其他同事后续处理。
-- `drh_external_book_question_record`：由其他同事后续处理。
-- `drh_book_edit_address_compensation`：本次未提及。
+- `app_phone` 完全排除，不新增、不查询、不同步 `app_phone_mask/app_phone_md5/app_phone_aes`。
+- 非上述目标表的 `phone` 使用点只整理提示，暂不改业务逻辑。
 
 ## DataSecurity 工具类
 
@@ -69,6 +73,10 @@
 - drh 工程实体：
   - `drh-common\src\main\java\com\drh\common\entity\H5Order.java`
   - `drh-common\src\main\java\com\drh\common\entity\BookQuestionRecord.java`
+  - `drh-common\src\main\java\com\drh\common\entity\AppletUser.java`
+  - `drh-common\src\main\java\com\drh\common\entity\LiveUser.java`
+  - `drh-common\src\main\java\com\drh\common\entity\ExternalBookQuestionRecord.java`
+  - `drh-common\src\main\java\com\drh\common\entity\RealGoodsAddressRecord.java`
 - drh 工程 DataSecurity：
   - `drh-common\src\main\java\com\drh\common\fc\datasec\DataSecurityInput.java`
   - `drh-common\src\main\java\com\drh\common\fc\datasec\DataSecurityOutput.java`
@@ -87,6 +95,11 @@
 - ju-chat 工程实体：
   - `ai-common\src\main\java\com\kkhc\idc\lms\common\module\dao\order\H5OrderDO.java`
   - `ai-common\src\main\java\com\kkhc\idc\lms\common\module\dao\book\BookQuestionRecordDO.java`
+  - `ai-common\src\main\java\com\kkhc\idc\lms\common\module\dao\base\LiveUserDO.java`
+  - `ai-common\src\main\java\com\kkhc\idc\lms\common\module\dao\leads\AppletUserDo.java`
+  - `ai-common\src\main\java\com\kkhc\idc\lms\common\module\dao\book\ExternalBookQuestionRecordDO.java`
+  - `ai-common\src\main\java\com\kkhc\idc\lms\common\module\dao\book\BookEditAddressCompensationDO.java`
+  - `ai-common\src\main\java\com\kkhc\idc\lms\common\module\dao\order\fulfillment\address\RealGoodsAddressRecordDO.java`
 - ju-chat 工程 Service：
   - `ai\src\main\java\com\kkhc\idc\ad\service\order\H5OrderServiceImpl.java`
   - `ai\src\main\java\com\kkhc\idc\lms\service\book\impl\BookQuestionRecordServiceImpl.java`

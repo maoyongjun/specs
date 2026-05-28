@@ -348,11 +348,15 @@ String md5 = output.getMd5();
 
 ### D004 - 实现记录
 
-- `<实现后填写：实现内容、影响范围、测试命令、测试结果、自检结论。>`
+- 已被 D006 替代：用户将范围扩展到 7 张表，并要求 `phone` 后续按可清空处理。
 
-### D005 - 纠正记录模板
+### D006 - 手机号安全字段补全实现记录
 
-- 触发原因：`<用户补充/测试失败/代码审查发现/参数遗漏/调用顺序问题>`。
-- 修正内容：`<写清楚旧口径和新口径>`。
-- 文档同步：`<spec/tasks/AGENTS/checklist 是否已同步>`。
-- 验证结果：`<测试或静态检查结果>`。
+- 触发原因：用户补充目标表扩展为 7 张，并明确 `app_phone` 不处理、后续 `phone` 字段会清空，业务不得依赖 DB 实体 `getPhone()` 作为明文来源。
+- 目标表：`drh_h5_order`、`drh_live_user`、`drh_applet_user`、`drh_book_question_record`、`drh_external_book_question_record`、`drh_book_edit_address_compensation`、`drh_real_address_record`。
+- 实体/工具：补齐 DRH 与 IDC AI 侧目标实体的 `phoneMask`、`phoneMd5`、`phoneAes`；`AppletUser` 去掉安全字段非持久化标记；新增统一工具 `buildPhoneSecurity`、`computePhoneMd5`、`decryptPhoneAes`、`phoneMaskForDisplay`。
+- 保存/更新：H5Order 创建、图书登记、非留资登记、真实地址记录、学员/线索手机号更新、AI 补偿保存均同步写 `phone_mask/phone_md5/phone_aes`；`RealGoodsAddressRecord` 保存前调用 `createAesInfo()`。
+- 查询/读取：目标表按手机号等值查询改用 `phone_md5`；支付回调、ERP/物流/补偿等需要明文的链路优先用方法入参，其次从 `phone_aes` 解密；展示与订单查询返回 `phone_mask` 或由 `phone_aes` 本地掩码。
+- 接口影响：`/h5/order/pay`、`/h5/order/open/pay`、`/h5/order/wx/notify`、`/h5/order/query/phone`、`/ali/pay/*`；DRH 图书登记 `editAddress/editAddressV2/queryLeads`；AI `/book/getBookQuestionRecordByAppletUserId`；`/external/bookQuestionRecord/create`、`/count`、`/queryHistoryPage`、`/queryHistoryExpressNo`；AI `/book-edit-address-compensation/saveOne`、`/compensationRun`；真实地址/物流查询 `/realGoodsAddressRecord/*`、`/bookPath/queryTrackNumOrder` 相关返回展示。
+- 排除项：`app_phone` 未处理；非目标表 phone 查询只列入静态提示，未改业务逻辑。
+- 待测试重点：7 张表新增/更新后三个安全字段均有值；手动清空 `phone` 后核心查询、展示、支付回调、物流/ERP 推送和补偿链路可用；SQL 日志确认目标表手机号查询走 `phone_md5`。
