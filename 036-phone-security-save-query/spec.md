@@ -3,20 +3,20 @@
 **功能目录**：`036-phone-security-save-query`  
 **创建日期**：`2026-05-28`  
 **状态**：Draft  
-**输入**：在 032-phone-security-columns 数据库字段已添加的基础上，补全 `drh_h5_order` 和 `drh_book_question_record` 的保存和查询链路代码改造。涉及两个工程：`C:\workspace\drh`（主业务微服务）和 `C:\workspace\ju-chat\kkhc\kkhc-idc\ai`（AI 模块）。前端页面整改前会传未加密的明文手机号，整改后会传 AES 加密密文，后端需兼容两种输入。`drh_applet_user` 整改已完成，`drh_live_user`（含 `app_phone`）和 `drh_external_book_question_record` 由其他同事后续处理。
+**输入**：在 032-phone-security-columns 数据库字段已添加的基础上，补全 7 张目标表的手机号安全字段保存、查询、展示和明文读取链路代码改造。涉及两个工程：`C:\workspace\drh`（主业务微服务）和 `C:\workspace\ju-chat\kkhc\kkhc-idc\ai`（AI 模块）。目标表为 `drh_h5_order`、`drh_live_user`、`drh_applet_user`、`drh_book_question_record`、`drh_external_book_question_record`、`drh_book_edit_address_compensation`、`drh_real_address_record`。`app_phone` 明确不处理；后续 `phone` 字段会清空，业务不得依赖数据库实体 `getPhone()` 作为明文来源。
 
 ## 背景
 
-- 当前问题：032 需求已完成数据库字段添加（测试库已执行 DDL），但 `H5Order` 和 `BookQuestionRecord` 的业务代码仍以明文手机号进行保存、查询和展示，安全字段未被使用。
+- 当前问题：032 需求已完成部分数据库字段添加（测试库已执行 DDL），但目标表业务代码仍有明文手机号保存、查询和展示链路未改全，安全字段未被完整使用。
 - 当前行为：各 Service 直接 `setPhone()` 保存明文，查询时 `eq(phone, xxx)`，列表展示直接返回 `phone` 字段。两个工程中至少 10+ 处 Service 方法涉及手机号读写。
 - 目标行为：保存时同步写入 `phone_mask`、`phone_md5`、`phone_aes`；查询时使用 `phone_md5` 等值匹配；展示时返回 `phone_mask`。后端需兼容前端传入的明文手机号和加密密文。
-- 非目标：本次不做历史数据回填、不清空原 `phone` 明文字段、不改造 `drh_applet_user`（已完成）、不改造 `drh_live_user`（含 `app_phone`，后续由其他同事处理）、不改造 `drh_external_book_question_record`（后续由其他同事处理）。
+- 非目标：本次不做历史数据回填、不批量清空原 `phone` 明文字段、不改造任何 `app_phone` 相关字段或接口；非目标表中的 `phone` 使用点只做静态提示，不改业务逻辑。
 
 ## 用户场景与测试 *(必填)*
 
 ### 用户故事 1 - 新增 / 修改记录时同步写入安全字段（优先级：P1）
 
-当业务代码保存含手机号的 `H5Order` 或 `BookQuestionRecord` 记录时，系统必须自动计算并写入 `phone_mask`、`phone_md5`、`phone_aes` 三个字段。
+当业务代码保存或更新目标表中含手机号的记录时，系统必须自动计算并写入 `phone_mask`、`phone_md5`、`phone_aes` 三个字段。
 
 **独立测试**：对每张目标表执行新增操作后，检查数据库中 `phone_mask`、`phone_md5`、`phone_aes` 均有值且与 `phone` 一致。
 
@@ -28,7 +28,7 @@
 
 ### 用户故事 2 - 按手机号查询使用 MD5 等值匹配（优先级：P1）
 
-当业务代码按手机号查询 `H5Order` 或 `BookQuestionRecord` 记录时，应先将查询条件中的手机号计算 MD5，再用 `phone_md5` 字段做等值匹配。
+当业务代码按手机号查询目标表记录时，应先将查询条件中的手机号计算 MD5，再用 `phone_md5` 字段做等值匹配。
 
 **独立测试**：执行查询后，确认 SQL 日志或 MyBatis 参数中使用 `phone_md5 = ?` 而非 `phone = ?`。
 
@@ -82,16 +82,131 @@
 | 数据库表 | drh 工程实体 | ju-chat 工程实体 | 手机号字段 | 模块 |
 |---------|-------------|-----------------|-----------|------|
 | `drh_h5_order` | `H5Order`（drh-common） | `H5OrderDO`（ai-common） | `phone` | drh: pay / endpoint / kk-cms / callback / media-process; ju-chat: ai |
+| `drh_live_user` | `LiveUser`（drh-common） | `LiveUserDO`（ai-common） | `phone` | drh: endpoint / pay; ju-chat: ai |
+| `drh_applet_user` | `AppletUser`（drh-common） | `AppletUserDo`（ai-common） | `phone` | drh: endpoint / callback / kk-cms / media-process; ju-chat: ai |
 | `drh_book_question_record` | `BookQuestionRecord`（drh-common） | `BookQuestionRecordDO`（ai-common） | `phone` | drh: endpoint / kk-cms / media-process; ju-chat: ai |
+| `drh_external_book_question_record` | `ExternalBookQuestionRecord`（drh-common） | `ExternalBookQuestionRecordDO`（ai-common） | `phone` | drh: kk-cms / media-process; ju-chat: ai |
+| `drh_book_edit_address_compensation` | - | `BookEditAddressCompensationDO`（ai-common） | `phone` | ju-chat: ai |
+| `drh_real_address_record` | `RealGoodsAddressRecord`（drh-common） | `RealGoodsAddressRecordDO`（ai-common） | `phone` | drh: endpoint / kk-cms / media-process; ju-chat: ai / lms |
 
 ### 不涉及（本次排除）
 
-| 数据库表 | 排除原因 |
-|---------|---------|
-| `drh_applet_user` | 整改已完成 |
-| `drh_live_user` | `app_phone` 及 `phone` 由其他同事后续处理 |
-| `drh_external_book_question_record` | 由其他同事后续处理 |
-| `drh_book_edit_address_compensation` | 本次未提及 |
+| 数据库表或字段 | 排除原因 |
+|---------------|---------|
+| `drh_live_user.app_phone` | 用户明确说明 `app_phone` 不处理，不新增、不查询、不同步 `app_phone_mask/app_phone_md5/app_phone_aes` |
+| 非上述 7 张目标表中的 `phone` | 只整理静态提示，暂不修改业务逻辑 |
+
+### 数据库 SQL 变更
+
+SQL 文件已同步放在本规格目录：[`phone-security-d006.sql`](./phone-security-d006.sql)。
+
+执行口径：
+
+- 032 已执行过 6 张表 DDL 的环境，本次通常只需要确认 6 张表字段/索引存在，并追加 `drh_real_address_record` 三字段和 `phone_md5` 索引。
+- 新环境按下方完整 7 张目标表口径执行；执行前先用 `information_schema` 检查字段和索引，已存在则跳过，避免重复 `ADD COLUMN` / `ADD INDEX`。
+- `app_phone` 不在本次 SQL 范围内；即使历史环境存在 `app_phone_mask/app_phone_md5/app_phone_aes`，本次代码也不读写它们。
+
+```sql
+-- 检查目标字段是否已存在
+SELECT TABLE_NAME, COLUMN_NAME
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME IN (
+    'drh_h5_order',
+    'drh_live_user',
+    'drh_applet_user',
+    'drh_book_question_record',
+    'drh_external_book_question_record',
+    'drh_book_edit_address_compensation',
+    'drh_real_address_record'
+  )
+  AND COLUMN_NAME IN ('phone_mask', 'phone_md5', 'phone_aes')
+ORDER BY TABLE_NAME, COLUMN_NAME;
+
+-- 检查 phone_md5 索引是否已存在
+SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME
+FROM information_schema.STATISTICS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME IN (
+    'drh_h5_order',
+    'drh_live_user',
+    'drh_applet_user',
+    'drh_book_question_record',
+    'drh_external_book_question_record',
+    'drh_book_edit_address_compensation',
+    'drh_real_address_record'
+  )
+  AND COLUMN_NAME = 'phone_md5'
+ORDER BY TABLE_NAME, INDEX_NAME;
+
+-- 完整目标表 DDL；已存在的字段/索引需跳过
+ALTER TABLE drh_h5_order
+  ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
+  ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
+  ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_h5_order_phone_md5 (phone_md5);
+
+ALTER TABLE drh_live_user
+  ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
+  ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
+  ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_live_user_phone_md5 (phone_md5);
+
+ALTER TABLE drh_applet_user
+  ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
+  ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
+  ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_applet_user_phone_md5 (phone_md5);
+
+ALTER TABLE drh_book_question_record
+  ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
+  ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
+  ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_book_q_record_phone_md5 (phone_md5);
+
+ALTER TABLE drh_external_book_question_record
+  ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
+  ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
+  ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_ext_book_q_record_phone_md5 (phone_md5);
+
+ALTER TABLE drh_book_edit_address_compensation
+  ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
+  ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
+  ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_book_addr_comp_phone_md5 (phone_md5);
+
+ALTER TABLE drh_real_address_record
+  ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
+  ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
+  ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_real_addr_phone_md5 (phone_md5);
+```
+
+业务 SQL 改造口径：
+
+```sql
+-- 原手机号等值查询
+WHERE phone = ?
+
+-- 改为：Java 侧先计算 MD5，再用 phone_md5 匹配
+WHERE phone_md5 = ?
+
+-- 原批量手机号查询
+WHERE phone IN (?, ?, ...)
+
+-- 改为：Java 侧批量计算 MD5
+WHERE phone_md5 IN (?, ?, ...)
+
+-- 原仅更新明文手机号
+SET phone = ?
+
+-- 改为同步写三类安全字段
+SET phone = ?, phone_mask = ?, phone_md5 = ?, phone_aes = ?
+
+-- 展示/列表不再直接返回明文 phone
+SELECT phone_mask, phone_aes
+```
 
 ### 新增实体字段
 
