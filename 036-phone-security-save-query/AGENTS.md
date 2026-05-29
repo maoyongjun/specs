@@ -18,6 +18,7 @@
 - 改造展示链路：列表和导出接口返回 `phone_mask` 而非明文 `phone`。
 - 前端兼容：`createAesInfo()` 必须兼容前端传入的明文手机号和 AES 加密密文。
 - 单元测试：为 `createAesInfo()` 和前端兼容逻辑编写单元测试。
+- 历史补数：在 `C:\workspace\ju-chat\data-RC\juzi-service` 增加补数接口，后台补齐目标表安全字段；补数范围包含 `drh_live_user.app_phone` 的 `app_phone_*` 三字段。
 
 ## 表与实体口径
 
@@ -31,9 +32,9 @@
 | `drh_book_edit_address_compensation` | - | `BookEditAddressCompensationDO`（ai-common） |
 | `drh_real_address_record` | `RealGoodsAddressRecord`（drh-common） | `RealGoodsAddressRecordDO`（ai-common） |
 
-## 不涉及（本次排除）
+## 不涉及（在线代码改造排除）
 
-- `app_phone` 完全排除，不新增、不查询、不同步 `app_phone_mask/app_phone_md5/app_phone_aes`。
+- `app_phone` 在线保存 / 查询 / 展示链路不改造；但历史补数接口需要读取 `drh_live_user.app_phone` 并写入已有 `app_phone_mask/app_phone_md5/app_phone_aes`。
 - 非上述目标表的 `phone` 使用点只整理提示，暂不改业务逻辑。
 
 ## DataSecurity 工具类
@@ -67,6 +68,7 @@
 - ju-chat 工程依赖确认：ai 模块是否能访问 drh-common 的 `DataSecurity*` 类。
 - 前端兼容确认：`DataSecurityUtil.aesDecrypt()` 对明文输入的行为。
 - 远程 FC 调用超时策略：`DataSecurityInvoke.doDsTask()` 失败时的降级处理。
+- 历史补数接口：必须单实例防重入，最多 4 个并发调用 FC，按 300 条批量更新，日志打印批次进度。
 
 ## 重点代码位置
 

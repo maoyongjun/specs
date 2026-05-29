@@ -1,7 +1,8 @@
 -- 036-phone-security-save-query
 -- Phone security fields for the current 7 target tables.
 -- Execute with migration-tool guards: skip columns / indexes that already exist.
--- app_phone is intentionally excluded from this change.
+-- app_phone columns are provided by 032-phone-security-columns.
+-- Online save/query code still excludes app_phone; historical backfill uses existing app_phone_* columns.
 
 -- Check columns before applying DDL.
 SELECT TABLE_NAME, COLUMN_NAME

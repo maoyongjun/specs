@@ -3,14 +3,14 @@
 **功能目录**：`036-phone-security-save-query`  
 **创建日期**：`2026-05-28`  
 **状态**：Draft  
-**输入**：在 032-phone-security-columns 数据库字段已添加的基础上，补全 7 张目标表的手机号安全字段保存、查询、展示和明文读取链路代码改造。涉及两个工程：`C:\workspace\drh`（主业务微服务）和 `C:\workspace\ju-chat\kkhc\kkhc-idc\ai`（AI 模块）。目标表为 `drh_h5_order`、`drh_live_user`、`drh_applet_user`、`drh_book_question_record`、`drh_external_book_question_record`、`drh_book_edit_address_compensation`、`drh_real_address_record`。`app_phone` 明确不处理；后续 `phone` 字段会清空，业务不得依赖数据库实体 `getPhone()` 作为明文来源。
+**输入**：在 032-phone-security-columns 数据库字段已添加的基础上，补全 7 张目标表的手机号安全字段保存、查询、展示和明文读取链路代码改造，并追加历史数据回填接口。涉及两个工程：`C:\workspace\drh`（主业务微服务）和 `C:\workspace\ju-chat\kkhc\kkhc-idc\ai`（AI 模块），历史回填接口落在 `C:\workspace\ju-chat\data-RC\juzi-service`。目标表为 `drh_h5_order`、`drh_live_user`、`drh_applet_user`、`drh_book_question_record`、`drh_external_book_question_record`、`drh_book_edit_address_compensation`、`drh_real_address_record`。在线保存 / 查询 / 展示代码仍不改造 `app_phone`；历史回填补数据需要包含 `drh_live_user.app_phone` 的 `app_phone_mask`、`app_phone_md5`、`app_phone_aes`。后续 `phone` 字段会清空，业务不得依赖数据库实体 `getPhone()` 作为明文来源。
 
 ## 背景
 
 - 当前问题：032 需求已完成部分数据库字段添加（测试库已执行 DDL），但目标表业务代码仍有明文手机号保存、查询和展示链路未改全，安全字段未被完整使用。
 - 当前行为：各 Service 直接 `setPhone()` 保存明文，查询时 `eq(phone, xxx)`，列表展示直接返回 `phone` 字段。两个工程中至少 10+ 处 Service 方法涉及手机号读写。
 - 目标行为：保存时同步写入 `phone_mask`、`phone_md5`、`phone_aes`；查询时使用 `phone_md5` 等值匹配；展示时返回 `phone_mask`。后端需兼容前端传入的明文手机号和加密密文。
-- 非目标：本次不做历史数据回填、不批量清空原 `phone` 明文字段、不改造任何 `app_phone` 相关字段或接口；非目标表中的 `phone` 使用点只做静态提示，不改业务逻辑。
+- 非目标：本次不批量清空原 `phone` / `app_phone` 明文字段；在线保存、查询、展示链路仍不改造 `app_phone`；非目标表中的 `phone` 使用点只做静态提示，不改业务逻辑。
 
 ## 用户场景与测试 *(必填)*
 
@@ -75,6 +75,19 @@
 4. **Given** 非法密文输入（解密失败），**When** 执行 `createAesInfo()` 单测，**Then** 不抛异常，安全字段为 `NULL`。
 5. **Given** MD5 查询工具方法，**When** 执行单测，**Then** 输出与 `DataSecurityInvoke.doDsTask()` 的 `getMd5()` 口径一致。
 
+### 用户故事 6 - 历史数据回填接口（优先级：P1）
+
+运维或研发调用 `juzi-service` 的后台接口后，接口立即返回受理成功，服务在后台逐表补齐历史记录的安全字段。
+
+**独立测试**：调用 `POST /admin/phone-security-backfill/start` 后立即收到 `OK`，后台日志持续打印各表进度。
+
+**验收场景**：
+
+1. **Given** 目标表存在 `phone` 非空且 `phone_mask/phone_md5/phone_aes` 任一为空的历史记录，**When** 后台回填运行，**Then** 通过 `DataSecurity-test` 计算并更新三个安全字段。
+2. **Given** `drh_live_user.app_phone` 非空且 `app_phone_mask/app_phone_md5/app_phone_aes` 任一为空，**When** 后台回填运行，**Then** 同样计算并更新 `app_phone_*` 三字段。
+3. **Given** 回填任务正在执行，**When** 再次调用启动接口，**Then** 返回正在运行提示，不启动第二个并发补数任务。
+4. **Given** 后台任务处理历史数据，**When** 调用数据安全 FC 函数，**Then** 最多 4 个并发调用；数据库更新按 300 条一批执行。
+
 ## 数据模型与字段
 
 ### 涉及表和实体
@@ -83,6 +96,7 @@
 |---------|-------------|-----------------|-----------|------|
 | `drh_h5_order` | `H5Order`（drh-common） | `H5OrderDO`（ai-common） | `phone` | drh: pay / endpoint / kk-cms / callback / media-process; ju-chat: ai |
 | `drh_live_user` | `LiveUser`（drh-common） | `LiveUserDO`（ai-common） | `phone` | drh: endpoint / pay; ju-chat: ai |
+| `drh_live_user` | `LiveUser`（drh-common） | `LiveUserDO`（ai-common） | `app_phone` | 仅历史回填补齐 `app_phone_*`，在线代码改造仍排除 |
 | `drh_applet_user` | `AppletUser`（drh-common） | `AppletUserDo`（ai-common） | `phone` | drh: endpoint / callback / kk-cms / media-process; ju-chat: ai |
 | `drh_book_question_record` | `BookQuestionRecord`（drh-common） | `BookQuestionRecordDO`（ai-common） | `phone` | drh: endpoint / kk-cms / media-process; ju-chat: ai |
 | `drh_external_book_question_record` | `ExternalBookQuestionRecord`（drh-common） | `ExternalBookQuestionRecordDO`（ai-common） | `phone` | drh: kk-cms / media-process; ju-chat: ai |
@@ -93,7 +107,7 @@
 
 | 数据库表或字段 | 排除原因 |
 |---------------|---------|
-| `drh_live_user.app_phone` | 用户明确说明 `app_phone` 不处理，不新增、不查询、不同步 `app_phone_mask/app_phone_md5/app_phone_aes` |
+| `drh_live_user.app_phone` 在线保存 / 查询 / 展示链路 | 代码改造仍不处理 `app_phone`；仅历史回填接口补齐已有 `app_phone_*` 字段 |
 | 非上述 7 张目标表中的 `phone` | 只整理静态提示，暂不修改业务逻辑 |
 
 ### 数据库 SQL 变更
@@ -104,7 +118,7 @@ SQL 文件已同步放在本规格目录：[`phone-security-d006.sql`](./phone-s
 
 - 032 已执行过 6 张表 DDL 的环境，本次通常只需要确认 6 张表字段/索引存在，并追加 `drh_real_address_record` 三字段和 `phone_md5` 索引。
 - 新环境按下方完整 7 张目标表口径执行；执行前先用 `information_schema` 检查字段和索引，已存在则跳过，避免重复 `ADD COLUMN` / `ADD INDEX`。
-- `app_phone` 不在本次 SQL 范围内；即使历史环境存在 `app_phone_mask/app_phone_md5/app_phone_aes`，本次代码也不读写它们。
+- `app_phone_*` 字段来自 032 的 `drh_live_user` DDL，本次 D006 SQL 不重复添加；历史回填接口会读取 `drh_live_user.app_phone` 并写入已有 `app_phone_mask/app_phone_md5/app_phone_aes`。
 
 ```sql
 -- 检查目标字段是否已存在
@@ -361,10 +375,12 @@ String md5 = output.getMd5();
 - 关键参数来源和赋值时机：
   - `phone`：来源于前端请求（可能是 AES 密文或明文），经 `createAesInfo()` 兼容处理后为明文；赋值时机为 `createAesInfo()` 内部。
   - `phone_mask`、`phone_md5`、`phone_aes`：来源于 `DataSecurityInvoke.doDsTask()` 的返回值（远程 FC 函数 `DataSecurity-test`）；赋值时机为 `createAesInfo()` 调用后、`save()` / `insert()` 调用前。
+  - 历史回填时 `phone` 和 `app_phone` 均来自数据库已有明文字段；回填接口只写安全字段，不改写原始手机号字段。
 - 下游读取字段清单：
   - 列表展示读取 `phoneMask`。
   - 等值查询读取 `phoneMd5`。
   - 单条解密读取 `phoneAes`。
+  - `app_phone_*` 仅作为历史补齐数据落库，本次不接入线上查询 / 展示链路。
 - 空对象 / 占位对象风险：
   - `DataSecurityInput` 必须 `setData()` 后再调用 `doDsTask()`，不允许传空 `data` 进入加密流程。
   - `DataSecurityOutput` 返回值需检查 `getMask()`、`getMd5()`、`getAesEncrypt()` 是否为空（远程 FC 调用可能超时或返回异常）。
@@ -372,6 +388,7 @@ String md5 = output.getMd5();
   - 必须先兼容处理前端输入 → 再调用 `doDsTask`（远程 FC） → 再 `set` 安全字段 → 最后 `save()`。
   - 不允许先 `save()` 后补安全字段（存在事务不一致风险）。
   - `DataSecurityInvoke.doDsTask()` 是远程 FC 调用，需考虑超时和失败场景。
+  - 历史回填接口是一次性运维入口，必须防止同一服务实例内重复启动，并限制 FC 调用并发数。
 - 旧逻辑保持：
   - 原 `phone` 字段仍然保留并存明文，旧查询在本阶段可并存（渐进式改造）。
   - 不改变原有事务边界、异常处理、日志输出和 fallback 行为。
@@ -381,6 +398,7 @@ String md5 = output.getMd5();
   - 批量 `in` 查询（如 `getPhoneResult()`、`getPhoneChannelSet()`）是否本次改造，还是标记 TODO 后续处理。
   - ju-chat 工程 `ai` 模块如何调用 `DataSecurity*` 类——是否需要将 drh-common 的 datasec 包抽出为独立依赖，还是在 ai 模块中复制。
   - `DataSecurityInvoke.doDsTask()` 远程 FC 调用的超时时间和失败降级策略。
+  - 历史回填默认按当前数据库连接执行，不额外切换数据源；执行前需确认目标环境和表字段已准备好。
 
 ## 边界情况
 
@@ -389,6 +407,7 @@ String md5 = output.getMd5();
 - 前端传加密密文（整改后）：`DataSecurityUtil.aesDecrypt()` 正常解密，`createAesInfo()` 使用解密后明文计算安全字段。
 - `DataSecurityInvoke.doDsTask()` 远程 FC 调用超时或返回 `null` 时：需做空值保护，安全字段保持 `NULL`，记录 ERROR 日志，不影响主流程保存。
 - 历史数据 `phone_mask` 为 NULL 时：列表展示做 fallback 处理（从 `phone` 现算掩码或显示为空），不直接暴露明文。
+- 历史回填只处理原始手机号非空且三个安全字段任一为空的记录；FC 调用失败的记录本次跳过并打印日志，后续可再次启动接口重试。
 - 更新手机号场景：更新 `phone` 时必须同步重新计算三个安全字段。
 - 批量导入 / MQ 消费写入场景：同样需要调用 `createAesInfo()`，不能绕过。
 - drh-kk-cms `editAddressV2()` 中有 Redis 锁基于 phone+goodsId，改造后需确认锁 key 不受影响（锁 key 应仍使用明文 phone）。
@@ -406,9 +425,11 @@ String md5 = output.getMd5();
 - **FR-007**：系统 MUST 在列表 / 导出接口中将手机号展示来源从 `phone` 改为 `phoneMask`。
 - **FR-008**：系统 MUST 在手机号为空、解密失败或远程 FC 调用失败时做安全降级，不抛异常，安全字段保持 `NULL`。
 - **FR-009**：系统 MUST NOT 在本次改造中删除原 `phone` 字段或清空其值。
-- **FR-010**：系统 MUST NOT 改造 `drh_applet_user`、`drh_live_user`、`drh_external_book_question_record`。
-- **FR-011**：系统 MUST NOT 在本次改造中执行历史数据回填。
+- **FR-010**：系统 MUST NOT 在在线保存、查询、展示链路中改造 `drh_live_user.app_phone`。
+- **FR-011**：系统 MUST 在 `juzi-service` 提供历史回填启动接口，调用后立即返回受理成功并由后台执行补数。
 - **FR-012**：系统 MUST 为 `createAesInfo()` 方法和前端兼容逻辑编写单元测试，覆盖明文输入、密文输入、空值输入、非法密文输入四种场景。
+- **FR-013**：历史回填 MUST 覆盖 7 张目标表的 `phone_*` 三字段，并额外覆盖 `drh_live_user.app_phone_*` 三字段。
+- **FR-014**：历史回填 MUST 限制数据安全 FC 调用最多 4 并发，并按 300 条一批执行数据库批量更新。
 
 ## 成功标准 *(必填)*
 
@@ -420,6 +441,7 @@ String md5 = output.getMd5();
 - **SC-006**：原有业务流程不回归（事务、异常、日志、幂等性不变）。
 - **SC-007**：前端传明文手机号和传加密密文时，安全字段计算结果一致。
 - **SC-008**：单元测试覆盖明文输入、密文输入、空值、非法密文四种场景，全部通过。
+- **SC-009**：调用 `POST /admin/phone-security-backfill/start` 后立即返回 `OK` 和 `runId`，后台日志能看到各表 / 字段的选中、加密失败、批量更新进度。
 
 ## 假设
 
@@ -431,6 +453,8 @@ String md5 = output.getMd5();
 - MyBatis-Plus 的 `@TableField` 或 `LambdaQueryWrapper` 可正确映射新增字段到下划线列名。
 - 测试库已执行 032 的 DDL，新增字段已可用。
 - `DataSecurityUtil.aesDecrypt()` 对明文输入会抛异常或返回 `null` / 无意义值，可通过 try-catch + 回退实现兼容。
+- `juzi-service` 运行时数据库连接指向需要回填的目标库，且 `drh_live_user` 已存在 `app_phone_mask/app_phone_md5/app_phone_aes`。
+- 历史回填接口只保证单实例内不重复启动；多实例部署时调用方需只打到一个实例或在执行窗口内保证只调用一次。
 
 ## 执行记录
 
@@ -473,5 +497,16 @@ String md5 = output.getMd5();
 - 保存/更新：H5Order 创建、图书登记、非留资登记、真实地址记录、学员/线索手机号更新、AI 补偿保存均同步写 `phone_mask/phone_md5/phone_aes`；`RealGoodsAddressRecord` 保存前调用 `createAesInfo()`。
 - 查询/读取：目标表按手机号等值查询改用 `phone_md5`；支付回调、ERP/物流/补偿等需要明文的链路优先用方法入参，其次从 `phone_aes` 解密；展示与订单查询返回 `phone_mask` 或由 `phone_aes` 本地掩码。
 - 接口影响：`/h5/order/pay`、`/h5/order/open/pay`、`/h5/order/wx/notify`、`/h5/order/query/phone`、`/ali/pay/*`；DRH 图书登记 `editAddress/editAddressV2/queryLeads`；AI `/book/getBookQuestionRecordByAppletUserId`；`/external/bookQuestionRecord/create`、`/count`、`/queryHistoryPage`、`/queryHistoryExpressNo`；AI `/book-edit-address-compensation/saveOne`、`/compensationRun`；真实地址/物流查询 `/realGoodsAddressRecord/*`、`/bookPath/queryTrackNumOrder` 相关返回展示。
-- 排除项：`app_phone` 未处理；非目标表 phone 查询只列入静态提示，未改业务逻辑。
+- 排除项（在线代码改造口径）：`app_phone` 未处理；非目标表 phone 查询只列入静态提示，未改业务逻辑。
 - 待测试重点：7 张表新增/更新后三个安全字段均有值；手动清空 `phone` 后核心查询、展示、支付回调、物流/ERP 推送和补偿链路可用；SQL 日志确认目标表手机号查询走 `phone_md5`。
+
+### D007 - 历史数据回填接口补充
+
+- 触发原因：用户补充本次需要补历史数据，且补数据范围包含 `drh_live_user.app_phone`；前面在线代码改造仍不用处理 `app_phone`。
+- 修正内容：
+  - 新增 `juzi-service` 接口 `POST /admin/phone-security-backfill/start`，接口立即返回受理成功，后台异步补数。
+  - 新增 `GET /admin/phone-security-backfill/status` 查询单实例当前回填状态。
+  - 回填目标包含 7 张目标表的 `phone_mask/phone_md5/phone_aes`，以及 `drh_live_user.app_phone_mask/app_phone_md5/app_phone_aes`。
+  - 后台任务最多 4 个并发调用数据安全 FC 函数，数据库每 300 条执行一次批量更新，日志打印每批进度。
+- 文档同步：已更新输入、非目标、涉及字段、用户故事、需求、成功标准和边界情况，区分“在线代码不处理 app_phone”和“历史回填包含 app_phone”。
+- 验证建议：执行前确认 `juzi-service` 数据源指向目标库，且 032 / D006 字段均已存在；执行时通过日志观察 `runId`、target、lastId、batchUpdated 和失败数。

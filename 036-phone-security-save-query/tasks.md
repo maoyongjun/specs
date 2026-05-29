@@ -74,6 +74,15 @@
 
 - [ ] T037 同步更新 `spec.md`、`tasks.md`、`AGENTS.md` 或 checklist 中因实现产生的口径变化。
 
+### 3.7 历史数据回填接口（juzi-service）
+
+- [ ] T049 在 `C:\workspace\ju-chat\data-RC\juzi-service` 新增历史回填启动接口，调用后立即返回成功，后台异步执行。
+- [ ] T050 回填目标覆盖 7 张目标表的 `phone_mask/phone_md5/phone_aes`，并额外覆盖 `drh_live_user.app_phone_mask/app_phone_md5/app_phone_aes`。
+- [ ] T051 后台回填只处理原手机号非空且安全字段任一为空的记录，不修改 `phone` / `app_phone` 原字段。
+- [ ] T052 数据安全 FC 调用最多 4 并发，数据库更新按 300 条批量执行一次。
+- [ ] T053 日志打印 `runId`、当前表字段、`lastId`、批次选中数、加密成功数、失败数、批量更新数和累计进度。
+- [ ] T054 单实例内防重复启动；重复调用返回正在运行提示。
+
 ## Phase 4：单元测试
 
 - [ ] T038 编写 `H5Order.createAesInfo()` 单元测试（drh-common）：
@@ -154,8 +163,19 @@
 - 修正内容：
   - 在 `spec.md` 增加“数据库 SQL 变更”小节，补充 7 张目标表完整 DDL、执行前 `information_schema` 检查 SQL、业务 SQL 改造口径。
   - 新增 `phone-security-d006.sql`，便于 DBA / 测试直接查看当前口径 SQL。
-  - 明确 `app_phone` 不在本次 SQL 范围内；历史环境若已存在 `app_phone_*` 字段，本次代码也不读写。
+  - 明确 `app_phone` 不在 D006 SQL 范围内；`app_phone_*` 字段来自 032，历史回填接口会读写这些已有安全字段。
 - 验证建议：执行前确认字段和索引是否已存在；032 已执行过 6 张表 DDL 的环境，本次重点追加 `drh_real_address_record`。
+
+### D008 - 历史数据回填接口补充
+
+- 触发原因：用户要求在 `juzi-service` 增加补历史数据接口，并明确本次补数据包含 `app_phone`；前面在线代码改造仍不用处理 `app_phone`。
+- 实现内容：
+  - 新增 `POST /admin/phone-security-backfill/start`，返回 `runId`、批次大小和 FC 并发上限后异步执行。
+  - 新增 `GET /admin/phone-security-backfill/status`，便于查看当前单实例补数状态。
+  - 回填目标：`drh_h5_order.phone`、`drh_live_user.phone`、`drh_live_user.app_phone`、`drh_applet_user.phone`、`drh_book_question_record.phone`、`drh_external_book_question_record.phone`、`drh_book_edit_address_compensation.phone`、`drh_real_address_record.phone`。
+  - 约束：最多 4 个并发调用 `DataSecurity/DataSecurity-test`，每 300 条做一次批量更新，日志输出每批进度。
+- 文档同步：同步更新 `spec.md`、`tasks.md`、`AGENTS.md`。
+- 验证建议：执行前确认目标环境字段存在，执行后按表抽样校验 `*_mask/*_md5/*_aes` 三字段均已填充。
 
 ### D005 - 纠正记录模板
 
