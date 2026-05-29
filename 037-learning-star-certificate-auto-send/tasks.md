@@ -69,6 +69,7 @@
 - [ ] T038 在 `kkhc-bizcenter\schedule\task` 增加 Job，参考 `BookLogisticsSignStatusJob` 异步调用并记录响应。
 - [ ] T039 保持本需求不改图书物流、AI 权限、现有文字发送和其他定时任务逻辑。
 - [x] T052 在 `juzi-service` 配置管理界面新增学习之星测试发送台入口、页面和首页跳转。
+- [x] T053 为 `juzi-service` 学习之星测试发送台补充真实发送按钮、后端环境控制代理接口和图片版取号引导。
 
 ## Phase 4：测试与验证
 
@@ -135,3 +136,9 @@
 - 执行内容：将奖状显示昵称的截断长度调整为 6 位，超过后追加 `...`；话术仍使用完整昵称，不做截断。
 - 验证方式：更新渲染器单元测试，覆盖奖状显示昵称和 SVG 输出中的截断结果。
 - 自检结论：改动仅影响奖状图片展示，不影响消息话术。
+
+### D008 - 学习之星测试发送台补充真实发送能力
+
+- 执行内容：在 `data-RC/juzi-service` 增加 `GET /admin/learning-star-certificate-test/env` 和 `POST /admin/learning-star-certificate-test/send`，后端根据 `mq.juzi_tag` 选择测试/正式 `kkhc-idc-ai` 网关地址；页面补充发送按钮、最近一次结果、目标环境展示、请求体预览和图片版取号引导，并将该页面纳入专项密码校验。
+- 验证方式：运行 `mvn -pl juzi-service -DskipTests compile` 和 `mvn -pl juzi-service -DskipTests=false -Dtest=LearningStarCertificateTestSendServiceTest test`，并静态检查页面请求只调用本服务 admin 接口，不由前端选择环境。
+- 自检结论：学习之星测试发送台从“接口说明页”升级为“可执行操作台”，环境由后端统一控制。

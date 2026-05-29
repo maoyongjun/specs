@@ -2,7 +2,7 @@
 
 **功能目录**：`037-learning-star-certificate-auto-send`  
 **创建日期**：`2026-05-28`  
-**状态**：Implemented，已补充昵称优先级、测试发送接口、FC 累计延迟调度，并在 `juzi-service` 配置管理界面新增测试发送入口  
+**状态**：Implemented，已补充昵称优先级、测试发送接口、FC 累计延迟调度，并在 `juzi-service` 配置管理界面新增可直接发送的测试发送台
 **输入**：基于 `C:\workspace\ju-chat\learning-star-certificate-demo` 的学习之星奖状图片生成方案，在 `kkhc-idc-ai` 增加可被定时任务调用的接口，在 `kkhc-bizcenter\schedule` 增加定时 Job。按钢琴 AI 营期、渠道教辅类型、D3/D4 时间规则圈选学员，通过 OTS 标签确认学员所属营期以及 D1/D2 完课、D3 到课状态，按营期主讲老师生成签名奖状，图片上传 OSS 后使用可访问地址，通过 RocketMQ 延迟消息在 30 分钟内随机分散整组任务，消费后再用函数计算累计延迟调度“两段文字 + 图片 + 两段文字”。
 
 ## 背景
@@ -171,6 +171,9 @@ where a.id = #{drh_live_camp_date.camp_id}
 - 入参：`userId`、`externalUserId`；`userId` 为企微销售 userid，对应 `KkEmpDo.qyvxUserId`。
 - 测试发送跳过营期标签、完课标签、到课标签校验，不投递 RocketMQ。
 - 测试发送仍生成奖状、上传 OSS、构造正式 5 条话术与图片消息，并复用 FC 累计延迟调度，确保文字和图片之间保留 4-7 秒间隔。
+- `juzi-service` 配置管理页提供学习之星测试发送台，页面调用本服务 `POST /admin/learning-star-certificate-test/send`，由后端代理转发到 `kkhc-idc-ai` 测试发送接口。
+- `juzi-service` 后端根据当前服务配置控制目标环境：`mq.juzi_tag = test` 时走 `http://test-kkapi.likeduoduiyi.cn/sae-gateway/kkhc-idc-ai`，其他情况默认走 `http://kapi.likeduoduiyi.cn/sae-gateway/kkhc-idc-ai`；前端不提供环境选择。
+- 测试发送台必须包含发送按钮、最近一次调用结果、目标环境展示、请求体预览和带图片的 `externalUserId` 取号引导。
 
 ### 消息间隔配置
 
@@ -337,3 +340,9 @@ where a.id = #{drh_live_camp_date.camp_id}
 
 - 用户补充：昵称超过 6 位时，奖状里显示前 6 位并追加 `...`；话术里的昵称保持正常完整展示，不做截断。
 - 已同步到奖状渲染逻辑与测试用例，确保仅影响图片中的显示名。
+
+### D008 - 学习之星测试发送台补充真实发送能力
+
+- 用户补充：配置管理界面的学习之星测试发送台需要带“发送测试奖状”按钮，且带图片版用户取号引导；测试环境和正式环境由后端直接控制。
+- 已同步为：`juzi-service` 页面调用本服务 admin 代理接口，后端根据 `mq.juzi_tag` 选择测试/正式 `kkhc-idc-ai` 网关地址并转发请求，前端只展示当前后端目标环境和调用结果；页面使用专项密码校验。
+- 验证记录：`juzi-service` 编译通过，且新增后端环境选择单元测试通过。
