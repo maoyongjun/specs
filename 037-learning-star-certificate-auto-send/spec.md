@@ -2,7 +2,7 @@
 
 **功能目录**：`037-learning-star-certificate-auto-send`  
 **创建日期**：`2026-05-28`  
-**状态**：Implemented，已补充昵称优先级、测试发送接口和 FC 累计延迟调度  
+**状态**：Implemented，已补充昵称优先级、测试发送接口、FC 累计延迟调度，并在 `juzi-service` 配置管理界面新增测试发送入口  
 **输入**：基于 `C:\workspace\ju-chat\learning-star-certificate-demo` 的学习之星奖状图片生成方案，在 `kkhc-idc-ai` 增加可被定时任务调用的接口，在 `kkhc-bizcenter\schedule` 增加定时 Job。按钢琴 AI 营期、渠道教辅类型、D3/D4 时间规则圈选学员，通过 OTS 标签确认学员所属营期以及 D1/D2 完课、D3 到课状态，按营期主讲老师生成签名奖状，图片上传 OSS 后使用可访问地址，通过 RocketMQ 延迟消息在 30 分钟内随机分散整组任务，消费后再用函数计算累计延迟调度“两段文字 + 图片 + 两段文字”。
 
 ## 背景
@@ -326,3 +326,9 @@ where a.id = #{drh_live_camp_date.camp_id}
 - 用户补充测试接口输入 `userId`、`externalUserId`，跳过营期/完课/到课标签校验，不走 RocketMQ。
 - 用户补充正式消费和测试发送均通过函数计算延迟发送 5 条消息，单条间隔随机 4-7 秒，按学员整组累计延迟。
 - 已将规格同步为：RocketMQ 仍只负责学员整组的分钟级分散，MQ 消费后调度 5 个 FC 秒级延迟任务；部分调度失败由 MQ 重试，并通过每条 scheduled key 跳过已调度序号。
+
+### D006 - 补充 juzi-service 配置管理入口
+
+- 执行内容：在 `data-RC/juzi-service` 新增学习之星测试发送台页面，展示正式/测试环境完整 URL、`userId` / `externalUserId` 示例参数和“学员微信号从句子后台客户跟进复制”的说明；同时补充首页入口、admin page redirect 和 `WebConfig` 放行。
+- 验证方式：静态检查页面、首页入口和拦截器配置，并准备后续通过编译验证。
+- 自检结论：学习之星测试接口已补入配置管理界面，方便运营直接复制调用。

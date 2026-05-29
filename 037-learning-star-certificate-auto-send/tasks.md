@@ -68,6 +68,7 @@
 - [ ] T037 在 `kkhc-bizcenter\schedule` 增加 Feign 接口方法或独立 Feign，调用 `kkhc-idc-ai` 新接口。
 - [ ] T038 在 `kkhc-bizcenter\schedule\task` 增加 Job，参考 `BookLogisticsSignStatusJob` 异步调用并记录响应。
 - [ ] T039 保持本需求不改图书物流、AI 权限、现有文字发送和其他定时任务逻辑。
+- [x] T052 在 `juzi-service` 配置管理界面新增学习之星测试发送台入口、页面和首页跳转。
 
 ## Phase 4：测试与验证
 
@@ -122,3 +123,9 @@
 - 验证方式：运行 `mvn -pl ai -am -Dtest=LearningStarCertificateServiceImplTest test`。
 - 验证结果：通过，`Tests run: 14, Failures: 0, Errors: 0, Skipped: 0`。
 - 自检结论：学习之星新增逻辑已完成单元测试覆盖；仍需上线后通过日志观察 FC 异步调用真实 requestId 和字体加载情况。
+
+### D006 - 补充 juzi-service 配置管理入口
+
+- 执行内容：在 `data-RC/juzi-service` 新增学习之星测试发送台页面，展示正式/测试环境完整 URL、`userId` / `externalUserId` 示例参数和“学员微信号从句子后台客户跟进复制”的说明；同时补充首页入口、admin page redirect 和 `WebConfig` 放行。
+- 验证方式：静态检查页面、首页入口和拦截器配置，并准备后续通过编译验证。
+- 自检结论：学习之星测试接口已补入配置管理界面，方便运营直接复制调用。
