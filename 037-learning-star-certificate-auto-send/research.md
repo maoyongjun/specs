@@ -21,7 +21,7 @@
 - `BookLogisticsDelayConsumerClient` 展示了消费者订阅方式：topic 来自 `DelayProperties.topic`，tag 来自 listener 常量，group 优先从业务配置读取。
 - `BookLogisticsConfig.Notice.delayConsumerGroup` 是已有 group 配置项，默认值为 `GID_delay_book_logistics`；用户补充之前环境中写过 `delay-consumer-group: GID_delay_book_logistics_test`，学习之星可参考该配置项和命名方式。
 - `BookLogisticsDelayMqTest` 已有延迟投递测试参考，可复用其 producer mock 和断言思路。
-- `FcInvokeUtils.doTaskWithDelay` 在仓库中存在，但本需求不采用；原因是学习之星包含 5 条文本/图片消息，若分别延迟调用，触发时间可能错乱，导致学员看到的消息顺序不稳定。
+- `FcInvokeUtils.doTaskWithDelay` 在仓库中存在；学习之星消费到整组任务后使用累计 delaySeconds 调度 2 条消息，保证图片先发、合并文字后发。
 - `NotePicsServiceImpl` 展示了图片上传 OSS 并获取 CDN URL 的参考：`OssUtil.upload(resultStream, ossPath)` 后调用 `OssUtil.getCdnUrl(ossPath)`。
 - `TeachHelpEnum` 中 `BOOK(1)`、`HEZI(2)` 是图书/盒子渠道判断口径。
 - `EmpExternalUserDO` 映射 `drh_emp_external_user`，包含 `externalUserid`、`unionId`、`chatId`、`createTime`。
@@ -41,16 +41,16 @@
 5. 新增标签匹配器：在当前销售 `follow_user.tags` 中同时判断营期标签和学习状态标签；非图书要求 D1/D2 完课，图书要求 D1/D2 完课 + D3 到课。
 6. 图片生成代码从 demo 提炼到生产 service，模板和字体随 `kkhc-idc-ai` 资源打包。
 7. PNG 生成后用 `OssUtil.upload(InputStream, path)` 上传，使用 `OssUtil.getCdnUrl(path)` 得到发送 URL；图片消息只能使用该 OSS/CDN URL。
-8. 新增学习之星 RocketMQ 延迟任务 input，按学员维度承载 5 条待发送消息或可恢复这些消息的参数。
+8. 新增学习之星 RocketMQ 延迟任务 input，按学员维度承载 2 条待发送消息或可恢复这些消息的参数。
 9. 投递延迟消息时使用 `DelayProducerBean.sendTagMessage(...)`，topic 复用共有 `mq.delay.topic`，tag 使用学习之星新 tag；按学员随机 `delayMinutes`，范围 0 到 30 分钟；每个学员只投递一条整组任务。
-10. 新增学习之星延迟消费者，consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`，消费单条任务后按 1 到 5 顺序同步发送文字、文字、图片、文字、文字，禁止使用 `FcInvokeUtils.doTaskWithDelay` 分别延迟 5 条消息。
+10. 新增学习之星延迟消费者，consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`，消费单条任务后按 1 到 2 顺序调度图片、合并文字。
 11. 图片发送新增内部 helper，不直接复用只有文本字段的 `MsgSendInput`：
    - 文字可继续复用现有 `sendJuzi` 或统一走新 helper。
    - 图片 helper 直接构造 `JuziMessageDto`，设置 `messageType = 6` 和 `Payload.url`。
 12. 幂等设计：
    - Redis group key：`ai:learning-star:certificate:sent:{campDateId}:{externalUserId}`。
    - 每条消息 externalRequestId：`learning-star:{campDateId}:{externalUserId}:{seq}`。
-   - 延迟消息投递成功可记录投递计数；全部 5 条消费发送成功后写 sent key。
+   - 延迟消息投递成功可记录投递计数；全部 2 条消费调度成功后写 sent key。
    - 部分失败时允许 RocketMQ 重试，但 Juzi 层 externalRequestId 防止重复已接收消息。
 13. schedule 模块新增 Job 和 Feign 方法，参考 `BookLogisticsSignStatusJob` 的日志与异步调用模式。
 
@@ -63,7 +63,7 @@
 - 渠道缺失是否默认非图书会影响发送日期，本规格先采用保守跳过。
 - 现有 `sendJuzi` 不设置 `externalRequestId`，若文字复用现有方法，需补等效幂等能力或统一新建发送 helper。
 - 批量任务可能对 OTS、OSS、FC 形成突发压力，需要分页、限流和 summary 计数。
-- 如果把 5 条消息拆成 5 条独立延迟消息或 5 次 `doTaskWithDelay`，存在文本和图片乱序风险；本规格要求单学员单条整组 RocketMQ 延迟消息，消费时顺序发送。
+- 本规格要求单学员单条整组 RocketMQ 延迟消息，消费时按累计 delaySeconds 调度 2 条消息，顺序为图片、合并文字。
 - topic 是共有的，隔离主要依赖新 tag、专用 MessageType 和 consumer group 配置；实现时不能复用图书物流 tag。
 - RocketMQ 消费存在重试和重复消费可能，必须将学员整组 key 与每条 `externalRequestId` 一起纳入幂等测试。
 - OSS 上传成功但 MQ 投递失败会留下未发送图片文件；日志必须记录 `ossPath`、`campDateId`、`externalUserId`、`unionId`，便于排查和必要时清理。
@@ -81,8 +81,8 @@
 | 图片生成上传 | Mock 渲染器和 OssUtil 包装层，断言 OSS path、URL 非空且用于图片 payload |
 | RocketMQ 延迟投递 | Mock DelayProducerBean，断言单学员单条整组消息、共有 topic、新 tag、messageType、body、deliveryTime、随机延迟 0 到 30 分钟 |
 | RocketMQ 消费者配置 | 静态验证 topic 复用 `mq.delay.topic`，tag 为学习之星新 tag，consumer group 配置方式参考 `delay-consumer-group` |
-| 消息顺序 | Mock 延迟消费者和 FC 调用，消费一条整组任务后捕获 5 条 payload，顺序必须为文字、文字、图片、文字、文字 |
-| 乱序防护 | 静态搜索确认学习之星链路未使用 `FcInvokeUtils.doTaskWithDelay` 分别延迟 5 条消息 |
+| 消息顺序 | Mock 延迟消费者和 FC 调用，消费一条整组任务后捕获 2 条 payload，顺序必须为图片、合并文字 |
+| 乱序防护 | 测试确认学习之星链路使用累计 delaySeconds 调度图片和合并文字 |
 | 日志与 summary | Mock 成功/失败路径，断言 OSS 上传、MQ 投递、MQ 消费、FC 发送关键计数 |
 | 幂等 | Redis mock 或包装层测试，覆盖重复调度、RocketMQ 重复消费、部分发送失败重试 |
 | schedule Job | Mock Feign 成功、失败、异常 |

@@ -11,7 +11,7 @@
 - [x] 明确新增、修改和禁止改变的行为。
 - [x] 明确日志、时间、幂等、fallback、兼容性和异常处理要求。
 - [x] 明确图片必须上传 OSS，并使用 OSS/CDN URL 作为图片消息地址。
-- [x] 明确发送分散使用 RocketMQ 延迟消息，不使用 `doTaskWithDelay` 分别延迟多条文本/图片消息。
+- [x] 明确发送分散使用 RocketMQ 延迟消息；MQ 消费后使用累计 `doTaskWithDelay` 调度图片和合并文字。
 - [x] 明确 RocketMQ topic 使用共有 `mq.delay.topic`，tag 使用新的学习之星 tag，consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`。
 - [x] 明确后续实现必须增加测试或静态验证记录。
 
@@ -30,7 +30,7 @@
 - [x] 已说明不得使用未解释的空 DTO、空 JSON、空 Map 或占位参数。
 - [x] 已要求下游读取字段在调用前赋值，或在当前层现算现用。
 - [x] 已识别调用顺序风险：图片生成和 URL 成功前不得发送文字。
-- [x] 已识别延迟乱序风险：每个学员投递一条整组 RocketMQ 延迟消息，消费时按 5 条消息顺序发送。
+- [x] 已识别延迟乱序风险：每个学员投递一条整组 RocketMQ 延迟消息，消费时按图片、合并文字顺序发送。
 - [x] 已给出外部调用、FC、OTS、Redis、OSS、RocketMQ 共有 topic / 新 tag / consumer group 和数据库查询的关键参数断言方案。
 - [x] 已记录需要编码前确认的业务语义：`qwUserId` 来源、完课/到课真实标签名、好友状态过滤、渠道缺失策略、SchedulerX 时间。
 

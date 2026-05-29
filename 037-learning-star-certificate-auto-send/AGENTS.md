@@ -33,9 +33,9 @@
 - RocketMQ topic 使用共有 `mq.delay.topic` / `DelayProperties.topic`，不为学习之星新增独立 topic。
 - RocketMQ tag 必须使用学习之星新的专用 tag，不能复用图书物流 tag。
 - RocketMQ consumer group 配置方式参考之前的 `delay-consumer-group: GID_delay_book_logistics_test`；实现时需要明确学习之星自己的 group 配置或实际 group 值。
-- 每个学员只投递一条整组 RocketMQ 延迟消息，消息体承载 5 条待发送内容或可恢复 5 条内容的任务参数。
-- 禁止使用 `FcInvokeUtils.doTaskWithDelay` 分别延迟文本和图片消息，因为多条延迟调用可能导致消息顺序错乱。
-- RocketMQ 消费者必须按 5 条消息顺序执行：文字、文字、图片、文字、文字。
+- 每个学员只投递一条整组 RocketMQ 延迟消息，消息体承载 2 条待发送内容或可恢复 2 条内容的任务参数。
+- RocketMQ 消费者必须按 2 条消息顺序调度 FC 延迟任务：图片、合并文字。
+- 原 4 条文字必须合并为一条文字消息，话术顺序保持不变，段落之间使用换行。
 - 每个学员和每条消息都必须有幂等设计，定时任务重复触发不能重复打扰学员。
 - RocketMQ 重复消费、消费失败重试和 FC 部分成功重试时，也必须依靠整组 key 和每条 `externalRequestId` 保持幂等。
 - 必须打印必要日志，覆盖营期筛选、渠道分类、学员圈选、OTS 标签匹配、图片生成、OSS 上传、MQ 投递、MQ 消费、FC 发送和跳过原因。

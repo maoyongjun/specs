@@ -3,13 +3,13 @@
 **功能目录**：`037-learning-star-certificate-auto-send`  
 **创建日期**：`2026-05-28`  
 **状态**：Implemented，已补充昵称优先级、测试发送接口、FC 累计延迟调度，并在 `juzi-service` 配置管理界面新增可直接发送的测试发送台
-**输入**：基于 `C:\workspace\ju-chat\learning-star-certificate-demo` 的学习之星奖状图片生成方案，在 `kkhc-idc-ai` 增加可被定时任务调用的接口，在 `kkhc-bizcenter\schedule` 增加定时 Job。按钢琴 AI 营期、渠道教辅类型、D3/D4 时间规则圈选学员，通过 OTS 标签确认学员所属营期以及 D1/D2 完课、D3 到课状态，按营期主讲老师生成签名奖状，图片上传 OSS 后使用可访问地址，通过 RocketMQ 延迟消息在 30 分钟内随机分散整组任务，消费后再用函数计算累计延迟调度“两段文字 + 图片 + 两段文字”。
+**输入**：基于 `C:\workspace\ju-chat\learning-star-certificate-demo` 的学习之星奖状图片生成方案，在 `kkhc-idc-ai` 增加可被定时任务调用的接口，在 `kkhc-bizcenter\schedule` 增加定时 Job。按钢琴 AI 营期、渠道教辅类型、D3/D4 时间规则圈选学员，通过 OTS 标签确认学员所属营期以及 D1/D2 完课、D3 到课状态，按营期主讲老师生成签名奖状，图片上传 OSS 后使用可访问地址，通过 RocketMQ 延迟消息在 30 分钟内随机分散整组任务，消费后再用函数计算累计延迟调度“图片 + 合并文字”。
 
 ## 背景
 
 - 当前问题：`031-learning-star-certificate-image` 已完成图片生成 demo，但生产链路还缺少营期圈选、渠道规则、学员筛选、主讲签名、图片上传、消息发送和定时触发。
 - 当前行为：`learning-star-certificate-demo` 使用 Java SVG + Apache Batik 生成 PNG；`kkhc-idc-ai` 现有 `AiServiceImpl.sendJuzi` 只封装文字发送；`BookLogisticsSignStatusJob` 提供 schedule 调用 `kkhc-idc-ai` Feign 接口的参考模式。
-- 目标行为：定时任务触发 `kkhc-idc-ai` 接口，系统自动识别当日满足 D3/D4 条件的钢琴 AI 营期，筛出对应销售新增好友里标签命中本营期且达到学习状态要求的学员，生成带主讲老师“院长”签名的学习之星奖状图片，上传 OSS 后取得可发送地址，再投递 RocketMQ 延迟消息；消费者按固定消息顺序和累计秒数调度 FC 延迟任务发送给学员。
+- 目标行为：定时任务触发 `kkhc-idc-ai` 接口，系统自动识别当日满足 D3/D4 条件的钢琴 AI 营期，筛出对应销售新增好友里标签命中本营期且达到学习状态要求的学员，生成带主讲老师“院长”签名的学习之星奖状图片，上传 OSS 后取得可发送地址，再投递 RocketMQ 延迟消息；消费者按“先图片、后合并文字”的顺序和累计秒数调度 FC 延迟任务发送给学员。
 - 非目标：不改数据库结构、不改既有 AI 权限判断、不改图书物流任务、不把浏览器截图作为图片生成依赖、不改变既有 `sendJuzi` 文字发送行为。
 
 ## 用户场景与测试 *(必填)*
@@ -51,14 +51,14 @@
 
 ### 用户故事 4 - 上传 OSS 后通过 RocketMQ + FC 延迟顺序发送（优先级：P1）
 
-学员需要在企微中收到完整学习之星话术和个性化奖状图，图片必须使用 OSS 上传后的可访问地址；学员整组任务先通过 RocketMQ 在 30 分钟内随机分散，消费后 5 条文字/图片消息再通过函数计算按累计秒数延迟调度，保证消息间有 4-7 秒间隔且顺序稳定。
+学员需要在企微中收到完整学习之星话术和个性化奖状图，图片必须使用 OSS 上传后的可访问地址；学员整组任务先通过 RocketMQ 在 30 分钟内随机分散，消费后先调度图片、再调度由原 4 条文字合并而成的一条文字消息，保证消息间有 4-7 秒间隔且顺序稳定。
 
-**独立测试**：Mock 图片上传、RocketMQ 延迟生产者、延迟消费者和 FC 调用，断言每个学员只投递一条整组 RocketMQ 延迟消息，随机延迟在 0 到 30 分钟内；消费时 5 条 FC 延迟任务按累计秒数调度，消息类型、图片 `payload.url` 和文字内容正确。
+**独立测试**：Mock 图片上传、RocketMQ 延迟生产者、延迟消费者和 FC 调用，断言每个学员只投递一条整组 RocketMQ 延迟消息，随机延迟在 0 到 30 分钟内；消费时 2 条 FC 延迟任务按累计秒数调度，消息类型、图片 `payload.url` 和合并文字内容正确。
 
 **验收场景**：
 
-1. **Given** OTS 客户昵称为 `小明` 且奖状图片生成成功，**When** 图片上传 OSS 并投递 RocketMQ 延迟消息，**Then** 延迟消息体包含 5 条待发送内容，图片内容使用 OSS/CDN URL，不包含本地文件路径或图片字节。
-2. **Given** 延迟消息被消费者消费，**When** 消费者执行发送，**Then** 第 1 条文字以 `小明同学` 开头，第 3 条为图片消息，第 5 条为 `希望陪您一起共同进步[加油]`。
+1. **Given** OTS 客户昵称为 `小明` 且奖状图片生成成功，**When** 图片上传 OSS 并投递 RocketMQ 延迟消息，**Then** 延迟消息体包含 2 条待发送内容，图片内容使用 OSS/CDN URL，不包含本地文件路径或图片字节。
+2. **Given** 延迟消息被消费者消费，**When** 消费者执行发送，**Then** 第 1 条为图片消息，第 2 条为合并文字消息，合并文字以 `小明同学` 开头并包含 `希望陪您一起共同进步[加油]`。
 3. **Given** 图片生成失败、上传失败或上传后 URL 为空，**When** 发送链路执行，**Then** 不投递 RocketMQ 延迟消息，也不发送任一学习之星消息，并记录失败原因。
 
 ### 用户故事 5 - 定时任务调用接口并返回汇总（优先级：P2）
@@ -140,15 +140,16 @@ where a.id = #{drh_live_camp_date.camp_id}
 
 ### 消息顺序
 
-消息分 5 条发送，顺序固定：
+消息分 2 条发送，顺序固定：
 
-1. `[客户昵称]同学，本次6天课程已经完成一半了，首先啊，我要来表扬您，课程都在积极参与，利用空余时间巩固弹琴技巧，非常不错啊[强][强][强]`
-2. `您也凭借自己的认真学习获取了咱们班级的“学习之星”[庆祝][庆祝][庆祝]特地来给您颁发奖状[太阳]`
-3. 个性化学习之星奖状图片
-4. `这也充分的说明了，您非常热爱弹琴，每节课都积极参与，好的地方继续保持，我会帮助您提升改进，把琴学好，完成自己的梦想[玫瑰]`
-5. `希望陪您一起共同进步[加油]`
+1. 个性化学习之星奖状图片
+2. 合并文字消息，内容由原 4 条文字按顺序合并为一条，段落之间使用换行：
+   `[客户昵称]同学，本次6天课程已经完成一半了，首先啊，我要来表扬您，课程都在积极参与，利用空余时间巩固弹琴技巧，非常不错啊[强][强][强]`
+   `您也凭借自己的认真学习获取了咱们班级的“学习之星”[庆祝][庆祝][庆祝]特地来给您颁发奖状[太阳]`
+   `这也充分的说明了，您非常热爱弹琴，每节课都积极参与，好的地方继续保持，我会帮助您提升改进，把琴学好，完成自己的梦想[玫瑰]`
+   `希望陪您一起共同进步[加油]`
 
-客户昵称优先级：OTS `drh_ai_external_base_info.name_tushu`（通过 `drh_ai_external_base_info_index.external_user_id` 查询） > OTS `drh_external_user_info` 对应的 `ExternalUserDto.external_contact.name` > 本地好友关系 `drh_emp_external_user.name`。同一个解析结果同时用于奖状姓名和 5 条话术前缀。
+客户昵称优先级：OTS `drh_ai_external_base_info.name_tushu`（通过 `drh_ai_external_base_info_index.external_user_id` 查询） > OTS `drh_external_user_info` 对应的 `ExternalUserDto.external_contact.name` > 本地好友关系 `drh_emp_external_user.name`。同一个解析结果同时用于奖状姓名和合并话术。
 
 ### 图片上传与延迟发送
 
@@ -156,21 +157,21 @@ where a.id = #{drh_live_camp_date.camp_id}
 - 图片消息发送的 `payload.url` 必须使用 OSS 上传后返回的可访问 OSS/CDN 地址；禁止使用本地文件路径、临时文件路径或 Base64 图片内容作为发送 URL。
 - 推荐 OSS path 具备可追踪性，例如包含 `learning-star/certificate/{yyyyMMdd}/{campDateId}/{externalUserId或hash}.png`，日志记录 `campDateId`、`externalUserId`、`unionId`、`ossPath` 和最终发送 URL 是否生成成功。
 - 图片生成、OSS 上传、URL 转换任一步失败时，当前学员整组消息不投递、不发送。
-- 发送分散分两层：RocketMQ 负责按学员整组任务随机分散到 0-30 分钟；MQ 消费后使用 `FcInvokeUtils.doTaskWithDelay(fcInvokeInput, cumulativeDelaySeconds)` 分别调度 5 条消息。
+- 发送分散分两层：RocketMQ 负责按学员整组任务随机分散到 0-30 分钟；MQ 消费后使用 `FcInvokeUtils.doTaskWithDelay(fcInvokeInput, cumulativeDelaySeconds)` 分别调度 2 条消息。
 - RocketMQ topic 使用共有延迟 topic，即现有 `mq.delay.topic` / `DelayProperties.topic`；本需求不新增独立 topic。
 - RocketMQ tag 必须使用学习之星专用新 tag，不能复用 `BookLogisticsDelayConsumerListener.TAG`。
 - RocketMQ consumer group 的配置项和命名方式可参考之前的 `delay-consumer-group: GID_delay_book_logistics_test`；学习之星实现时应有清晰的专用 consumer 配置或专用 group 值，避免与图书物流消费者订阅混用。
-- 每个学员只投递一条 RocketMQ 延迟消息，消息体承载整组 5 条待发送内容或可恢复 5 条内容的任务参数。
+- 每个学员只投递一条 RocketMQ 延迟消息，消息体承载整组 2 条待发送内容或可恢复 2 条内容的任务参数。
 - 延迟时间按学员维度随机，范围为 `0 <= delayMinutes <= 30`，`deliveryTime = nowMillis + delayMinutes * 60_000L`。
-- RocketMQ 消费者收到单条学员任务后，不直接连续发送；必须按 `seq = 1..5` 构造 FC 延迟任务，逐条生成 4-7 秒随机间隔并累加为 `cumulativeDelaySeconds`，例如 `4,5,6,4,7` 对应 `4,9,15,19,26` 秒。
-- 5 条 FC 延迟任务全部调度成功后，才写入学员整组已处理 key 并清理 queued/lock key；若第 N 条调度失败，应记录 `seq`、`externalRequestId`、`externalUserId`、`campDateId`、错误信息并抛异常让 MQ 重试。重试时通过每条消息的 Redis scheduled key 跳过已调度的 seq，避免重复打扰。
+- RocketMQ 消费者收到单条学员任务后，不直接连续发送；必须按 `seq = 1..2` 构造 FC 延迟任务，逐条生成 4-7 秒随机间隔并累加为 `cumulativeDelaySeconds`，例如 `4,5` 对应 `4,9` 秒。
+- 2 条 FC 延迟任务全部调度成功后，才写入学员整组已处理 key 并清理 queued/lock key；若第 N 条调度失败，应记录 `seq`、`externalRequestId`、`externalUserId`、`campDateId`、错误信息并抛异常让 MQ 重试。重试时通过每条消息的 Redis scheduled key 跳过已调度的 seq，避免重复打扰。
 
 ### 测试发送接口
 
 - 新增 `POST /kkhc-idc-ai/ai/learning-star/certificate/send/test`。
 - 入参：`userId`、`externalUserId`；`userId` 为企微销售 userid，对应 `KkEmpDo.qyvxUserId`。
 - 测试发送跳过营期标签、完课标签、到课标签校验，不投递 RocketMQ。
-- 测试发送仍生成奖状、上传 OSS、构造正式 5 条话术与图片消息，并复用 FC 累计延迟调度，确保文字和图片之间保留 4-7 秒间隔。
+- 测试发送仍生成奖状、上传 OSS、构造正式图片消息与合并文字消息，并复用 FC 累计延迟调度，确保图片和文字之间保留 4-7 秒间隔。
 - `juzi-service` 配置管理页提供学习之星测试发送台，页面调用本服务 `POST /admin/learning-star-certificate-test/send`，由后端代理转发到 `kkhc-idc-ai` 测试发送接口。
 - `juzi-service` 后端根据当前服务配置控制目标环境：`mq.juzi_tag = test` 时走 `http://test-kkapi.likeduoduiyi.cn/sae-gateway/kkhc-idc-ai`，其他情况默认走 `http://kapi.likeduoduiyi.cn/sae-gateway/kkhc-idc-ai`；前端不提供环境选择。
 - 测试发送台必须包含发送按钮、最近一次调用结果、目标环境展示、请求体预览和带图片的 `externalUserId` 取号引导。
@@ -199,7 +200,7 @@ where a.id = #{drh_live_camp_date.camp_id}
   - `signatureText`：来源于 `drh_live_camp.camp_id -> drh_speaker.name`；图片生成前解析为 `xxx院长`。
   - `certificateImageUrl`：来源于 Batik PNG 生成后上传 OSS/CDN 的 URL；投递 RocketMQ 延迟消息前必须非空且可追踪。
   - `delayMinutes` / `deliveryTime`：来源于按学员维度生成的 0 到 30 分钟随机延迟；RocketMQ 投递前现算并写入日志与 summary。
-  - `messageGroup`：来源于当前学员的 5 条待发送内容；RocketMQ 延迟消息体必须承载整组内容或可恢复整组内容的任务参数，消费时按 `seq = 1..5` 顺序调度 FC。
+  - `messageGroup`：来源于当前学员的 2 条待发送内容；RocketMQ 延迟消息体必须承载整组内容或可恢复整组内容的任务参数，消费时按 `seq = 1..2` 顺序调度 FC。
   - `delayTopic`：来源于共有 `mq.delay.topic` / `DelayProperties.topic`。
   - `learningStarDelayTag`：来源于学习之星专用新 tag 常量。
   - `learningStarDelayConsumerGroup`：配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`，实际值编码前确认并避免与图书物流消费者混用。
@@ -210,15 +211,15 @@ where a.id = #{drh_live_camp_date.camp_id}
   - 图片生成读取 `studentNickName`、`issueDate`、`signatureText`、模板资源和字体资源。
   - 图片上传读取 PNG 字节、OSS path，返回 `certificateImageUrl`。
   - RocketMQ 延迟投递读取 `campDateId`、`externalUserId`、`unionId`、`empOneId`、`messageGroup`、`delayMinutes`、`deliveryTime`、共有 `delayTopic` 和学习之星专用 `tag`。
-  - 消息消费发送读取 `externalUserId`、`qyvxUserId`、`corpId`、`messageType`、`payload.text` 或 `payload.url`，并按 `seq` 顺序调度 FC 延迟任务。
+  - 消息消费发送读取 `externalUserId`、`qyvxUserId`、`corpId`、`messageType`、`payload.text` 或 `payload.url`，并按 `seq` 顺序调度 FC 延迟任务，顺序为图片、合并文字。
 - 空对象 / 占位对象风险：
   - 不允许用空 DTO、空 JSON、空 Map 继续下传到图片生成或发送层。
   - OTS 查询失败、`follow_user` 为空、营期标签缺失、完课/到课标签缺失、`unionId` 为空、主讲为空、图片 URL 为空时均跳过当前学员或营期，并写 summary。
   - `certificateImageUrl` 未生成前不能创建图片发送请求。
 - 调用顺序风险：
-  - 必须先筛营期，再判渠道和 D3/D4，再筛好友，再校验 OTS 营期标签和学习状态标签，再获取主讲签名，再生成/上传图片，再投递 RocketMQ 延迟消息，最后由消费者发送 5 条消息。
+  - 必须先筛营期，再判渠道和 D3/D4，再筛好友，再校验 OTS 营期标签和学习状态标签，再获取主讲签名，再生成/上传图片，再投递 RocketMQ 延迟消息，最后由消费者发送图片和合并文字。
   - 不能先发文字再异步补图片；若图片失败，应整组消息都不投递、不发送。
-  - 发送需要顺序稳定；消费者必须按 1 到 5 顺序计算累计延迟并记录每条调度结果。
+  - 发送需要顺序稳定；消费者必须按 1 到 2 顺序计算累计延迟并记录每条调度结果。
 - 旧逻辑保持：
   - 保持 `BookLogisticsSignStatusJob`、图书物流补偿和既有 `sendJuzi` 文字发送行为不变。
   - 保持 `learning-star-certificate-demo` 的 Java SVG + Apache Batik 思路，不引入 Chrome/Chromium 运行时依赖。
@@ -264,8 +265,8 @@ where a.id = #{drh_live_camp_date.camp_id}
 - **FR-011**：系统 MUST 缓存 `campDateId -> signatureText`，避免同一营期重复查询主讲老师。
 - **FR-012**：系统 MUST 基于 `learning-star-certificate-demo` 的 Java SVG + Apache Batik 方案生成 PNG 图片，上传 OSS，并取得可用于企微图片消息的 OSS/CDN URL。
 - **FR-013**：系统 MUST 使用 RocketMQ 延迟消息按学员投递整组发送任务，随机延迟范围为 0 到 30 分钟。
-- **FR-014**：系统 MUST 在 RocketMQ 消费者中使用 FC 异步延迟调度 5 条消息，每条消息间隔随机 4-7 秒并按学员维度累计延迟。
-- **FR-015**：系统 MUST 在 RocketMQ 消费者中按“两段文字 + 图片 + 两段文字”顺序调度 5 条消息，图片消息 `messageType = 6`，文字消息 `messageType = 7`。
+- **FR-014**：系统 MUST 在 RocketMQ 消费者中使用 FC 异步延迟调度 2 条消息，每条消息间隔随机 4-7 秒并按学员维度累计延迟。
+- **FR-015**：系统 MUST 在 RocketMQ 消费者中按“图片 + 合并文字”顺序调度 2 条消息，图片消息 `messageType = 6`，文字消息 `messageType = 7`。
 - **FR-016**：系统 MUST 复用共有 `mq.delay.topic`，并为学习之星定义新的 RocketMQ tag；consumer group 配置参考 `delay-consumer-group: GID_delay_book_logistics_test` 的方式，但不得复用图书物流 tag。
 - **FR-017**：系统 MUST 对每个学员和每条消息生成稳定 `externalRequestId` 或等效幂等键，防止重复调度、重复消费或部分失败重试造成重复发送。
 - **FR-018**：处理接口 MUST 返回 summary，至少包含营期扫描数、命中营期数、候选学员数、学习标签不匹配数、图片成功数、OSS 上传成功数、延迟消息投递成功数、投递失败数和主要跳过原因；RocketMQ 消费者 MUST 记录消费侧发送成功数、失败数和失败序号。
@@ -280,7 +281,7 @@ where a.id = #{drh_live_camp_date.camp_id}
 - **SC-002**：给定非图书 D3 学员，只有 OTS 当前销售标签同时命中当前营期、`D1 完课` 和 `D2 完课` 时，才会生成图片和发送消息。
 - **SC-003**：给定图书 D4 学员，只有 OTS 当前销售标签同时命中当前营期、`D1 完课`、`D2 完课` 和 `D3 到课` 时，才会生成图片和发送消息。
 - **SC-004**：给定主讲 `李瑶老师`，图片生成请求中的签名字段为 `李瑶院长`。
-- **SC-005**：一次成功处理会先上传 OSS 并投递 1 条学员维度 RocketMQ 延迟消息；消费成功后调度 5 条 FC 延迟任务，累计延迟保持顺序为文字、文字、图片、文字、文字，图片请求 payload 的 `url` 等于生成后的奖状 OSS/CDN URL。
+- **SC-005**：一次成功处理会先上传 OSS 并投递 1 条学员维度 RocketMQ 延迟消息；消费成功后调度 2 条 FC 延迟任务，累计延迟保持顺序为图片、合并文字，图片请求 payload 的 `url` 等于生成后的奖状 OSS/CDN URL。
 - **SC-006**：同一学员重复执行时，不会重复发送已成功处理的学习之星消息。
 - **SC-007**：延迟投递测试中 RocketMQ 随机延迟分钟数始终位于 0 到 30 分钟，FC 消息间隔默认 4-7 秒并按学员维度累计。
 - **SC-008**：新增代码编译和目标单元测试通过，且不影响现有图书物流相关测试。
@@ -292,7 +293,7 @@ where a.id = #{drh_live_camp_date.camp_id}
 - `D1 完课`、`D2 完课`、`D3 到课` 暂按业务语义描述；真实标签名称和标签组需在编码前通过 OTS 标签数据或已有代码再确认。
 - 生产图片模板、字体和坐标沿用 `learning-star-certificate-demo` 当前资源：`classpath:/certificates/template-clean.png` 和 `classpath:/fonts/Slideqiuhong-Regular.ttf`。
 - 发送图片可复用 `JuziMessageDto` + `Payload.url`，新增内部 helper 即可，不需要修改 FC `SEND_MESSAGE` 契约。
-- 延迟发送使用现有 RocketMQ 延迟能力和共有 `mq.delay.topic`，新增学习之星专用 tag/messageType/consumer；consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`，MQ 消费后使用 `doTaskWithDelay` 做 5 条消息的秒级累计间隔。
+- 延迟发送使用现有 RocketMQ 延迟能力和共有 `mq.delay.topic`，新增学习之星专用 tag/messageType/consumer；consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`，MQ 消费后使用 `doTaskWithDelay` 做 2 条消息的秒级累计间隔。
 - 本需求不新增数据库表；发送幂等优先使用 Redis 和 `JuziMessageDto.externalRequestId`。
 
 ## 执行记录
@@ -313,8 +314,8 @@ where a.id = #{drh_live_camp_date.camp_id}
 
 - 用户补充奖状图片需要上传 OSS，发送图片消息时使用 OSS 上传后的可访问地址。
 - 用户补充发送时间要在 30 分钟内随机分散。
-- 当时用户明确最终采用 RocketMQ 延迟消息；后续 D005 已修订为 RocketMQ 负责学员整组分钟级分散，MQ 消费后使用 `doTaskWithDelay` 按累计秒数调度 5 条消息。
-- 已将发送口径调整为“每个学员投递一条整组 RocketMQ 延迟消息，消费者按 1 到 5 顺序进行 FC 累计延迟调度”。
+- 当时用户明确最终采用 RocketMQ 延迟消息；后续 D005 已修订为 RocketMQ 负责学员整组分钟级分散，MQ 消费后使用 `doTaskWithDelay` 按累计秒数调度消息；D009 又将消息数调整为 2 条。
+- 已将发送口径调整为“每个学员投递一条整组 RocketMQ 延迟消息，消费者按 1 到 2 顺序进行 FC 累计延迟调度”。
 - 已补充必要日志和测试覆盖要求。
 
 ### D004 - 补充 RocketMQ topic、tag 和 consumer group 口径
@@ -327,8 +328,8 @@ where a.id = #{drh_live_camp_date.camp_id}
 
 - 用户补充昵称优先级为 `drh_ai_external_base_info.name_tushu` > `drh_external_user_info.name` > 本地好友关系 `name`，且昵称用于奖状和话术。
 - 用户补充测试接口输入 `userId`、`externalUserId`，跳过营期/完课/到课标签校验，不走 RocketMQ。
-- 用户补充正式消费和测试发送均通过函数计算延迟发送 5 条消息，单条间隔随机 4-7 秒，按学员整组累计延迟。
-- 已将规格同步为：RocketMQ 仍只负责学员整组的分钟级分散，MQ 消费后调度 5 个 FC 秒级延迟任务；部分调度失败由 MQ 重试，并通过每条 scheduled key 跳过已调度序号。
+- 用户当时补充正式消费和测试发送均通过函数计算延迟发送，单条间隔随机 4-7 秒，按学员整组累计延迟；D009 已将发送内容改为 2 条。
+- 已将规格同步为：RocketMQ 仍只负责学员整组的分钟级分散，MQ 消费后调度 2 个 FC 秒级延迟任务；部分调度失败由 MQ 重试，并通过每条 scheduled key 跳过已调度序号。
 
 ### D006 - 补充 juzi-service 配置管理入口
 
@@ -346,3 +347,8 @@ where a.id = #{drh_live_camp_date.camp_id}
 - 用户补充：配置管理界面的学习之星测试发送台需要带“发送测试奖状”按钮，且带图片版用户取号引导；测试环境和正式环境由后端直接控制。
 - 已同步为：`juzi-service` 页面调用本服务 admin 代理接口，后端根据 `mq.juzi_tag` 选择测试/正式 `kkhc-idc-ai` 网关地址并转发请求，前端只展示当前后端目标环境和调用结果；页面使用专项密码校验。
 - 验证记录：`juzi-service` 编译通过，且新增后端环境选择单元测试通过。
+
+### D009 - 调整学习之星消息顺序与文字合并
+
+- 用户补充：原来的 4 条文字合并为 1 条；发送顺序改为先发图片，再发合并文字。
+- 已同步为：正式 MQ 消费和测试发送均只调度 2 条 FC 延迟任务，`seq=1` 为图片，`seq=2` 为合并文字；合并文字保留原 4 段话术顺序并使用完整昵称。

@@ -38,7 +38,7 @@
 - [ ] T021 检查新增 Batik 依赖是否与 JDK 1.8、`kkhc-idc-ai` 现有依赖树兼容。
 - [ ] T022 检查 Redis 幂等 key、`externalRequestId`、日志字段是否包含足够定位信息且不泄露敏感内容。
 - [ ] T022A 编码前确认学习之星 RocketMQ 专用 `MessageType`、新 tag 常量和 consumer group 实际配置值；topic 已明确复用共有 `mq.delay.topic`，consumer group 写法参考 `delay-consumer-group: GID_delay_book_logistics_test`。
-- [x] T022B 检查延迟投递方案是否为“每个学员一条整组 RocketMQ 消息”，消费后再把 5 条消息使用 `doTaskWithDelay` 按累计秒数调度。
+- [x] T022B 检查延迟投递方案是否为“每个学员一条整组 RocketMQ 消息”，消费后再把 2 条消息（图片、合并文字）使用 `doTaskWithDelay` 按累计秒数调度。
 - [ ] T022C 检查随机延迟范围为 0 到 30 分钟，并能在日志和 summary 中观察共有 topic、新 tag、投递成功/失败。
 
 **检查点**：T013-T022C 必须在编码前有明确结论；发现口径变化时先更新 `spec.md`。
@@ -55,11 +55,11 @@
 - [ ] T030 实现主讲签名解析和缓存：`speaker.name` 去尾部 `老师` 后拼接 `院长`。
 - [ ] T031 将 demo 渲染能力接入生产：模板和字体作为 classpath 资源，Batik 输出 PNG 字节。
 - [ ] T032 实现图片上传：PNG 上传 OSS，返回可用于图片消息的 OSS/CDN URL，禁止本地路径或 Base64 下传。
-- [ ] T033 实现学习之星整组发送任务模型：包含 `campDateId`、`externalUserId`、`unionId`、`empOneId`、5 条消息内容、`certificateImageUrl`、`externalRequestId` 或可生成它们的参数。
+- [ ] T033 实现学习之星整组发送任务模型：包含 `campDateId`、`externalUserId`、`unionId`、`empOneId`、图片与合并文字 2 条消息内容、`certificateImageUrl`、`externalRequestId` 或可生成它们的参数。
 - [ ] T034 实现 RocketMQ 延迟投递：复用共有 `mq.delay.topic`，使用学习之星新 tag；每个学员投递一条整组消息，随机延迟 0 到 30 分钟，记录 `delayMinutes`、`deliveryTime`、topic、tag、投递结果。
-- [x] T035 实现学习之星延迟消费者：consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`；消费单条整组任务后，按文字、文字、图片、文字、文字顺序使用 FC 累计延迟调度。
+- [x] T035 实现学习之星延迟消费者：consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`；消费单条整组任务后，按图片、合并文字顺序使用 FC 累计延迟调度。
 - [ ] T036 实现图片消息发送 helper：构造 `JuziMessageDto`，`messageType = 6`，`Payload.url = certificateImageUrl`。
-- [x] T036A 实现 5 条消息顺序调度，文字消息复用 Juzi 消息结构，图片消息使用 `messageType = 6` 和 `payload.url`。
+- [x] T036A 实现 2 条消息顺序调度，文字消息复用 Juzi 消息结构，图片消息使用 `messageType = 6` 和 `payload.url`，发送顺序为图片、合并文字。
 - [x] T036B 实现幂等：每个学员和每条消息有稳定 `externalRequestId` / scheduled key，整组成功后写 Redis 已处理标记，消费重试跳过已调度序号。
 - [x] T036C 实现 summary 计数和日志：营期、渠道、学员、学习状态标签不匹配、图片、OSS 上传、MQ 投递、MQ 消费、FC 调度、跳过原因。
 - [x] T036D 实现昵称优先级：OTS `drh_ai_external_base_info.name_tushu` > OTS `drh_external_user_info.external_contact.name` > 本地好友关系 `drh_emp_external_user.name`。
@@ -80,12 +80,12 @@
 - [ ] T044 新增主讲签名测试：`李瑶老师 -> 李瑶院长`、无 `老师` 后缀、空主讲跳过。
 - [ ] T045 新增图片生成接入测试：Mock 模板/字体或复用测试资源，断言 PNG 非空、可读、OSS 上传参数正确、返回 URL 用于图片 payload。
 - [ ] T046 新增 RocketMQ 延迟投递测试：单个学员只投递一条整组消息，共有 topic、新 tag、messageType、body、deliveryTime 正确，随机延迟分钟数始终在 0 到 30。
-- [x] T046A 新增延迟消费顺序测试：消费者消费一条整组任务后，5 条 FC 调度顺序、累计 delaySeconds、messageType、payload.text/url、externalUserId、wecomUserId、corpId 正确。
+- [x] T046A 新增延迟消费顺序测试：消费者消费一条整组任务后，2 条 FC 调度顺序、累计 delaySeconds、messageType、payload.text/url、externalUserId、wecomUserId、corpId 正确。
 - [ ] T046C 新增消费者配置测试或静态验证：学习之星消费者使用新 tag，topic 复用共有 `mq.delay.topic`，consumer group 配置参考 `delay-consumer-group` 写法且不复用图书物流 tag。
-- [x] T046B 新增乱序防护验证：测试确认学习之星链路使用累计 delaySeconds 调度文本和图片消息，顺序为文字、文字、图片、文字、文字。
+- [x] T046B 新增乱序防护验证：测试确认学习之星链路使用累计 delaySeconds 调度文本和图片消息，顺序为图片、合并文字。
 - [x] T047 新增幂等测试：重复执行、RocketMQ 重复消费、部分失败重试不重复调度已接受消息。
 - [x] T047B 新增昵称优先级测试：覆盖 `name_tushu`、OTS 企微昵称、本地好友昵称三级兜底。
-- [x] T047C 新增测试发送服务测试：覆盖测试接口不走 MQ、生成奖状并调度 5 条 FC 延迟消息。
+- [x] T047C 新增测试发送服务测试：覆盖测试接口不走 MQ、生成奖状并调度 2 条 FC 延迟消息。
 - [ ] T047A 新增日志与 summary 测试：覆盖 OSS 上传成功/失败、MQ 投递成功/失败、消费发送成功/失败的关键计数。
 - [ ] T048 新增 schedule Job 测试：Feign 成功/失败/异常均有预期日志和 `ProcessResult`。
 - [x] T049 运行 `kkhc-idc-ai` 目标测试或至少相关测试类，记录命令和结果。
@@ -108,7 +108,7 @@
 
 ### D003 - 补充 OSS、RocketMQ 延迟、日志和测试规则
 
-- 执行内容：同步用户当时补充规则：奖状图片上传 OSS 后使用 OSS/CDN 地址发送；发送通过 RocketMQ 延迟消息随机分散到 0 到 30 分钟；每个学员投递一条整组延迟消息。后续 D005 已调整为 MQ 消费后使用 `doTaskWithDelay` 按累计秒数调度 5 条消息。
+- 执行内容：同步用户当时补充规则：奖状图片上传 OSS 后使用 OSS/CDN 地址发送；发送通过 RocketMQ 延迟消息随机分散到 0 到 30 分钟；每个学员投递一条整组延迟消息。后续 D009 已调整为 MQ 消费后使用 `doTaskWithDelay` 按累计秒数调度 2 条消息（图片、合并文字）。
 - 验证方式：更新 Phase 1 事实确认、Phase 2 门禁、Phase 3 实现任务和 Phase 4 测试映射。
 - 自检结论：本阶段仍未修改业务代码；编码前需确认学习之星 MQ tag/messageType/consumer group 命名与配置方式。
 
@@ -120,7 +120,7 @@
 
 ### D005 - 昵称、测试发送与 FC 累计延迟实现
 
-- 执行内容：新增 `OtsUtil.getNameTushuByExternalUserId`；调整学习之星昵称优先级；新增测试发送 DTO 和 `POST /ai/learning-star/certificate/send/test`；正式 MQ 消费和测试发送均改为调度 5 个 FC 延迟任务；新增 4-7 秒间隔配置和 scheduled key 幂等。
+- 执行内容：新增 `OtsUtil.getNameTushuByExternalUserId`；调整学习之星昵称优先级；新增测试发送 DTO 和 `POST /ai/learning-star/certificate/send/test`；正式 MQ 消费和测试发送均改为调度 2 个 FC 延迟任务（图片、合并文字）；新增 4-7 秒间隔配置和 scheduled key 幂等。
 - 验证方式：运行 `mvn -pl ai -am -Dtest=LearningStarCertificateServiceImplTest test`。
 - 验证结果：通过，`Tests run: 14, Failures: 0, Errors: 0, Skipped: 0`。
 - 自检结论：学习之星新增逻辑已完成单元测试覆盖；仍需上线后通过日志观察 FC 异步调用真实 requestId 和字体加载情况。
@@ -142,3 +142,10 @@
 - 执行内容：在 `data-RC/juzi-service` 增加 `GET /admin/learning-star-certificate-test/env` 和 `POST /admin/learning-star-certificate-test/send`，后端根据 `mq.juzi_tag` 选择测试/正式 `kkhc-idc-ai` 网关地址；页面补充发送按钮、最近一次结果、目标环境展示、请求体预览和图片版取号引导，并将该页面纳入专项密码校验。
 - 验证方式：运行 `mvn -pl juzi-service -DskipTests compile` 和 `mvn -pl juzi-service -DskipTests=false -Dtest=LearningStarCertificateTestSendServiceTest test`，并静态检查页面请求只调用本服务 admin 接口，不由前端选择环境。
 - 自检结论：学习之星测试发送台从“接口说明页”升级为“可执行操作台”，环境由后端统一控制。
+
+### D009 - 调整学习之星消息顺序与文字合并
+
+- 执行内容：将原 4 条文字合并为 1 条合并文字，消息列表改为 2 条：`seq=1` 图片、`seq=2` 合并文字；正式 MQ 消费和测试发送复用同一组消息结构。
+- 验证方式：更新 `LearningStarCertificateServiceImplTest`，覆盖消息构造、消费累计延迟、重试跳过、部分失败重试和测试发送；运行 `mvn -pl ai -am "-Dtest=LearningStarCertificateServiceImplTest,LearningStarCertificateRendererTest" test`。
+- 验证结果：通过，`Tests run: 17, Failures: 0, Errors: 0, Skipped: 0`。
+- 自检结论：学习之星链路现在先发奖状图片，再按累计延迟发送合并后的完整话术。
