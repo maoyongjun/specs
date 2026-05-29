@@ -19,7 +19,7 @@
 - [x] T011 确认 `ExternalUserDto` 包含 `external_contact.name/unionid` 和 `follow_user.userid/tags`。
 - [x] T012 确认 `LiveCampDateDO` 包含 `id/name/startTime/campId/classTime/category/speakerId`，`LiveCampDO` 包含 `speakerId`，`SpeakerDO` 包含 `name`。
 - [x] T012A 确认现有 RocketMQ 延迟参考：`DelayProducerBean.sendTagMessage(...)`、`BookLogisticsDelayConsumerListener`、`BookLogisticsDelayMqTest`。
-- [x] T012B 确认 `FcInvokeUtils.doTaskWithDelay` 存在但不适合本需求，因为 5 条文本/图片消息分别延迟可能导致顺序错乱。
+- [x] T012B 确认 `FcInvokeUtils.doTaskWithDelay` 可用于 MQ 消费后的秒级累计延迟调度；每条消息使用累计秒数，避免同组消息连续刷屏。
 - [x] T012C 确认 OSS 上传参考：`NotePicsServiceImpl` 使用 `OssUtil.upload(...)` 后通过 `OssUtil.getCdnUrl(...)` 取得可访问 URL。
 - [x] T012D 确认 RocketMQ 配置口径：topic 使用共有 `mq.delay.topic`，tag 使用学习之星新 tag，consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`。
 
@@ -38,7 +38,7 @@
 - [ ] T021 检查新增 Batik 依赖是否与 JDK 1.8、`kkhc-idc-ai` 现有依赖树兼容。
 - [ ] T022 检查 Redis 幂等 key、`externalRequestId`、日志字段是否包含足够定位信息且不泄露敏感内容。
 - [ ] T022A 编码前确认学习之星 RocketMQ 专用 `MessageType`、新 tag 常量和 consumer group 实际配置值；topic 已明确复用共有 `mq.delay.topic`，consumer group 写法参考 `delay-consumer-group: GID_delay_book_logistics_test`。
-- [ ] T022B 检查延迟投递方案是否为“每个学员一条整组消息”，不得把 5 条消息分别使用 `doTaskWithDelay` 或 5 条独立延迟消息投递。
+- [x] T022B 检查延迟投递方案是否为“每个学员一条整组 RocketMQ 消息”，消费后再把 5 条消息使用 `doTaskWithDelay` 按累计秒数调度。
 - [ ] T022C 检查随机延迟范围为 0 到 30 分钟，并能在日志和 summary 中观察共有 topic、新 tag、投递成功/失败。
 
 **检查点**：T013-T022C 必须在编码前有明确结论；发现口径变化时先更新 `spec.md`。
@@ -57,11 +57,14 @@
 - [ ] T032 实现图片上传：PNG 上传 OSS，返回可用于图片消息的 OSS/CDN URL，禁止本地路径或 Base64 下传。
 - [ ] T033 实现学习之星整组发送任务模型：包含 `campDateId`、`externalUserId`、`unionId`、`empOneId`、5 条消息内容、`certificateImageUrl`、`externalRequestId` 或可生成它们的参数。
 - [ ] T034 实现 RocketMQ 延迟投递：复用共有 `mq.delay.topic`，使用学习之星新 tag；每个学员投递一条整组消息，随机延迟 0 到 30 分钟，记录 `delayMinutes`、`deliveryTime`、topic、tag、投递结果。
-- [ ] T035 实现学习之星延迟消费者：consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`；消费单条整组任务后，按文字、文字、图片、文字、文字顺序同步发送；不得使用 `FcInvokeUtils.doTaskWithDelay` 分别延迟 5 条消息。
+- [x] T035 实现学习之星延迟消费者：consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`；消费单条整组任务后，按文字、文字、图片、文字、文字顺序使用 FC 累计延迟调度。
 - [ ] T036 实现图片消息发送 helper：构造 `JuziMessageDto`，`messageType = 6`，`Payload.url = certificateImageUrl`。
-- [ ] T036A 实现 5 条消息顺序发送，文字消息可复用或封装现有 `sendJuzi`，图片消息使用新增 helper。
-- [ ] T036B 实现幂等：每个学员和每条消息有稳定 `externalRequestId`，整组成功后写 Redis 已发送标记，消费重试不得重复打扰。
-- [ ] T036C 实现 summary 计数和日志：营期、渠道、学员、学习状态标签不匹配、图片、OSS 上传、MQ 投递、MQ 消费、FC 发送、跳过原因。
+- [x] T036A 实现 5 条消息顺序调度，文字消息复用 Juzi 消息结构，图片消息使用 `messageType = 6` 和 `payload.url`。
+- [x] T036B 实现幂等：每个学员和每条消息有稳定 `externalRequestId` / scheduled key，整组成功后写 Redis 已处理标记，消费重试跳过已调度序号。
+- [x] T036C 实现 summary 计数和日志：营期、渠道、学员、学习状态标签不匹配、图片、OSS 上传、MQ 投递、MQ 消费、FC 调度、跳过原因。
+- [x] T036D 实现昵称优先级：OTS `drh_ai_external_base_info.name_tushu` > OTS `drh_external_user_info.external_contact.name` > 本地好友关系 `drh_emp_external_user.name`。
+- [x] T036E 新增测试发送接口 `POST /kkhc-idc-ai/ai/learning-star/certificate/send/test`，入参 `userId`、`externalUserId`，跳过营期/完课/到课标签校验，不投递 RocketMQ。
+- [x] T036F 新增消息间隔配置 `message-interval-min-seconds` / `message-interval-max-seconds`，默认 4-7，异常配置回退默认值。
 - [ ] T037 在 `kkhc-bizcenter\schedule` 增加 Feign 接口方法或独立 Feign，调用 `kkhc-idc-ai` 新接口。
 - [ ] T038 在 `kkhc-bizcenter\schedule\task` 增加 Job，参考 `BookLogisticsSignStatusJob` 异步调用并记录响应。
 - [ ] T039 保持本需求不改图书物流、AI 权限、现有文字发送和其他定时任务逻辑。
@@ -75,13 +78,15 @@
 - [ ] T044 新增主讲签名测试：`李瑶老师 -> 李瑶院长`、无 `老师` 后缀、空主讲跳过。
 - [ ] T045 新增图片生成接入测试：Mock 模板/字体或复用测试资源，断言 PNG 非空、可读、OSS 上传参数正确、返回 URL 用于图片 payload。
 - [ ] T046 新增 RocketMQ 延迟投递测试：单个学员只投递一条整组消息，共有 topic、新 tag、messageType、body、deliveryTime 正确，随机延迟分钟数始终在 0 到 30。
-- [ ] T046A 新增延迟消费顺序测试：消费者消费一条整组任务后，5 条请求顺序、messageType、payload.text/url、unionId、externalUserId、wecomUserId、corpId 正确。
+- [x] T046A 新增延迟消费顺序测试：消费者消费一条整组任务后，5 条 FC 调度顺序、累计 delaySeconds、messageType、payload.text/url、externalUserId、wecomUserId、corpId 正确。
 - [ ] T046C 新增消费者配置测试或静态验证：学习之星消费者使用新 tag，topic 复用共有 `mq.delay.topic`，consumer group 配置参考 `delay-consumer-group` 写法且不复用图书物流 tag。
-- [ ] T046B 新增乱序防护静态验证：搜索确认学习之星链路未使用 `FcInvokeUtils.doTaskWithDelay` 分别延迟文本和图片消息。
-- [ ] T047 新增幂等测试：重复执行、RocketMQ 重复消费、部分失败重试不重复发送已接受消息。
+- [x] T046B 新增乱序防护验证：测试确认学习之星链路使用累计 delaySeconds 调度文本和图片消息，顺序为文字、文字、图片、文字、文字。
+- [x] T047 新增幂等测试：重复执行、RocketMQ 重复消费、部分失败重试不重复调度已接受消息。
+- [x] T047B 新增昵称优先级测试：覆盖 `name_tushu`、OTS 企微昵称、本地好友昵称三级兜底。
+- [x] T047C 新增测试发送服务测试：覆盖测试接口不走 MQ、生成奖状并调度 5 条 FC 延迟消息。
 - [ ] T047A 新增日志与 summary 测试：覆盖 OSS 上传成功/失败、MQ 投递成功/失败、消费发送成功/失败的关键计数。
 - [ ] T048 新增 schedule Job 测试：Feign 成功/失败/异常均有预期日志和 `ProcessResult`。
-- [ ] T049 运行 `kkhc-idc-ai` 目标测试或至少相关测试类，记录命令和结果。
+- [x] T049 运行 `kkhc-idc-ai` 目标测试或至少相关测试类，记录命令和结果。
 - [ ] T050 运行 `kkhc-bizcenter\schedule` 目标测试或至少新增 Job 测试，记录命令和结果。
 - [ ] T051 搜索确认没有硬编码 `YangFan_1`，没有把旧 `实践之星`、`作业情况` 或浏览器截图方案带入生产链路。
 
@@ -101,7 +106,7 @@
 
 ### D003 - 补充 OSS、RocketMQ 延迟、日志和测试规则
 
-- 执行内容：同步用户补充规则：奖状图片上传 OSS 后使用 OSS/CDN 地址发送；发送通过 RocketMQ 延迟消息随机分散到 0 到 30 分钟；每个学员投递一条整组延迟消息，消费时按 5 条消息顺序发送；不用 `doTaskWithDelay`。
+- 执行内容：同步用户当时补充规则：奖状图片上传 OSS 后使用 OSS/CDN 地址发送；发送通过 RocketMQ 延迟消息随机分散到 0 到 30 分钟；每个学员投递一条整组延迟消息。后续 D005 已调整为 MQ 消费后使用 `doTaskWithDelay` 按累计秒数调度 5 条消息。
 - 验证方式：更新 Phase 1 事实确认、Phase 2 门禁、Phase 3 实现任务和 Phase 4 测试映射。
 - 自检结论：本阶段仍未修改业务代码；编码前需确认学习之星 MQ tag/messageType/consumer group 命名与配置方式。
 
@@ -110,3 +115,10 @@
 - 执行内容：同步用户补充规则：topic 使用共有延迟 topic；tag 使用新的学习之星 tag；consumer group 配置方式参考之前的 `delay-consumer-group: GID_delay_book_logistics_test`。
 - 验证方式：更新 Phase 1 事实确认、Phase 2 门禁、Phase 3 实现任务和 Phase 4 测试映射。
 - 自检结论：本阶段仍未修改业务代码；编码前只需确认学习之星新 tag、MessageType 和 consumer group 实际命名。
+
+### D005 - 昵称、测试发送与 FC 累计延迟实现
+
+- 执行内容：新增 `OtsUtil.getNameTushuByExternalUserId`；调整学习之星昵称优先级；新增测试发送 DTO 和 `POST /ai/learning-star/certificate/send/test`；正式 MQ 消费和测试发送均改为调度 5 个 FC 延迟任务；新增 4-7 秒间隔配置和 scheduled key 幂等。
+- 验证方式：运行 `mvn -pl ai -am -Dtest=LearningStarCertificateServiceImplTest test`。
+- 验证结果：通过，`Tests run: 14, Failures: 0, Errors: 0, Skipped: 0`。
+- 自检结论：学习之星新增逻辑已完成单元测试覆盖；仍需上线后通过日志观察 FC 异步调用真实 requestId 和字体加载情况。
