@@ -1,4 +1,4 @@
-# 规格质量检查清单：zhangkai 声乐作业点评配置
+﻿# 规格质量检查清单：liuyuan 声乐作业点评配置
 
 **用途**：验证需求完整性、参数完整性和实施就绪度  
 **创建日期**：`2026-06-01`  
@@ -31,6 +31,7 @@
 - [x] 业务语义变化已由用户确认：Day6 第三次人工回复，第 4 次及以上人工回复。
 - [x] 已确认 `currentDay&&homeworkDayRelation&&qwUserId_RLike` 组合 route 可被 SOP 运行时按 `&&` 拆分匹配。
 - [x] 已确认 Day1-Day5 首评分段语音按 orderIndex 顺序发送，旧单条 VOICE action 已禁用。
+- [x] 已确认本次专属配置目标企业微信 id 已从 `zhangkai` 替换为 `liuyuan`。
 
 ## 实施就绪度
 
@@ -46,4 +47,4 @@
 ## 备注
 
 - 数据库密码、TTS access key 不写入文档。
-- `zhangkai-homework-config-added.sql` 只允许包含本次新增配置。
+- `liuyuan-homework-config-added.sql` 只允许包含本次 `liuyuan` 新增配置。

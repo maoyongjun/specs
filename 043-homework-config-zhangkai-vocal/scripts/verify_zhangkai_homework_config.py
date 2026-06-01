@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
-"""Verify zhangkai homework-review routing with SopConfigSender-compatible logic."""
+﻿# -*- coding: utf-8 -*-
+"""Verify liuyuan homework-review routing with SopConfigSender-compatible logic."""
 
 import json
 from pathlib import Path
@@ -21,7 +21,7 @@ FIRST_COMMENT_ACTIONS = {
 
 
 def load_routes():
-    response = requests.get(f"{BASE_URL}/api/homework-config/config?skuId=5", timeout=30)
+    response = requests.get(f"{BASE_URL}/api/homework-config/config?skuId=5", timeout=120)
     response.raise_for_status()
     data = response.json()
     return data.get("routes") or []
@@ -157,44 +157,44 @@ def main():
     for day in range(1, 7):
         results["current_comment1"].append({
             "day": day,
-            **expect(select_route(routes, day, 1, "CURRENT", "zhangkai"), f"zhangkai-vocal-day{day}-comment1", FIRST_COMMENT_ACTIONS[day]),
+            **expect(select_route(routes, day, 1, "CURRENT", "liuyuan"), f"liuyuan-vocal-day{day}-comment1", FIRST_COMMENT_ACTIONS[day]),
         })
         results["current_comment2"].append({
             "day": day,
-            **expect(select_route(routes, day, 2, "CURRENT", "zhangkai"), f"zhangkai-vocal-day{day}-comment2", ["TEXT", "VOICE"]),
+            **expect(select_route(routes, day, 2, "CURRENT", "liuyuan"), f"liuyuan-vocal-day{day}-comment2", ["TEXT", "VOICE"]),
         })
         results["past_manual"].append({
             "day": day,
-            **expect(select_route(routes, day, 1, "PAST", "zhangkai"), f"zhangkai-vocal-day{day}-past-manual", []),
+            **expect(select_route(routes, day, 1, "PAST", "liuyuan"), f"liuyuan-vocal-day{day}-past-manual", []),
         })
         results["future_manual"].append({
             "day": day,
-            **expect(select_route(routes, day, 1, "FUTURE", "zhangkai"), f"zhangkai-vocal-day{day}-future-manual", []),
+            **expect(select_route(routes, day, 1, "FUTURE", "liuyuan"), f"liuyuan-vocal-day{day}-future-manual", []),
         })
 
     for day in range(1, 5):
         results["current_comment3"].append({
             "day": day,
-            **expect(select_route(routes, day, 3, "CURRENT", "zhangkai"), f"zhangkai-vocal-day{day}-comment3", ["TEXT"]),
+            **expect(select_route(routes, day, 3, "CURRENT", "liuyuan"), f"liuyuan-vocal-day{day}-comment3", ["TEXT"]),
         })
         results["current_manual"].append({
             "day": day,
             "commentIndex": 4,
-            **expect(select_route(routes, day, 4, "CURRENT", "zhangkai"), f"zhangkai-vocal-day{day}-comment4plus-manual", []),
+            **expect(select_route(routes, day, 4, "CURRENT", "liuyuan"), f"liuyuan-vocal-day{day}-comment4plus-manual", []),
         })
 
     for day in (5, 6):
         results["current_manual"].append({
             "day": day,
             "commentIndex": 3,
-            **expect(select_route(routes, day, 3, "CURRENT", "zhangkai"), f"zhangkai-vocal-day{day}-comment3plus-manual", []),
+            **expect(select_route(routes, day, 3, "CURRENT", "liuyuan"), f"liuyuan-vocal-day{day}-comment3plus-manual", []),
         })
 
     for day in range(1, 7):
         route = select_route(routes, day, 1, "CURRENT", "wangwu")
         name = route.get("strategy", {}).get("name") if route else None
-        if name and name.startswith("zhangkai-vocal-"):
-            raise AssertionError(f"other user matched zhangkai route on day{day}: {name}")
+        if name and name.startswith("liuyuan-vocal-"):
+            raise AssertionError(f"other user matched liuyuan route on day{day}: {name}")
         results["other_user"].append({"day": day, "routeId": route.get("id") if route else None, "name": name})
 
     OUT.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")

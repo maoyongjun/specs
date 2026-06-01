@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
-"""Rebind zhangkai routes with currentDay prefix so runtime matching wins."""
+﻿# -*- coding: utf-8 -*-
+"""Rebind liuyuan routes with currentDay prefix so runtime matching wins."""
 
 import requests
 
 
 BASE_URL = "http://localhost:9011"
 ACCESS_KEY = "drh20262026"
-OPERATOR = "zhangkai_config_20260601"
+OPERATOR = "liuyuan_config_20260601"
 SKU_ID = "5"
 
 
@@ -39,8 +39,8 @@ def main():
         routes = [
             route for route in config.get("routes", [])
             if route.get("strategy")
-            and str(route["strategy"].get("name", "")).startswith("zhangkai-vocal-")
-            and "zhangkai" in str(route.get("matchValue", ""))
+            and str(route["strategy"].get("name", "")).startswith("liuyuan-vocal-")
+            and "liuyuan" in str(route.get("matchValue", ""))
         ]
         print(f"found\t{len(routes)}")
         for route in routes:
@@ -52,7 +52,7 @@ def main():
                 "commentMatchType": route.get("commentMatchType") or "EQ",
                 "strategyId": route["strategy"]["id"],
                 "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
-                "matchValue": f"{day}&&{relation}&&zhangkai",
+                "matchValue": f"{day}&&{relation}&&liuyuan",
                 "skuId": SKU_ID,
             }
             request_json(session, "DELETE", f"/admin/homework-config/routes/{route['id']}")

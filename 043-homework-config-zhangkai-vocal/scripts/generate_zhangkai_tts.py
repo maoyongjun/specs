@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
-"""Generate zhangkai Day1-Day6 second-review cloned voice files.
+﻿# -*- coding: utf-8 -*-
+"""Generate liuyuan Day1-Day6 second-review cloned voice files.
 
 This script reuses the local ByteDance TTS demo credentials from the existing
 demo file and does not duplicate secrets in this Spec Kit directory.
@@ -37,7 +37,7 @@ def load_demo_config():
 
 def generate_one(session, url, headers, text, output_path):
     payload = {
-        "user": {"uid": "zhangkai-homework-config"},
+        "user": {"uid": "liuyuan-homework-config"},
         "req_params": {
             "text": text,
             "speaker": SPEAKER,

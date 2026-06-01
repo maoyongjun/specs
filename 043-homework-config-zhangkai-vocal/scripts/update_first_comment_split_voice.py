@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Replace Day1-Day5 first-comment voice actions with split MP3 files."""
 
 import json
@@ -10,7 +10,7 @@ import requests
 BASE_URL = "http://localhost:9011"
 ACCESS_KEY = "drh20262026"
 SKU_ID = "5"
-OPERATOR = "zhangkai_config_20260601_split_voice"
+OPERATOR = "liuyuan_config_20260601_split_voice"
 HOMEWORK_DIR = Path(r"C:\workspace\homework_file")
 OUTPUT_JSON = Path(
     r"C:\workspace\ju-chat\specs\043-homework-config-zhangkai-vocal\split-voice-update-records.json"
@@ -55,7 +55,7 @@ def load_comment1_strategies(session):
         strategy = route.get("strategy") or {}
         name = strategy.get("name") or ""
         for day in range(1, 6):
-            if name == f"zhangkai-vocal-day{day}-comment1":
+            if name == f"liuyuan-vocal-day{day}-comment1":
                 result[day] = strategy
     missing = [day for day in range(1, 6) if day not in result]
     if missing:

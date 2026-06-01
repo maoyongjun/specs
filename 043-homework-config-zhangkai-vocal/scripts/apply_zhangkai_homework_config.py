@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
-"""Create zhangkai vocal homework-review config through localhost admin APIs."""
+﻿# -*- coding: utf-8 -*-
+"""Create liuyuan vocal homework-review config through localhost admin APIs."""
 
 import json
 from pathlib import Path
@@ -10,7 +10,7 @@ import requests
 BASE_URL = "http://localhost:9011"
 ACCESS_KEY = "drh20262026"
 SKU_ID = "5"
-OPERATOR = "zhangkai_config_20260601"
+OPERATOR = "liuyuan_config_20260601"
 HOMEWORK_DIR = Path(r"C:\workspace\homework_file")
 CLONED_DIR = HOMEWORK_DIR / "kelong"
 OUTPUT_JSON = Path(r"C:\workspace\ju-chat\specs\043-homework-config-zhangkai-vocal\created-records.json")
@@ -72,15 +72,15 @@ def second_voice_file(day):
     return path
 
 
-def ensure_no_existing_zhangkai_routes(session):
+def ensure_no_existing_liuyuan_routes(session):
     data = unwrap(request_json(session, "GET", f"/admin/homework-config/config?skuId={SKU_ID}"))
     routes = data.get("routes", []) if isinstance(data, dict) else []
     hits = [
         route for route in routes
-        if "zhangkai" in str(route.get("matchValue", "")).lower()
+        if "liuyuan" in str(route.get("matchValue", "")).lower()
     ]
     if hits:
-        raise RuntimeError(f"found existing zhangkai routes, abort to avoid duplicates: {len(hits)}")
+        raise RuntimeError(f"found existing liuyuan routes, abort to avoid duplicates: {len(hits)}")
 
 
 def create_strategy(session, name):
@@ -129,7 +129,7 @@ def bind_route(session, day, comment_index, match_type, relation, strategy_id):
         "commentMatchType": match_type,
         "strategyId": strategy_id,
         "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
-        "matchValue": f"{day}&&{relation}&&zhangkai",
+        "matchValue": f"{day}&&{relation}&&liuyuan",
         "skuId": SKU_ID,
     }
     request_json(
@@ -145,24 +145,24 @@ def bind_route(session, day, comment_index, match_type, relation, strategy_id):
 def main():
     created = {"operator": OPERATOR, "strategies": [], "actions": [], "routes": []}
     with requests.Session() as session:
-        ensure_no_existing_zhangkai_routes(session)
+        ensure_no_existing_liuyuan_routes(session)
 
         for day in range(1, 7):
-            strategy = create_strategy(session, f"zhangkai-vocal-day{day}-comment1")
+            strategy = create_strategy(session, f"liuyuan-vocal-day{day}-comment1")
             created["strategies"].append(strategy)
             created["actions"].append(add_text_action(session, strategy["id"], 1, FIRST_TEXTS[day]))
             created["actions"].append(add_voice_action(session, strategy["id"], 2, first_voice_file(day)))
             created["routes"].append(bind_route(session, day, 1, "EQ", "CURRENT", strategy["id"]))
 
         for day in range(1, 7):
-            strategy = create_strategy(session, f"zhangkai-vocal-day{day}-comment2")
+            strategy = create_strategy(session, f"liuyuan-vocal-day{day}-comment2")
             created["strategies"].append(strategy)
             created["actions"].append(add_text_action(session, strategy["id"], 1, SECOND_TEXTS[day]))
             created["actions"].append(add_voice_action(session, strategy["id"], 2, second_voice_file(day)))
             created["routes"].append(bind_route(session, day, 2, "EQ", "CURRENT", strategy["id"]))
 
         for day in range(1, 5):
-            strategy = create_strategy(session, f"zhangkai-vocal-day{day}-comment3")
+            strategy = create_strategy(session, f"liuyuan-vocal-day{day}-comment3")
             created["strategies"].append(strategy)
             created["actions"].append(add_text_action(session, strategy["id"], 1, THIRD_TEXTS[day]))
             created["routes"].append(bind_route(session, day, 3, "EQ", "CURRENT", strategy["id"]))
@@ -176,13 +176,13 @@ def main():
             6: (3, "GTE", "comment3plus-manual"),
         }
         for day, (comment_index, match_type, suffix) in manual_current.items():
-            strategy = create_strategy(session, f"zhangkai-vocal-day{day}-{suffix}")
+            strategy = create_strategy(session, f"liuyuan-vocal-day{day}-{suffix}")
             created["strategies"].append(strategy)
             created["routes"].append(bind_route(session, day, comment_index, match_type, "CURRENT", strategy["id"]))
 
         for relation in ("PAST", "FUTURE"):
             for day in range(1, 7):
-                strategy = create_strategy(session, f"zhangkai-vocal-day{day}-{relation.lower()}-manual")
+                strategy = create_strategy(session, f"liuyuan-vocal-day{day}-{relation.lower()}-manual")
                 created["strategies"].append(strategy)
                 created["routes"].append(bind_route(session, day, 1, "GTE", relation, strategy["id"]))
 
