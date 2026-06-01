@@ -2,8 +2,8 @@
 
 **功能目录**：`043-homework-config-zhangkai-vocal`  
 **创建日期**：`2026-06-01`  
-**状态**：Draft  
-**输入**：在 `C:\workspace\ju-chat\specs` 创建 Spec Kit 文档。先将正式环境作业点评配置三表同步到测试环境，并清理测试环境原作业点评配置。按 `C:\workspace\homework_file\点评说明.txt` 生成需要克隆的语音，输出到 `C:\workspace\homework_file\kelong`。通过 `localhost:9011` 测试环境接口维护声乐 `skuId=5`、企业微信 id `zhangkai` 的作业点评配置，并生成本次新增 SQL。第三次有明确文本则文本回复，Day5/Day6 第三次人工回复，第四次及以上全部人工回复；过去和未来作业先配置空策略。
+**状态**：Verified  
+**输入**：在 `C:\workspace\ju-chat\specs` 创建 Spec Kit 文档。先将正式环境作业点评配置三表同步到测试环境，并清理测试环境原作业点评配置。按 `C:\workspace\homework_file\点评说明.txt` 生成需要克隆的语音，输出到 `C:\workspace\homework_file\kelong`。通过 `localhost:9011` 测试环境接口维护声乐 `skuId=5`、企业微信 id `zhangkai` 的作业点评配置，并生成本次新增 SQL。第三次有明确文本则文本回复，Day5/Day6 第三次人工回复，第四次及以上全部人工回复；过去和未来作业先配置空策略。最终新增 route 使用 `currentDay&&homeworkDayRelation&&qwUserId_RLike` 组合条件，例如 `6&&FUTURE&&zhangkai`。
 
 ## 背景
 
@@ -68,8 +68,9 @@
   - 必须先生成并核查语音文件，再上传创建 VOICE action。
 - 旧逻辑保持：
   - 不修改默认声乐配置、不修改钢琴配置、不修改其他企业微信 id 的 action 条件。
-  - 新增 route 必须比旧默认 route 更具体，且仅在 `zhangkai` 命中。
+  - 新增 route 必须比旧默认 route 更具体，且仅在 `zhangkai` 命中；最终使用 `currentDay&&homeworkDayRelation&&qwUserId_RLike`，保证 SOP 运行时排序和多条件解析都能命中专属配置。
   - `PAST`、`FUTURE` 仅对 `zhangkai` 用空策略兜住，不改变其他用户的过去/未来作业逻辑。
+  - `/admin/homework-config/config/{day}/{commentIndex}` 简易查询接口不解析 `&&` 多条件，不能作为组合 route 的最终验证依据；最终验证以全量配置 `/api/homework-config/config?skuId=5` 和 `SopConfigSender` 运行时匹配逻辑为准。
 - 需要用户确认的设计选择：
   - Day6 第 3 次说明文件未给文本，已确认按人工回复空策略处理。
 
@@ -119,11 +120,22 @@
 
 ### D002 - 实现记录
 
-- `<执行后填写：三表同步、语音生成、接口新增配置、SQL 生成和验证结果。>`
+- 三表同步：正式只读库基线为 strategy `46`、action `276`、route `39`；测试库同步后与正式基线一致。
+- 新增配置：已创建 `zhangkai` 声乐 strategy `34`、route `34`；Day1-Day5 首次点评语音分段更新后，当前启用 action 为 `34`。
+- 语音文件：Day1-Day6 第二次克隆语音已生成到 `C:\workspace\homework_file\kelong`；Day1-Day5 首次点评语音已使用 `C:\workspace\homework_file` 下新的分段 MP3。
+- SQL：本次新增 SQL 已刷新到 `zhangkai-homework-config-added.sql`，不包含正式到测试的全量同步数据；Day1-Day5 首评语音拆分增量 SQL 已生成到 `sql\zhangkai-split-voice-update.sql`。
+- 验证：服务重启后已通过 `/api/homework-config/config?skuId=5` 重跑运行时兼容验证，`verification-summary.json` 记录了当前、过去、未来作业和其他企业微信 id 的命中结果。
 
-### D003 - 纠正记录模板
+### D003 - 路由优先级纠正记录
 
-- 触发原因：`<用户补充 / 测试失败 / 接口返回异常 / 参数遗漏>`
-- 修正内容：`<写清楚旧口径和新口径>`
-- 文档同步：`<spec/tasks/AGENTS/checklist 是否已同步>`
-- 验证结果：`<测试或静态验证结果>`
+- 触发原因：如果仅使用 `homeworkDayRelation&&qwUserId_RLike`，全量 route 排序下旧通用 `homeworkDayRelation` route 可能先命中。
+- 修正内容：将本次新增 route 改为 `currentDay&&homeworkDayRelation&&qwUserId_RLike`，`matchValue` 改为 `day&&relation&&zhangkai`。
+- 支持性确认：绑定接口会保存该组合字段；`SopConfigSender` 使用 `&&` 拆分 `matchKey/matchValue` 并逐项匹配，支持如 `currentDay&&homeworkDayRelation&&qwUserId_RLike=6&&FUTURE&&zhangkai` 的组合。
+- 验证结果：测试库和 `/api/homework-config/config?skuId=5` 中 `zhangkai` route 共 `34` 条，全部为修正后的三段 matchKey；Day6 FUTURE route 已返回为 strategy `zhangkai-vocal-day6-future-manual`，空 action；运行时兼容验证通过。
+
+### D004 - Day1-Day5 首评语音分段更新记录
+
+- 触发原因：Day1-Day5 首次点评语音由单条语音调整为多段 MP3。
+- 修正内容：旧单条 VOICE action `312/314/316/318/320` 已禁用；新增分段 VOICE action `339-349`。
+- 当前策略：Day1、Day2、Day4、Day5 当前为 `TEXT + 2 VOICE`；Day3 当前为 `TEXT + 3 VOICE`；Day6 保持 `TEXT + 1 VOICE`。
+- 验证结果：`verification-summary.json` 已更新，Day1-Day6 当前作业、过去/未来作业和其他企业微信 id 回归验证通过。

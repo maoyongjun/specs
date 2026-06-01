@@ -1,0 +1,256 @@
+{
+  "operator": "zhangkai_config_20260601_split_voice",
+  "deletedVoiceActions": [
+    {
+      "day": 1,
+      "strategyId": 50,
+      "actionId": 312,
+      "orderIndex": 2,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%62%30%61%61%61%30%64%30%66%34%65%32%36%30%34%38%63%33.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/1e5fc32ccc2c491996fb7cd373883e34.mp3"
+    },
+    {
+      "day": 2,
+      "strategyId": 51,
+      "actionId": 314,
+      "orderIndex": 2,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%62%33%61%61%61%30%64%30%66%34%65%32%36%30%34%62%61%36.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/f75aa011a96349f5b7c1cba6a05c5708.mp3"
+    },
+    {
+      "day": 3,
+      "strategyId": 52,
+      "actionId": 316,
+      "orderIndex": 2,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%62%37%63%34%34%37%64%65%31%32%32%65%37%62%66%61%63%34.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/957e0d8192854c7ab22b163cb261fc34.mp3"
+    },
+    {
+      "day": 4,
+      "strategyId": 53,
+      "actionId": 318,
+      "orderIndex": 2,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%62%63%61%61%61%30%64%30%66%34%65%32%36%30%35%31%31%66.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/e9d0485cd463431ba83ea6ea258841b4.mp3"
+    },
+    {
+      "day": 5,
+      "strategyId": 54,
+      "actionId": 320,
+      "orderIndex": 2,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%62%66%61%61%61%30%64%30%66%34%65%32%36%30%35%33%65%63.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/81be9fcf22234d539b197f78ae3d488a.mp3"
+    }
+  ],
+  "addedVoiceActions": [
+    {
+      "day": 1,
+      "strategyId": 50,
+      "file": "C:\\workspace\\homework_file\\1-1万疆点评-1.MP3",
+      "action": {
+        "id": 339,
+        "orderIndex": 2,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%32%35%63%34%34%37%64%65%31%32%32%65%39%38%37%66%37%61.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/ae07e269af8944229e4a42feded62573.MP3",
+        "voiceDurationMillis": 52000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 52000
+      }
+    },
+    {
+      "day": 1,
+      "strategyId": 50,
+      "file": "C:\\workspace\\homework_file\\1-2万疆点评-2.MP3",
+      "action": {
+        "id": 340,
+        "orderIndex": 3,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%32%38%31%34%65%30%37%38%35%30%30%61%32%30%64%36%32%30.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/aea30cea8cbb4927a969ff0c65900b81.MP3",
+        "voiceDurationMillis": 26000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 26000
+      }
+    },
+    {
+      "day": 2,
+      "strategyId": 51,
+      "file": "C:\\workspace\\homework_file\\2-1大海啊故乡点评-1.MP3",
+      "action": {
+        "id": 341,
+        "orderIndex": 2,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%32%61%31%34%65%30%37%38%35%30%30%61%32%30%64%36%39%33.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/3ad2808e1f78438eb7b2088359ad27ee.MP3",
+        "voiceDurationMillis": 49000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 49000
+      }
+    },
+    {
+      "day": 2,
+      "strategyId": 51,
+      "file": "C:\\workspace\\homework_file\\2-2大海啊故乡点评-2.MP3",
+      "action": {
+        "id": 342,
+        "orderIndex": 3,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%32%63%31%34%65%30%37%38%35%30%30%61%32%30%64%37%33%65.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/3205e29a4028495a8f2d549a46403882.MP3",
+        "voiceDurationMillis": 47000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 47000
+      }
+    },
+    {
+      "day": 3,
+      "strategyId": 52,
+      "file": "C:\\workspace\\homework_file\\3-1天之大点评-1.MP3",
+      "action": {
+        "id": 343,
+        "orderIndex": 2,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%32%65%63%34%34%37%64%65%31%32%32%65%39%38%38%35%33%39.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/4bf7e91d37bc452aa1c4af02721d2cf0.MP3",
+        "voiceDurationMillis": 47000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 47000
+      }
+    },
+    {
+      "day": 3,
+      "strategyId": 52,
+      "file": "C:\\workspace\\homework_file\\3-2天之大点评-2.MP3",
+      "action": {
+        "id": 344,
+        "orderIndex": 3,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%30%63%34%34%37%64%65%31%32%32%65%39%38%38%36%38%35.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/f44bf578391849f7a933301163a46e2a.MP3",
+        "voiceDurationMillis": 13000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 13000
+      }
+    },
+    {
+      "day": 3,
+      "strategyId": 52,
+      "file": "C:\\workspace\\homework_file\\3-3天之大点评-3.MP3",
+      "action": {
+        "id": 345,
+        "orderIndex": 4,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%32%63%34%34%37%64%65%31%32%32%65%39%38%38%37%35%30.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/7c95de1e383449029eeead291dcc1f65.MP3",
+        "voiceDurationMillis": 46000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 46000
+      }
+    },
+    {
+      "day": 4,
+      "strategyId": 53,
+      "file": "C:\\workspace\\homework_file\\4-1康定情歌点评-1.MP3",
+      "action": {
+        "id": 346,
+        "orderIndex": 2,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%34%31%34%65%30%37%38%35%30%30%61%32%30%64%39%36%62.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/6e3eac9edcd745d78d47e0f57545321e.MP3",
+        "voiceDurationMillis": 50000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 50000
+      }
+    },
+    {
+      "day": 4,
+      "strategyId": 53,
+      "file": "C:\\workspace\\homework_file\\4-2康定情歌点评-2.MP3",
+      "action": {
+        "id": 347,
+        "orderIndex": 3,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%36%34%34%31%38%65%65%61%61%65%35%63%36%33%33%31%35.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/54cf56d7847c4626b6692534912dbdc7.MP3",
+        "voiceDurationMillis": 49000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 49000
+      }
+    },
+    {
+      "day": 5,
+      "strategyId": 54,
+      "file": "C:\\workspace\\homework_file\\5-1东方之珠点评-1.MP3",
+      "action": {
+        "id": 348,
+        "orderIndex": 2,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%38%34%34%31%38%65%65%61%61%65%35%63%36%33%34%36%38.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/d58a67771f84454a9338f852bbe1772e.MP3",
+        "voiceDurationMillis": 30000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 30000
+      }
+    },
+    {
+      "day": 5,
+      "strategyId": 54,
+      "file": "C:\\workspace\\homework_file\\5-2东方之珠点评-2.MP3",
+      "action": {
+        "id": 349,
+        "orderIndex": 3,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%61%63%34%34%37%64%65%31%32%32%65%39%38%38%64%38%66.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/6dd1f4ba26ce4abfa24f9f990bfc509c.MP3",
+        "voiceDurationMillis": 54000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 54000
+      }
+    }
+  ]
+}

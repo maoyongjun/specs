@@ -21,7 +21,8 @@
 
 - 不把数据库密码、TTS key、token 写入本目录文档或 SQL。
 - 只操作作业点评配置三张表，不处理其他模块配置。
-- 新增路由必须同时限定 `skuId=5`、`homeworkDayRelation`、`qwUserId_RLike=zhangkai`，避免影响已有默认配置。
+- 新增路由必须同时限定 `skuId=5`、`currentDay`、`homeworkDayRelation`、`qwUserId_RLike=zhangkai`，最终 `matchKey` 使用 `currentDay&&homeworkDayRelation&&qwUserId_RLike`，避免影响已有默认配置并保证运行时优先命中。
+- 组合 route 的最终验证以全量配置和 `SopConfigSender` 运行时匹配为准；`/admin/homework-config/config/{day}/{commentIndex}` 简易查询接口不解析 `&&` 多条件。
 - 空策略表示 SOP 不自动回复，由人工处理。
 - 所有通过接口创建的策略、动作、路由，必须在执行记录里保留可复核的返回 id 或校验摘要。
 
@@ -38,3 +39,4 @@
 - `tasks.md` 记录事实确认、执行步骤、验证结果和纠正记录。
 - `checklists/requirements.md` 记录规格质量和参数完整性门禁。
 - `zhangkai-homework-config-added.sql` 只记录本次新增配置 SQL。
+- `sql/zhangkai-split-voice-update.sql` 记录 Day1-Day5 首评语音从单条改分段的增量更新 SQL。

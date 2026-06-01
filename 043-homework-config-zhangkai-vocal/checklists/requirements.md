@@ -29,6 +29,8 @@
 - [x] 不存在未处理的调用后赋值风险。
 - [x] 外部接口和数据库写入的关键参数已有下游参数断言方案。
 - [x] 业务语义变化已由用户确认：Day6 第三次人工回复，第 4 次及以上人工回复。
+- [x] 已确认 `currentDay&&homeworkDayRelation&&qwUserId_RLike` 组合 route 可被 SOP 运行时按 `&&` 拆分匹配。
+- [x] 已确认 Day1-Day5 首评分段语音按 orderIndex 顺序发送，旧单条 VOICE action 已禁用。
 
 ## 实施就绪度
 
@@ -38,6 +40,8 @@
 - [x] 每个关键需求至少有一条接口、SQL 或静态验证任务。
 - [x] 测试计划允许本次真实访问测试库、正式只读库、TTS HTTP 和 localhost 配置接口。
 - [x] 补充需求已同步更新 `spec.md`、`tasks.md` 和 `AGENTS.md`。
+- [x] 已记录简易 route 查询接口不适合作为组合 route 验证依据。
+- [x] 已为 Day1-Day5 首评语音拆分生成接口执行记录、最终态 SQL 和增量 SQL。
 
 ## 备注
 

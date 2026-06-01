@@ -1,0 +1,1063 @@
+{
+  "operator": "zhangkai_config_20260601",
+  "strategies": [
+    {
+      "id": 50,
+      "name": "zhangkai-vocal-day1-comment1",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 51,
+      "name": "zhangkai-vocal-day2-comment1",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 52,
+      "name": "zhangkai-vocal-day3-comment1",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 53,
+      "name": "zhangkai-vocal-day4-comment1",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 54,
+      "name": "zhangkai-vocal-day5-comment1",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 55,
+      "name": "zhangkai-vocal-day6-comment1",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 56,
+      "name": "zhangkai-vocal-day1-comment2",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 57,
+      "name": "zhangkai-vocal-day2-comment2",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 58,
+      "name": "zhangkai-vocal-day3-comment2",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 59,
+      "name": "zhangkai-vocal-day4-comment2",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 60,
+      "name": "zhangkai-vocal-day5-comment2",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 61,
+      "name": "zhangkai-vocal-day6-comment2",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 62,
+      "name": "zhangkai-vocal-day1-comment3",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 63,
+      "name": "zhangkai-vocal-day2-comment3",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 64,
+      "name": "zhangkai-vocal-day3-comment3",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 65,
+      "name": "zhangkai-vocal-day4-comment3",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 66,
+      "name": "zhangkai-vocal-day1-comment4plus-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 67,
+      "name": "zhangkai-vocal-day2-comment4plus-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 68,
+      "name": "zhangkai-vocal-day3-comment4plus-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 69,
+      "name": "zhangkai-vocal-day4-comment4plus-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 70,
+      "name": "zhangkai-vocal-day5-comment3plus-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 71,
+      "name": "zhangkai-vocal-day6-comment3plus-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 72,
+      "name": "zhangkai-vocal-day1-past-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 73,
+      "name": "zhangkai-vocal-day2-past-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 74,
+      "name": "zhangkai-vocal-day3-past-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 75,
+      "name": "zhangkai-vocal-day4-past-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 76,
+      "name": "zhangkai-vocal-day5-past-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 77,
+      "name": "zhangkai-vocal-day6-past-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 78,
+      "name": "zhangkai-vocal-day1-future-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 79,
+      "name": "zhangkai-vocal-day2-future-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 80,
+      "name": "zhangkai-vocal-day3-future-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 81,
+      "name": "zhangkai-vocal-day4-future-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 82,
+      "name": "zhangkai-vocal-day5-future-manual",
+      "skuId": "5",
+      "actions": []
+    },
+    {
+      "id": 83,
+      "name": "zhangkai-vocal-day6-future-manual",
+      "skuId": "5",
+      "actions": []
+    }
+  ],
+  "actions": [
+    {
+      "id": 311,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "收到您第一节课《万疆》的作业了，我现在给您点评，您耐心听完，今天学习情况不错！明天也要坚持来上第二节课！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 50
+    },
+    {
+      "id": 339,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%32%35%63%34%34%37%64%65%31%32%32%65%39%38%37%66%37%61.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/ae07e269af8944229e4a42feded62573.MP3",
+      "voiceDurationMillis": 52000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 52000,
+      "strategyId": 50
+    },
+    {
+      "id": 340,
+      "orderIndex": 3,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%32%38%31%34%65%30%37%38%35%30%30%61%32%30%64%36%32%30.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/aea30cea8cbb4927a969ff0c65900b81.MP3",
+      "voiceDurationMillis": 26000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 26000,
+      "strategyId": 50
+    },
+    {
+      "id": 313,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "大海啊故乡这节课，教学的内容是能够帮我们去打开喉咙，锻炼气息的，我再把技巧给您讲解下！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 51
+    },
+    {
+      "id": 341,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%32%61%31%34%65%30%37%38%35%30%30%61%32%30%64%36%39%33.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/3ad2808e1f78438eb7b2088359ad27ee.MP3",
+      "voiceDurationMillis": 49000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 49000,
+      "strategyId": 51
+    },
+    {
+      "id": 342,
+      "orderIndex": 3,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%32%63%31%34%65%30%37%38%35%30%30%61%32%30%64%37%33%65.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/3205e29a4028495a8f2d549a46403882.MP3",
+      "voiceDurationMillis": 47000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 47000,
+      "strategyId": 51
+    },
+    {
+      "id": 315,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "很多同学都觉得今天这节课很难，要唱高音，但您表现的很棒，今天的技巧都掌握了，我听完了你提交的作业，我马上给你点评！明天是很关键的一节课，一定要来参加！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 52
+    },
+    {
+      "id": 343,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%32%65%63%34%34%37%64%65%31%32%32%65%39%38%38%35%33%39.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/4bf7e91d37bc452aa1c4af02721d2cf0.MP3",
+      "voiceDurationMillis": 47000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 47000,
+      "strategyId": 52
+    },
+    {
+      "id": 344,
+      "orderIndex": 3,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%30%63%34%34%37%64%65%31%32%32%65%39%38%38%36%38%35.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/f44bf578391849f7a933301163a46e2a.MP3",
+      "voiceDurationMillis": 13000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 13000,
+      "strategyId": 52
+    },
+    {
+      "id": 345,
+      "orderIndex": 4,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%32%63%34%34%37%64%65%31%32%32%65%39%38%38%37%35%30.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/7c95de1e383449029eeead291dcc1f65.MP3",
+      "voiceDurationMillis": 46000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 46000,
+      "strategyId": 52
+    },
+    {
+      "id": 317,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "今天对于节奏的掌握感觉怎么样？跟得上歌曲的节奏不？我看你学的很用心，我先给你点评！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 53
+    },
+    {
+      "id": 346,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%34%31%34%65%30%37%38%35%30%30%61%32%30%64%39%36%62.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/6e3eac9edcd745d78d47e0f57545321e.MP3",
+      "voiceDurationMillis": 50000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 50000,
+      "strategyId": 53
+    },
+    {
+      "id": 347,
+      "orderIndex": 3,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%36%34%34%31%38%65%65%61%61%65%35%63%36%33%33%31%35.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/54cf56d7847c4626b6692534912dbdc7.MP3",
+      "voiceDurationMillis": 49000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 49000,
+      "strategyId": 53
+    },
+    {
+      "id": 319,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "看来咱们经过4天的学习，已经和当时没上课的您有很大的提升啊！但是对于技巧和方法的运用上，我再给您讲讲，您稍等 我给您发语音！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 54
+    },
+    {
+      "id": 348,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%38%34%34%31%38%65%65%61%61%65%35%63%36%33%34%36%38.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/d58a67771f84454a9338f852bbe1772e.MP3",
+      "voiceDurationMillis": 30000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 30000,
+      "strategyId": 54
+    },
+    {
+      "id": 349,
+      "orderIndex": 3,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%36%63%33%61%63%34%34%37%64%65%31%32%32%65%39%38%38%64%38%66.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/6dd1f4ba26ce4abfa24f9f990bfc509c.MP3",
+      "voiceDurationMillis": 54000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 54000,
+      "strategyId": 54
+    },
+    {
+      "id": 321,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "同学您好啊！今天是最后一节课了，赵老师还是用心给你点评，您也耐心听完赵老师讲的，我们学习不要半途而废！坚持下去！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 55
+    },
+    {
+      "id": 322,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%63%33%61%61%61%30%64%30%66%34%65%32%36%30%35%37%31%33.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/75658b9c13d84eb987bd1722ad3ffc30.mp3",
+      "voiceDurationMillis": 46000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 46000,
+      "strategyId": 55
+    },
+    {
+      "id": 323,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "好嘞！同学很用心！这是第二次提交《万疆》了，我先听听咱们这次对比第一次没有没进步哈！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 56
+    },
+    {
+      "id": 324,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%63%35%61%30%36%37%63%30%66%64%37%39%35%62%38%64%38%36.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/9d30a3019b804281a96764e3eba6b049.mp3",
+      "voiceDurationMillis": 16000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 16000,
+      "strategyId": 56
+    },
+    {
+      "id": 325,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "同学，收到你的作业啦，我刚听完你的作业，在整段的表现上，有小进步，但是还有需要注意的细节，我发语音你听听",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 57
+    },
+    {
+      "id": 326,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%63%37%61%61%61%30%64%30%66%34%65%32%36%30%35%39%63%63.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/e49b366978dd44809e9b35015e457927.mp3",
+      "voiceDurationMillis": 20000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 20000,
+      "strategyId": 57
+    },
+    {
+      "id": 327,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "很棒！很多同学看到高音的歌曲，就不敢提交作业了，您是第二次提交了，看来您很用心在学习，我马上给你点评",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 58
+    },
+    {
+      "id": 328,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%63%39%61%61%61%30%64%30%66%34%65%32%36%30%35%61%35%35.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/6dff217b03564882ac0869f7127eddee.mp3",
+      "voiceDurationMillis": 15000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 15000,
+      "strategyId": 58
+    },
+    {
+      "id": 329,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "收到作业啦～ 今天的课程上的怎么样？学习一定是要坚持并且长期学习下去的，不能够半途而废哦，我先听听咱们这次提交的情况哈",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 59
+    },
+    {
+      "id": 330,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%63%61%61%61%61%30%64%30%66%34%65%32%36%30%35%61%66%34.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/876a2e6b159f49b1852dfbe8bd511f35.mp3",
+      "voiceDurationMillis": 20000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 20000,
+      "strategyId": 59
+    },
+    {
+      "id": 331,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "今天是倒数第二节课了！您依然很用心的在跟着我学习，我先听听您的作业",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 60
+    },
+    {
+      "id": 332,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%63%63%61%30%36%37%63%30%66%64%37%39%35%62%39%32%32%33.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/a597df3e73994ae2a13b5874544c9000.mp3",
+      "voiceDurationMillis": 17000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 17000,
+      "strategyId": 60
+    },
+    {
+      "id": 333,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "好嘞同学！今天是最后一天一起学习啦，我听完你的作业了，您听听",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 61
+    },
+    {
+      "id": 334,
+      "orderIndex": 2,
+      "type": "VOICE",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": null,
+      "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%31%64%34%61%63%65%61%61%61%30%64%30%66%34%65%32%36%30%35%63%62%33.silk",
+      "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/fa169a3e176a4378b0fe976eb8c8965f.mp3",
+      "voiceDurationMillis": 17000,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 17000,
+      "strategyId": 61
+    },
+    {
+      "id": 335,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "我听完了！确实是有在勤加练习，特别好学！我也很开心能够遇到勤奋的同学，相信您这样坚持勤练下去，咱们一起能学有所成！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 62
+    },
+    {
+      "id": 336,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "嗯！能修正一些细节上的唱法，很不错，喉咙一定要打开、放开、让声音出来，换气的时候要大口吸气，慢慢吐出来，这样就能让气息越来越稳！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 63
+    },
+    {
+      "id": 337,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "这一次稍微好很多了，气的感觉已经上来了，剩下的就是稳住，您要是有时间，多看看第二节课的回放，把咱们气息的运用多巩固巩固，这样以后唱高音就更没问题啦！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 64
+    },
+    {
+      "id": 338,
+      "orderIndex": 1,
+      "type": "TEXT",
+      "conditionKey": "",
+      "conditionValue": "",
+      "textContent": "才开始可以不用着急去抓节拍和节奏，先跟着自己拍掌的频率来唱，这样就能够掌握的更好！",
+      "materialUrl": null,
+      "ossUrl": null,
+      "voiceDurationMillis": null,
+      "pdfFileName": null,
+      "pdfFileSizeBytes": null,
+      "delayMillis": 2000,
+      "strategyId": 65
+    }
+  ],
+  "routes": [
+    {
+      "id": 91,
+      "day": 1,
+      "commentIndex": 1,
+      "commentMatchType": "EQ",
+      "strategyId": 50,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "1&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 92,
+      "day": 1,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 78,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "1&&FUTURE&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 93,
+      "day": 1,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 72,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "1&&PAST&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 94,
+      "day": 1,
+      "commentIndex": 2,
+      "commentMatchType": "EQ",
+      "strategyId": 56,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "1&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 95,
+      "day": 1,
+      "commentIndex": 3,
+      "commentMatchType": "EQ",
+      "strategyId": 62,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "1&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 96,
+      "day": 1,
+      "commentIndex": 4,
+      "commentMatchType": "GTE",
+      "strategyId": 66,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "1&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 97,
+      "day": 2,
+      "commentIndex": 1,
+      "commentMatchType": "EQ",
+      "strategyId": 51,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "2&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 98,
+      "day": 2,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 79,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "2&&FUTURE&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 99,
+      "day": 2,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 73,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "2&&PAST&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 100,
+      "day": 2,
+      "commentIndex": 2,
+      "commentMatchType": "EQ",
+      "strategyId": 57,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "2&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 101,
+      "day": 2,
+      "commentIndex": 3,
+      "commentMatchType": "EQ",
+      "strategyId": 63,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "2&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 102,
+      "day": 2,
+      "commentIndex": 4,
+      "commentMatchType": "GTE",
+      "strategyId": 67,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "2&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 103,
+      "day": 3,
+      "commentIndex": 1,
+      "commentMatchType": "EQ",
+      "strategyId": 52,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "3&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 104,
+      "day": 3,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 80,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "3&&FUTURE&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 105,
+      "day": 3,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 74,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "3&&PAST&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 106,
+      "day": 3,
+      "commentIndex": 2,
+      "commentMatchType": "EQ",
+      "strategyId": 58,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "3&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 107,
+      "day": 3,
+      "commentIndex": 3,
+      "commentMatchType": "EQ",
+      "strategyId": 64,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "3&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 108,
+      "day": 3,
+      "commentIndex": 4,
+      "commentMatchType": "GTE",
+      "strategyId": 68,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "3&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 109,
+      "day": 4,
+      "commentIndex": 1,
+      "commentMatchType": "EQ",
+      "strategyId": 53,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "4&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 110,
+      "day": 4,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 81,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "4&&FUTURE&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 111,
+      "day": 4,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 75,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "4&&PAST&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 112,
+      "day": 4,
+      "commentIndex": 2,
+      "commentMatchType": "EQ",
+      "strategyId": 59,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "4&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 113,
+      "day": 4,
+      "commentIndex": 3,
+      "commentMatchType": "EQ",
+      "strategyId": 65,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "4&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 114,
+      "day": 4,
+      "commentIndex": 4,
+      "commentMatchType": "GTE",
+      "strategyId": 69,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "4&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 115,
+      "day": 5,
+      "commentIndex": 1,
+      "commentMatchType": "EQ",
+      "strategyId": 54,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "5&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 116,
+      "day": 5,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 82,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "5&&FUTURE&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 117,
+      "day": 5,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 76,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "5&&PAST&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 118,
+      "day": 5,
+      "commentIndex": 2,
+      "commentMatchType": "EQ",
+      "strategyId": 60,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "5&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 119,
+      "day": 5,
+      "commentIndex": 3,
+      "commentMatchType": "GTE",
+      "strategyId": 70,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "5&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 120,
+      "day": 6,
+      "commentIndex": 1,
+      "commentMatchType": "EQ",
+      "strategyId": 55,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "6&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 121,
+      "day": 6,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 83,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "6&&FUTURE&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 122,
+      "day": 6,
+      "commentIndex": 1,
+      "commentMatchType": "GTE",
+      "strategyId": 77,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "6&&PAST&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 123,
+      "day": 6,
+      "commentIndex": 2,
+      "commentMatchType": "EQ",
+      "strategyId": 61,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "6&&CURRENT&&zhangkai",
+      "skuId": "5"
+    },
+    {
+      "id": 124,
+      "day": 6,
+      "commentIndex": 3,
+      "commentMatchType": "GTE",
+      "strategyId": 71,
+      "matchKey": "currentDay&&homeworkDayRelation&&qwUserId_RLike",
+      "matchValue": "6&&CURRENT&&zhangkai",
+      "skuId": "5"
+    }
+  ]
+}
