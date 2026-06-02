@@ -14,9 +14,9 @@
 - 目标表扩展为 7 张：`drh_h5_order`、`drh_live_user`、`drh_applet_user`、`drh_book_question_record`、`drh_external_book_question_record`、`drh_book_edit_address_compensation`、`drh_real_address_record`。
 - 在目标表对应实体中增加/补齐 `phoneMask`、`phoneMd5`、`phoneAes` 持久化字段和 `createAesInfo()` / 安全字段生成能力。
 - 改造保存链路：所有新增 / 修改手机号的场景，在入库前调用 `createAesInfo()` 同步计算安全字段。
-- 改造查询链路：所有按手机号等值查询的场景，改为使用 `phone_md5` 字段匹配。
+- 改造查询链路：所有按手机号等值查询的场景，改为使用 `phone_md5` 字段匹配；查询输入支持明文手机号、前端 AES 加密手机号、手机号 MD5 三种格式。
 - 改造展示链路：列表和导出接口返回 `phone_mask` 而非明文 `phone`。
-- 前端兼容：`createAesInfo()` 必须兼容前端传入的明文手机号和 AES 加密密文。
+- 保存 / 更新兼容：`createAesInfo()` 必须兼容前端传入的明文手机号和 AES 加密密文；手机号 MD5 不作为保存 / 更新支持格式。
 - 单元测试：为 `createAesInfo()` 和前端兼容逻辑编写单元测试。
 - 历史补数：在 `C:\workspace\ju-chat\data-RC\juzi-service` 增加补数接口，后台补齐目标表安全字段；补数范围包含 `drh_live_user.app_phone` 的 `app_phone_*` 三字段。
 
@@ -44,7 +44,20 @@
 - `DataSecurityInput`：`businessType`（1=加密）、`dataType`（1=手机号）、`data`。
 - `DataSecurityOutput`：`mask`、`md5`、`aesEncrypt`、`aesDecrypt`。
 - `DataSecurityInvoke`：通过 `FcInvokeUtils.doSyncTaskReturnJSONObj()` 调用远程 FC 函数 `DataSecurity-test`。
-- `DataSecurityUtil`：AES/CBC/PKCS5Padding，key `drh_aes_key_77b!`，IV `drh_aes_iv_77bit`。
+- `DataSecurityUtil`：AES/CBC/PKCS5Padding，key `drh_aes_key_77b!`，IV `drh_aes_iv_77bit`；前端加密手机号需与该解密口径一致。
+
+## 本地构建 / JDK
+
+- DRH 工程验证优先使用 JDK8：`C:\Program Files\Java\jdk1.8.0_481`，版本 `java version "1.8.0_481"`。
+- 验证前显式设置：
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk1.8.0_481'
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
+mvn -pl drh-common "-Dtest=DataSecurityUtilTest" test
+```
+
+- 不要用本机 Maven 默认的 JDK17 路径 `C:\workspace\tools\jdk17\jdk-17.0.18+8`（版本 `17.0.18`）验证 DRH 工程；老 Lombok 会和 JDK17 的 `jdk.compiler` 模块访问限制冲突。
 
 ## 执行原则
 
@@ -61,12 +74,12 @@
 - 参数来源：`phone` 来自前端请求（密文或明文）；`phoneMask/phoneMd5/phoneAes` 来自 `DataSecurityInvoke.doDsTask()`（远程 FC 调用）。
 - 赋值时机：`createAesInfo()` 必须在 `save()` / `insert()` 之前调用。
 - 占位对象：`DataSecurityInput` 必须 `setData()` 后才可调用 `doDsTask()`。
-- 下游读取：列表读 `phoneMask`，查询读 `phoneMd5`，单条解密读 `phoneAes`。
+- 下游读取：列表读 `phoneMask`，查询读 `phoneMd5`；查询参数先经 `DataSecurityInvoke.computePhoneMd5()` 归一，支持明文 / 前端密文 / MD5；单条解密读 `phoneAes`。
 - 旧逻辑保持：原 `phone` 字段保留，旧查询可并存（渐进式改造）。
 - 影响范围：drh 工程 6 个模块 + ju-chat 工程 ai 模块。
 - 测试映射：每个关键行为至少对应一条单元测试。
 - ju-chat 工程依赖确认：ai 模块是否能访问 drh-common 的 `DataSecurity*` 类。
-- 前端兼容确认：`DataSecurityUtil.aesDecrypt()` 对明文输入的行为。
+- 输入兼容确认：保存 / 更新支持明文和前端密文；查询额外支持 32 位手机号 MD5 直通，不二次摘要。
 - 远程 FC 调用超时策略：`DataSecurityInvoke.doDsTask()` 失败时的降级处理。
 - 历史补数接口：必须单实例防重入，最多 4 个并发调用 FC，按 300 条批量更新，日志打印批次进度。
 

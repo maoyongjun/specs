@@ -13,7 +13,7 @@
 - [ ] T005 确认 `DataSecurityUtil.aesDecrypt()` 对明文手机号输入的行为：抛异常、返回 null、还是返回乱码。决定 `createAesInfo()` 的兼容策略。
 - [ ] T006 确认 `DataSecurityInvoke.doDsTask()` 远程 FC 调用的超时时间、失败行为和降级策略。
 - [ ] T007 确认 MD5 大小写口径：`DataSecurityInvoke.doDsTask().getMd5()` 输出大写还是小写。
-- [ ] T008 确认 drh-kk-cms 中批量 `in` 查询（`getPhoneResult()`、`getPhoneChannelSet()`）本次是否改造，还是标记 TODO。
+- [ ] T008 确认 drh-kk-cms 中批量 `in` 查询（`getPhoneResult()`、`getPhoneChannelSet()`）改造口径；D006 已改为批量计算 MD5 后查询 `phone_md5`。
 
 **检查点**：不得在未完成 T001-T008 前进入实现。
 
@@ -61,8 +61,8 @@
 - [ ] T029 改造 drh-endpoint `H5OrderServiceImpl.queryLeads()`、`editAddress()`、`editAddressV2()` 中的 phone 查询：phone → phoneMd5。
 - [ ] T030 改造 drh-kk-cms `BookQuestionRecordServiceImpl.editAddressV2()` 和 `selectCanEdit()` 中的 phone 查询：phone → phoneMd5。
 - [ ] T031 改造 ju-chat ai `BookQuestionRecordServiceImpl.getBookQuestionRecordByAppletUserId()`：phone → phoneMd5。
-- [ ] T032 确认 MD5 计算工具方法统一，保证口径一致。
-- [ ] T033 对批量 `in` 查询（`getPhoneResult()`、`getPhoneChannelSet()`）标记 TODO，本次不改造。
+- [ ] T032 确认 MD5 计算工具方法统一：查询输入支持明文手机号、前端 AES 加密手机号、手机号 MD5；MD5 输入直通，不二次摘要。
+- [ ] T033 对批量 `in` 查询（`getPhoneResult()`、`getPhoneChannelSet()`）执行 `phone_md5` 改造：批量计算 MD5 后查询 `H5Order::getPhoneMd5`。
 
 ### 3.5 展示链路改造
 
@@ -92,11 +92,12 @@
   - 非法密文输入（解密失败）→ 不抛异常，安全字段为 `NULL` 或回退处理。
 - [ ] T039 编写 `BookQuestionRecord.createAesInfo()` 单元测试（drh-common，同 T038 四种场景）。
 - [ ] T040 编写前端兼容判断逻辑单元测试：验证同一手机号在明文和密文两种输入下，`phoneMd5` 结果一致。
-- [ ] T041 编写 MD5 查询工具方法单元测试：验证输出与 `DataSecurityInvoke.doDsTask().getMd5()` 口径一致。
+- [ ] T041 编写 MD5 查询工具方法单元测试：覆盖明文 / 前端密文归一化，以及 32 位 MD5 输入直通、不二次摘要。
 - [ ] T042 测试中断言 `DataSecurityInput.setData()` 参数内容（下游参数断言），不只断言最终结果。
 
 ## Phase 5：测试与验证
 
+- [ ] T043A 验证前显式设置 DRH 工程 JDK8：`JAVA_HOME=C:\Program Files\Java\jdk1.8.0_481`（`java version "1.8.0_481"`），避免 Maven 默认使用 JDK17。
 - [ ] T043 运行全部单元测试，确认通过。
 - [ ] T044 验证保存后数据库中 `phone_mask`、`phone_md5`、`phone_aes` 均有值（集成测试或手动验证）。
 - [ ] T045 验证查询改造后 SQL 使用 `phone_md5` 条件（SQL 日志或 mock 验证）。
@@ -128,7 +129,7 @@
   - 实体名在 drh 中为 `H5Order` / `BookQuestionRecord`，在 ju-chat 中为 `H5OrderDO` / `BookQuestionRecordDO`。
   - 补全所有保存和查询落点（10+ 处 Service 方法）。
   - 新增 ju-chat ai 模块 DataSecurity 依赖可用性为待确认项。
-  - 批量 `in` 查询标记为暂不改造。
+  - 批量 `in` 查询早期列为后续项，后续 D006 已覆盖改为 `phone_md5`。
 - 文档同步：`spec.md`、`tasks.md`、`AGENTS.md`、`checklists/requirements.md` 已同步更新。
 - 验证结果：文档静态检查通过。
 
@@ -145,15 +146,44 @@
   - **保存/更新链路**：H5Order 创建、支付回调线索更新、图书登记、非留资、真实地址记录、补偿记录、学员/线索手机号更新均同步写 `phone_mask/phone_md5/phone_aes`。
   - **查询/读取链路**：目标表手机号等值/批量匹配改用 `phone_md5`；需要明文时从方法入参或 `phone_aes` 解密；展示/列表/订单查询返回 `phone_mask` 或本地掩码。
   - **真实地址记录**：`RealGoodsAddressRecord` 保存前调用 `createAesInfo()`，ERP 下发手机号通过 `phone_aes` 解密兜底，AI 订单地址展示返回掩码手机号。
-- 接口影响：
-  - 支付/订单：`/h5/order/pay`、`/h5/order/open/pay`、`/h5/order/wx/notify`、`/h5/order/query/phone`、`/ali/pay/*`。
-  - 图书登记：DRH `editAddress`、`editAddressV2`、`queryLeads`，AI `/book/getBookQuestionRecordByAppletUserId`。
-  - 非留资/补偿：`/external/bookQuestionRecord/create`、`/count`、`/queryHistoryPage`、`/queryHistoryExpressNo`，AI `/book-edit-address-compensation/saveOne`、`/compensationRun`。
-  - 真实地址/物流：`/realGoodsAddressRecord/*`、`/bookPath/queryTrackNumOrder` 及订单物流展示链路。
+- 接口影响（DRH 项目，按模块）：
+
+| 模块 | 接口 / 入口 | 影响点 |
+|------|-------------|--------|
+| `drh-pay` | `POST /h5/order/pay`、`POST /h5/order/open/pay` | H5 图书订单创建时同步写 `phone_mask/phone_md5/phone_aes` |
+| `drh-pay` | `GET /h5/order/query/phone` | 按手机号查询支付状态改为 `phone_md5` 匹配 |
+| `drh-pay` | `POST/GET /h5/order/wx/notify` | 微信支付回调读取 `phone_aes` 解密手机号后推送线索回调 |
+| `drh-pay` | `POST /applet/order/page/pay`、`POST/GET /applet/order/wx/notify` | 小程序页面支付生成 H5Order 安全字段，回调不再依赖 DB `phone` 明文 |
+| `drh-pay` | `POST /ali/pay/order`、`POST /ali/pay/notify`、`GET /ali/pay/orderNo/select`、`GET /ali/pay/phone/select` | 支付宝 H5 订单创建/回调/查询：线索更新按 `phone_md5`，展示返回掩码 |
+| `drh-pay` | `POST /activity/groupbuying/order/create`、`POST /common/order/pay`、`POST /salePay/createPay*`、`POST /live/order/pay`、`POST /live/order/applet/pay` | 涉及 `LiveUserService` 的学员手机号保存/更新链路同步写安全字段 |
+| `drh-endpoint` | `POST /bookPath/editAddress`、`POST /bookPath/editAddressV2` | 图书登记保存 `BookQuestionRecord`，并在正价课地址链路保存 `RealGoodsAddressRecord` 安全字段 |
+| `drh-endpoint` | `GET /bookPath/queryTrackNumOrder` | 真实地址/物流查询返回掩码手机号 |
+| `drh-endpoint` | `GET /liveAuth/ad/applet/query` | `queryLeads` 按手机号查询订单/线索改为 `phone_md5` 匹配 |
+| `drh-endpoint` | `GET /ad/pic`、`POST /ad/v2/pic`、`POST /ad/base/pic` | 加 V / 二维码链路按手机号找线索改为 `phone_md5` |
+| `drh-endpoint` | `POST /liveAuth/auth/phone/v3`、`POST /liveAuth/auth/phone/v6`、`POST /liveAuth/works/auth/phone*`、`POST /liveAuth/*/pic` | 手机号授权、留资、获客助手查询链路写入或读取线索/学员安全字段 |
+| `drh-kk-cms` | `GET /user/phone/user`、`POST /user/checkCounts`、`POST /user/selectPhone` | CMS 按手机号查线索/统计改为 `phone_md5`；展示避免明文 |
+| `drh-kk-cms` | `GET /bookPath/queryAdDetail`、`GET /bookPath/queryOrderDetail`、`GET /bookPath/queryCollectDetail` | 图书登记/订单收货详情手机号展示返回掩码 |
+| `drh-kk-cms` | `POST /bookPath/editAddress`、`POST /bookPath/editAddressV2`、`POST /bookPath/selectCanEditV1` | CMS 图书登记保存/可填写用户查询改用安全字段 |
+| `drh-kk-cms` | `POST /external/bookQuestionRecord/create`、`POST /external/bookQuestionRecord/count`、`POST /external/bookQuestionRecord/queryHistoryPage`、`POST /external/bookQuestionRecord/queryHistoryExpressNo` | 非留资登记保存、次数判断、历史查询按 `phone_md5` / 掩码字段处理 |
+| `drh-kk-cms` | `POST /collect/order/editAddress`、`GET /collect/order/import/address/sure`、`GET /collect/order/import/address` | 统一填地址、批量导入地址链路保存 `RealGoodsAddressRecord` 安全字段 |
+| `drh-kk-cms` | `GET /collect/order/detail`、`POST /collect/order/list`、`GET /liveCampGroup/stu/logistics` | 订单详情、订单列表、学员物流展示涉及真实地址手机号掩码展示 |
+| `drh-kk-cms` | `GET /liveCampGroup/stu/search` | 学员手机号搜索改为 `phone_md5`，返回手机号为掩码 |
+| `drh-callback` | `POST /ad/order`、`POST /appletUser/addAppletUserPhone` | 支付服务间回调/内部线索新增入口同步写线索安全字段 |
+| `drh-callback` | `POST /baiduCallback/receive` | 百度小店订单回调创建 `AppletUser` / `H5Order` 时写安全字段 |
+| `drh-callback` | `POST /dd/callback`、`POST /dd/sendOrder`、`POST /dd/goose/callback`、`POST /dd/order/changeStatus` | 抖店/小鹅通回调创建订单与线索安全字段，取消消息按 `phone_md5` 查线索 |
+| `drh-callback` | `POST /third/external/importLeads`、`POST /third/external/importLeadsV2` | 第三方导入线索去重和保存改为 `phone_md5` / 安全字段 |
+| `drh-callback` | `POST /sph/addOrder`、`GET/POST /sph/msgCallback` | 视频号订单回调保存 H5Order/线索时写安全字段 |
+| `drh-media-process` | `POST /erp/callback`、`POST /fBook/callback`、`POST /xe/callback` | ERP / 飞书审批 / 小鹅通回传后续处理图书登记、非留资、真实地址安全字段 |
+| `drh-media-process` | `GET /Test/execAdOrder`、`GET /Test/getPhone`、`GET /Test/queryOrder` | 测试/运维入口涉及非留资订单处理和手机号读取，按安全字段口径验证 |
+| `drh-media-process` | `GET /smsDeal/*`、相关 XXL-JOB：`fillAiAddressOrderTask` | 批处理/短信/AI 地址填充任务从 `phone_aes` 解密或写安全字段 |
+
+- 接口影响（IDC AI 项目）：`/book/getBookQuestionRecordByAppletUserId`、`/external/bookQuestionRecord/create`、`/external/bookQuestionRecord/count`、`/external/bookQuestionRecord/queryHistoryPage`、`/external/bookQuestionRecord/queryHistoryExpressNo`、`/book-edit-address-compensation/saveOne`、`/book-edit-address-compensation/compensationRun`、真实地址/物流相关 AI 查询接口。
 - 测试建议：
   - 7 张表新增/更新后校验 `phone_mask`、`phone_md5`、`phone_aes`。
   - 手动清空目标表 `phone` 后验证支付回调、订单手机号查询、图书登记查询、物流/ERP 推送、补偿任务仍可用。
   - SQL 日志确认目标表手机号匹配不再依赖 `phone = ?`。
+  - 同一查询接口分别传明文手机号、前端加密手机号、手机号 MD5，应命中同一条记录。
+  - 保存/更新接口分别传明文手机号、前端加密手机号，应正确生成 `phone_mask/phone_md5/phone_aes`；手机号 MD5 不作为保存/更新支持格式。
   - 展示/导出返回掩码，不返回明文；`app_phone` 相关接口不纳入本次验证。
 - 非目标表静态提示：广告分配、客服记录、外呼/短信任务、订单售后/补发等非目标表仍存在 `phone` 查询或展示，本次未改业务逻辑。
 
@@ -176,6 +206,30 @@
   - 约束：最多 4 个并发调用 `DataSecurity/DataSecurity-test`，每 300 条做一次批量更新，日志输出每批进度。
 - 文档同步：同步更新 `spec.md`、`tasks.md`、`AGENTS.md`。
 - 验证建议：执行前确认目标环境字段存在，执行后按表抽样校验 `*_mask/*_md5/*_aes` 三字段均已填充。
+
+### D009 - DRH 接口影响模块标注补充
+
+- 触发原因：用户要求 DRH 项目影响接口补充模块标注，例如 `cms`、`endpoint`。
+- 修正内容：
+  - 将原 D006 中混合描述的接口影响拆成 `drh-pay`、`drh-endpoint`、`drh-kk-cms`、`drh-callback`、`drh-media-process` 五个 DRH 模块。
+  - 对每个模块列出接口 / 内部入口 / 任务入口，并补充对应验证点：保存安全字段、按 `phone_md5` 查询、从 `phone_aes` 解密、展示掩码。
+  - 保留 IDC AI 项目接口影响清单，作为 DRH 表后的独立项目范围。
+- 验证建议：测试按模块执行接口验证，重点观察 SQL 日志是否使用 `phone_md5`，返回值手机号是否为掩码。
+
+### D010 - 查询 / 保存输入格式兼容补充
+
+- 触发原因：用户补充查询接口需支持明文手机号、前端加密手机号、手机号 MD5 三种格式；保存 / 更新需支持明文手机号、前端加密手机号两种格式。
+- 当前确认：原 `DataSecurityInvoke.computePhoneMd5()` 已支持明文和前端 AES 密文，但手机号 MD5 输入会被二次摘要，查询直接传 MD5 不满足。
+- 本次修正：`computePhoneMd5()` 增加 32 位十六进制 MD5 直通识别，保存 / 更新链路仍通过 `buildPhoneSecurity()` 生成完整三字段，不支持仅传 MD5 保存。
+- 文档同步：同步更新 `spec.md`、`tasks.md`、`AGENTS.md`、`checklists/requirements.md` 的输入兼容口径、测试建议和执行记录。
+- 当前结论：改造后查询三种输入已满足；保存 / 更新两种输入已满足；手机号 MD5 仅作为查询输入兼容。
+
+### D011 - 本地 JDK 口径补充
+
+- 触发原因：用户要求补充 JDK 路径和版本，防止下次验证时 Maven 默认走 JDK17。
+- 修正内容：记录 DRH 工程验证使用 JDK8：`C:\Program Files\Java\jdk1.8.0_481`，版本 `java version "1.8.0_481"`；记录本机 Maven 曾默认使用 JDK17：`C:\workspace\tools\jdk17\jdk-17.0.18+8`，版本 `17.0.18`，会触发老 Lombok 与 `jdk.compiler` 模块访问冲突。
+- 文档同步：同步更新 `spec.md`、`tasks.md`、`AGENTS.md`。
+- 验证建议：运行 DRH 编译或单测前先设置 `JAVA_HOME` 和 `Path` 指向 JDK8。
 
 ### D005 - 纠正记录模板
 
