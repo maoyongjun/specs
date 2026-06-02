@@ -74,6 +74,6 @@
 ### D004 - 纠正记录模板
 
 - 触发原因：用户确认 `1124818` 这组补偿没有执行，之前只补了 `{"class_id":1124820,"max_score":83,"min_score":77,"song_name":"胡琴说"}`。
-- 修正内容：文档中明确漏项来源于补偿参数缺失，不是 SQL 目标筛选错误；后续补偿需要按实际命中的 `class_id` 分组补齐。
+- 修正内容：文档中明确漏项来源于补偿参数缺失，不是 SQL 目标筛选错误，也不是 `drh_history_pic` / `drh_song_score` 数据脏了；后续补偿需要按实际命中的 `class_id` 分组补齐。
 - 文档同步：已同步 `spec.md`、`tasks.md`、`AGENTS.md`、`checklists/requirements.md`。
 - 验证结果：只读查询确认 `oNGxt5_XcRNYDz971WrqFeJOCYyk` 在 `class_id=1124820` 下无 `drh_song_score`，而问题根因是 `1124818` 参数没进补偿。
