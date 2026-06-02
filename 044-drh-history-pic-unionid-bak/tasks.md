@@ -39,6 +39,16 @@
 - [x] T022 用户确认后，执行时将事务末尾改为 `COMMIT` 正式提交。
 - [x] T023 执行后补充执行记录，写明每个 `union_id` 的命中和更新数量。
 
+## Phase 5：第二批 92 个 union_id 处理
+
+- [x] T024 确认用户要求只处理新追加 92 个 `union_id`，不重复处理已完成的初始批次。
+- [x] T025 只读核对第二批在 `胡琴说（上）`、`class_id=1124820` 下的目标历史点评记录，确认目标 92 条、`_bak` 0 条。
+- [x] T026 识别第二批中已有 `drh_song_score(class_id=1124820)` 的用户：`oNGxt53APz8O4kdRucqp0fGszOs0`。
+- [x] T027 新增第二批 SQL 文件，使用临时表和 `@target_count=92` 保护条件。
+- [x] T028 用户确认后执行第二批 SQL，提交 `updated_rows=92`。
+- [x] T029 提交后独立复核原始历史点评记录为 0 条、`_bak` 记录为 92 条。
+- [x] T030 输出第二批 `/works/songScore` 运维接口参数，并补充文档、提交和推送。
+
 ## 执行记录
 
 ### D001 - 文档和 SQL 记录
@@ -77,3 +87,26 @@
 - 修正内容：文档中明确漏项来源于补偿参数缺失，不是 SQL 目标筛选错误，也不是 `drh_history_pic` / `drh_song_score` 数据脏了；后续补偿需要按实际命中的 `class_id` 分组补齐。
 - 文档同步：已同步 `spec.md`、`tasks.md`、`AGENTS.md`、`checklists/requirements.md`。
 - 验证结果：只读查询确认 `oNGxt5_XcRNYDz971WrqFeJOCYyk` 在 `class_id=1124820` 下无 `drh_song_score`，而问题根因是 `1124818` 参数没进补偿。
+
+### D005 - 第二批 92 个 union_id 只读核对
+
+- 执行内容：通过 Linux 服务器只读查询 RDS，核对用户新补充的 92 个 `union_id`。
+- 测试结果：
+  - 输入 `union_id` 数量 92。
+  - `class_id=1124820` 下目标作品和原始 `drh_history_pic` 均命中 92 个用户、92 条记录。
+  - 目标 `_bak` 历史点评记录为 0 条。
+  - `drh_song_score(class_id=1124820)` 已存在 1 条，用户为 `oNGxt53APz8O4kdRucqp0fGszOs0`，记录 `id=38505`。
+- 自检结论：第二批可以按同一规则处理，补偿接口参数仍为 `{"class_id":1124820,"max_score":83,"min_score":77,"song_name":"胡琴说"}`。
+
+### D006 - 第二批 92 个 union_id SQL 提交执行记录
+
+- 执行内容：通过 Linux 服务器远程连接 RDS，在事务内执行第二批 SQL，将 92 条 `drh_history_pic.union_id` 改为 `{union_id}_bak` 并提交。
+- 测试命令：远程执行 MySQL 事务脚本；执行前输出目标行，执行后在事务内输出复核结果，提交后再用新连接独立复核。
+- 测试结果：
+  - 首次脚本因 MySQL 临时表重复引用限制报错，未提交；只读复核确认原始记录仍为 92 条、`_bak` 仍为 0 条。
+  - 修正后执行前目标行：`target_rows=92`、`target_union_cnt=92`、`class_id=1124820`。
+  - `updated_rows=92`。
+  - 事务内复核：`target_count=92`、`updated_count=92`、`not_updated_count=0`。
+  - 提交后独立复核：原始历史点评记录 `rows_cnt=0`、`union_cnt=0`；`_bak` 历史点评记录 `rows_cnt=92`、`union_cnt=92`。
+  - `drh_song_score(class_id=1124820)` 保持已有 1 条，未被本 SQL 修改。
+- 自检结论：本次只修改 `drh_history_pic.union_id`；未修改应用代码、作业表、课程表或评分表。

@@ -1,6 +1,6 @@
 # 规格执行说明
 
-本目录用于这次 `drh_history_pic` 人工点评记录 `union_id` 备份 SQL 的 Spec Kit 文档。当前需求只做文档、SQL 脚本整理和只读查询核验，不执行数据库更新，待审核后再由人工决定是否提交。
+本目录用于记录 `drh_history_pic` 人工点评记录 `union_id` 备份 SQL 的 Spec Kit 文档、执行记录和补偿接口参数。初始批次为 5 个 `union_id`，后续追加第二批 92 个 `union_id`，均按用户确认后执行。
 
 ## 作用范围
 
@@ -11,9 +11,9 @@
 ## 当前目标
 
 - 记录本次运维目标、筛选条件、影响范围和回滚优先策略。
-- 生成可审核的 SQL，将指定 5 个 `union_id` 在课程 `胡琴说（上）` 下对应作业的 `drh_history_pic.union_id` 改为 `{union_id}_bak`。
+- 生成可审核的 SQL，将指定批次 `union_id` 在课程 `胡琴说（上）` 下对应作业的 `drh_history_pic.union_id` 改为 `{union_id}_bak`。
 - SQL 更新后输出 `/works/songScore` 运维接口参数，其中 `class_id` 取命中作业的 `live_id`。
-- SQL 默认以 `ROLLBACK` 收尾，不在审核前提交数据库变更。
+- 仓库内 SQL 默认以 `ROLLBACK` 收尾；真实执行记录必须写明是否已按用户确认改为 `COMMIT`。
 
 ## 执行原则
 
@@ -30,11 +30,12 @@
 - 更新前必须能通过临时表查询和分组计数审阅目标行。
 - 更新后必须能复核 `updated_count == target_count` 且 `not_updated_count == 0`。
 - 更新后必须能输出接口参数：`class_id`、`max_score`、`min_score`、`song_name`。
-- 本目录阶段不得执行数据库更新。
+- 数据库更新必须经过目标行复核；执行后必须追加提交前后复核结果。
 
 ## 重点文件
 
 - `drh-history-pic-unionid-bak.sql`
+- `drh-history-pic-unionid-bak-20260602-batch2.sql`
 - `ops-interface-params.json`
 - `spec.md`
 - `tasks.md`
