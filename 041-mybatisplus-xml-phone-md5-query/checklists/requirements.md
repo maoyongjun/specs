@@ -63,5 +63,6 @@
 
 ## 备注
 
-- 本阶段只创建文档，不进入代码实现。
-- 后续实现前必须先完成 `tasks.md` 的 Phase 1 和 Phase 2。
+- 本轮已进入代码实现阶段，实施记录见 `tasks.md` 的 D002。
+- 实现前门禁已完成；剩余 LIKE、展示、NULL 判断和未确认存在 `phone_md5` 的表需业务确认后再继续改造。
+- 当前未安全改造的直接手机号条件包括 `WorksShipMapper.xml`、`AppletPlayerMapper.xml`、`WorksAwardsRecordMapper.xml`、`UserQuestionMapper.xml`、`RenewDataMapper.xml` 等。

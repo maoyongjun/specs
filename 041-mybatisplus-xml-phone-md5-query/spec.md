@@ -146,7 +146,13 @@
 
 ### D002 - 实现记录
 
-- 待后续实现阶段补充实现内容、影响范围、测试命令、测试结果和自检结论。
+- 已在 `C:\workspace\drh` 接续实现改动。
+- 核心链路已改为 Mapper 调用前准备 `phoneMd5`，XML 使用 `phone_md5 = #{input.phoneMd5}`。
+- 查询接口兼容明文、前端 AES 密文和 32 位 MD5；保存 / 更新入口拒绝 32 位 MD5 或非法手机号，错误提示为 `手机号加密格式不符`。
+- 已完成全量 XML 静态扫描分类：可确定具备 `phone_md5` 的等值 / join 已改造；`WorksShipMapper.xml`、`AppletPlayerMapper.xml`、`WorksAwardsRecordMapper.xml`、`UserQuestionMapper.xml`、`RenewDataMapper.xml` 等未确认有 `phone_md5` 字段的表暂不改；LIKE、展示、NULL 判断保留为需业务确认或可排除。
+- 已补充 `DataSecurityUtilTest` 离线单测覆盖写入手机号格式校验。
+- 验证结果：Maven 默认 JDK 17 编译因旧 Lombok 与 `jdk.compiler` 模块访问失败；JDK 8 下 `drh-common` 跳过测试编译通过；方法级 Surefire 命令返回 `Tests run: 0`，未形成有效单测通过记录；`drh-kk-cms -am` 跳过测试编译 5 分钟超时。
+- 待补充接口/Mapper 行为验证结果和完整 `drh-kk-cms` 编译链路验证结果。
 
 ### D003 - 纠正记录模板
 
