@@ -13,6 +13,8 @@
 - [x] 明确图片必须上传 OSS，并使用 OSS/CDN URL 作为图片消息地址。
 - [x] 明确发送分散使用 RocketMQ 延迟消息；MQ 消费后使用累计 `doTaskWithDelay` 调度图片和合并文字。
 - [x] 明确 RocketMQ topic 使用共有 `mq.delay.topic`，tag 使用新的学习之星 tag，consumer group 配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`。
+- [x] 明确图片生成使用并发执行（最大并发 4 + MDC 追踪），RocketMQ 投递在并发完成后主线程串行执行。并发安全性已确认：渲染器 effectively immutable，`render()` 无共享可变状态，`OssUtil.upload()` 底层线程安全。
+- [x] 明确 WX_004 奖状发送完成通知（`common_warn_sender` FC + 模板变量 `{sendNums}`），发送失败不影响主流程。
 - [x] 明确后续实现必须增加测试或静态验证记录。
 
 ## 需求完整性
@@ -53,6 +55,9 @@
 - [ ] 确认渠道完全缺失时业务是否接受跳过。
 - [ ] 确认学习之星 RocketMQ 延迟消息的 `MessageType`、新 tag 和 consumer group 实际命名；topic 已明确复用共有 `mq.delay.topic`。
 - [ ] 确认 SchedulerX 运行频率和上线配置。
+- [x] 确认 WX_004 通知的 `external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成，所有字段可获取，通知按营期候选维度发送。
+- [ ] 确认 `common_warn_sender` 接收模板变量的字段名。
+- [ ] 确认 WX_004 模板已在 `common_warn_sender` 后台配置完毕，变量名为 `sendNums`。
 
 ## 备注
 

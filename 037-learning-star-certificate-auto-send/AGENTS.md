@@ -39,6 +39,12 @@
 - 每个学员和每条消息都必须有幂等设计，定时任务重复触发不能重复打扰学员。
 - RocketMQ 重复消费、消费失败重试和 FC 部分成功重试时，也必须依靠整组 key 和每条 `externalRequestId` 保持幂等。
 - 必须打印必要日志，覆盖营期筛选、渠道分类、学员圈选、OTS 标签匹配、图片生成、OSS 上传、MQ 投递、MQ 消费、FC 发送和跳过原因。
+- 图片生成 MUST 使用并发执行，最大并发数 4，通过专用线程池 `learningStarRenderThreadPool` 和 `CompletableFuture.supplyAsync()` 实现。并发安全性已确认：`LearningStarCertificateRenderer` 实例字段 effectively immutable，`render()` 每次调用无共享可变状态，`OssUtil.upload()` 底层线程安全。
+- 并发执行时 MUST 传递主线程 MDC 上下文到子线程，参考 `AsyncAutoConfig.MdcTaskDecorator` 模式；日志 MUST 包含 `requestId`、`campDateId`、`externalUserId`。
+- 并发执行中单学员失败 MUST NOT 影响其他学员处理。
+- 所有学员的 RocketMQ 延迟消息投递完成后，MUST 按营期候选维度统计成功发送学员数并通过 `common_warn_sender` FC 发送 WX_004 通知（模板变量 `{sendNums}`）。
+- WX_004 通知的 `external_key` MUST 由 `externalUserId:empId:campDateId:qwUserId` 四部分组成，通知按营期候选维度发送。
+- WX_004 通知发送失败 MUST NOT 影响主流程返回。
 - 不改既有图书物流 Job、图书 unionId 补偿发送、AI 权限判断和 `sendJuzi(MsgSendInput)` 文字发送契约。
 
 ## 强制门禁
@@ -50,6 +56,10 @@
 - 编码前必须确认渠道缺失时跳过还是默认非图书；当前规格默认跳过。
 - 编码前必须确认 `kkhc-idc-ai` 加 Batik 依赖后仍兼容 JDK 1.8 和当前依赖树。
 - 编码前必须确认学习之星 RocketMQ 延迟消息的 `MessageType`、新 tag 常量和 consumer group 实际值；topic 已明确复用共有 `mq.delay.topic`。
+- 编码前必须确认 `common_warn_sender` 接收模板变量的字段名（`templateParams` / `param` / `params` 或其他）。
+- 编码前必须确认 WX_004 模板已在 `common_warn_sender` 后台配置完毕。
+- WX_004 `external_key` 已确认由 `externalUserId:empId:campDateId:qwUserId` 组成，所有字段在 `processCampCandidate` 中可获取，通知按营期候选维度发送，去重 key 为 `campDateId:empId`。
+- 并发执行范围限定为图片生成和 OSS 上传；RocketMQ 延迟投递在并发完成后主线程串行执行，避免 `DelayProducerBean` 线程安全问题。
 - 新增图片发送 helper 时必须断言 `messageType = 6`、`payload.url`、`externalUserId`、`wecomUserId`、`corpId`。
 - 新增延迟投递 helper 时必须断言单学员单条整组消息、延迟范围 0 到 30 分钟、共有 topic、新 tag、messageType、body、deliveryTime 正确。
 - 任何会新增数据库表、修改 FC 契约、修改现有 `MsgSendInput` 行为或改变图书物流任务的方案，都必须先更新规格并确认。
@@ -73,6 +83,10 @@
 - RocketMQ 延迟消费者参考：`C:\workspace\ju-chat\kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\lms\mq\consumer\BookLogisticsDelayConsumerListener.java`
 - RocketMQ 延迟测试参考：`C:\workspace\ju-chat\kkhc\kkhc-idc\ai\src\test\java\com\kkhc\idc\crm\service\ai\impl\BookLogisticsDelayMqTest.java`
 - OSS 上传参考：`C:\workspace\ju-chat\kkhc\kkhc-idc\lms\src\main\java\com\kkhc\idc\lms\service\works\impl\NotePicsServiceImpl.java`
+- 线程池配置参考：`C:\workspace\ju-chat\kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\config\ThreadPoolConfig.java`
+- MDC 传递参考：`C:\workspace\ju-chat\kkhc\kkhc-idc\base-common\src\main\java\com\kkhc\common\config\AsyncAutoConfig.java`
+- CompletableFuture 并发参考：`C:\workspace\ju-chat\kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\lms\facade\userprofile\UserProfileSummaryFacade.java`
+- WX003 通知发送参考：`C:\workspace\ju-chat\fc\sop-reply\src\main\java\com\drh\homework\service\homeworkhandle\PianoVideoHomeWorkHandleServiceImpl.java`（`notifyPianoVideoRecognitionWarn` 方法）
 
 ## 文档维护
 

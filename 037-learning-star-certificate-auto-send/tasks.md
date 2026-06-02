@@ -40,6 +40,9 @@
 - [ ] T022A 编码前确认学习之星 RocketMQ 专用 `MessageType`、新 tag 常量和 consumer group 实际配置值；topic 已明确复用共有 `mq.delay.topic`，consumer group 写法参考 `delay-consumer-group: GID_delay_book_logistics_test`。
 - [x] T022B 检查延迟投递方案是否为“每个学员一条整组 RocketMQ 消息”，消费后再把 2 条消息（图片、合并文字）使用 `doTaskWithDelay` 按累计秒数调度。
 - [ ] T022C 检查随机延迟范围为 0 到 30 分钟，并能在日志和 summary 中观察共有 topic、新 tag、投递成功/失败。
+- [x] T022D 已确认 WX_004 通知的 `external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成，所有字段在 `processCampCandidate` 流程中均可获取；通知按营期候选维度发送。
+- [ ] T022E 编码前确认 `common_warn_sender` FC 函数接收模板变量的字段名（`templateParams` / `param` / `params` 或其他）。
+- [ ] T022F 编码前确认 WX_004 模板是否已在 `common_warn_sender` 后台配置完毕，变量名为 `sendNums`。
 
 **检查点**：T013-T022C 必须在编码前有明确结论；发现口径变化时先更新 `spec.md`。
 
@@ -70,6 +73,14 @@
 - [ ] T039 保持本需求不改图书物流、AI 权限、现有文字发送和其他定时任务逻辑。
 - [x] T052 在 `juzi-service` 配置管理界面新增学习之星测试发送台入口、页面和首页跳转。
 - [x] T053 为 `juzi-service` 学习之星测试发送台补充真实发送按钮、后端环境控制代理接口和图片版取号引导。
+- [x] T054 在 `ThreadPoolConfig` 新增 `learningStarRenderThreadPool`（`corePoolSize = 4, maxPoolSize = 4, queueCapacity = 100, CallerRunsPolicy`）。
+- [x] T055 将 `processCampCandidate`中的学员循环改为并发执行：使用 `CompletableFuture.supplyAsync()` + `learningStarRenderThreadPool`，对每个学员的 `renderUploadCertificate`（SVG 渲染 + OSS 上传）并行调度，最大并发 4；并发执行完成后，再在主线程中串行进行 RocketMQ 延迟投递。
+- [x] T056 并发任务中传递 MDC 上下文：提交前 `MDC.getCopyOfContextMap()`，子线程执行前 `MDC.setContextMap()`，执行后恢复或清除；额外放入 `campDateId`、`externalUserId`。
+- [x] T057 并发异常隔离：`CompletableFuture.exceptionally()` 捕获单学员异常，记录日志并计入 summary，不影响其他学员处理。
+- [x] T058 并发执行完成后汇总各学员结果，继续后续流程；日志记录并发批次的开始/结束、每个学员的成功/失败。
+- [x] T059 实现 WX_004 奖状发送完成通知：在每个营期候选所有学员处理完毕后，从该营期候选的 summary 中读取成功投递学员数，若 > 0 则构造 `FcInvokeInput`（`serviceName="service_sys"`, `functionName="common_warn_sender"`），`taskObj` 包含 `sendTemplateList=["WX_004"]`、`templateParams={"sendNums": "..."}` 和 `external_key="{externalUserId}:{empId}:{campDateId}:{qwUserId}"`。
+- [x] T060 WX_004 通知的 Redis 按营期候选去重（key 格式 `ai:learning-star:certificate:wx004:notify:{campDateId}:{empId}`），去重命中时跳过发送。
+- [x] T061 WX_004 通知发送异常时仅记录日志，不影响主流程返回和 summary。
 
 ## Phase 4：测试与验证
 
@@ -91,6 +102,12 @@
 - [x] T049 运行 `kkhc-idc-ai` 目标测试或至少相关测试类，记录命令和结果。
 - [ ] T050 运行 `kkhc-bizcenter\schedule` 目标测试或至少新增 Job 测试，记录命令和结果。
 - [ ] T051 搜索确认没有硬编码 `YangFan_1`，没有把旧 `实践之星`、`作业情况` 或浏览器截图方案带入生产链路。
+- [x] T062 新增并发执行测试：构造同一营期 8 名学员，Mock 渲染器和 OSS 上传并设置耗时，断言总耗时接近 2 批（8/4）而非 8 倍单条，且并发度不超过 4。
+- [x] T063 新增 MDC 追踪测试：断言并发线程日志中包含主线程 `requestId`、`campDateId` 和 `externalUserId`。
+- [x] T064 新增并发异常隔离测试：Mock 某学员渲染抛异常，断言其他学员正常完成，summary 中该学员计入失败。
+- [x] T065 新增 WX_004 通知测试：Mock `common_warn_sender` FC 调用，断言某营期候选成功投递数 > 0 时调用一次、`sendTemplateList` 包含 `"WX_004"`、`templateParams.sendNums` 等于该营期候选实际数、`external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成；成功数为 0 时不调用。
+- [x] T066 新增 WX_004 去重测试：模拟同一营期候选两次执行，断言第二次因 Redis 去重（`campDateId:empId` 维度）跳过通知发送。
+- [x] T067 新增 WX_004 异常容错测试：Mock FC 调用抛异常，断言主流程正常返回，summary 不受影响，仅记录日志。
 
 ## 执行记录
 
@@ -149,3 +166,33 @@
 - 验证方式：更新 `LearningStarCertificateServiceImplTest`，覆盖消息构造、消费累计延迟、重试跳过、部分失败重试和测试发送；运行 `mvn -pl ai -am "-Dtest=LearningStarCertificateServiceImplTest,LearningStarCertificateRendererTest" test`。
 - 验证结果：通过，`Tests run: 17, Failures: 0, Errors: 0, Skipped: 0`。
 - 自检结论：学习之星链路现在先发奖状图片，再按累计延迟发送合并后的完整话术。
+
+### D010 - 图片生成并发执行与 WX_004 完成通知
+
+- 执行内容：新增图片生成并发执行规格（最大并发 4 + MDC 追踪）和 WX_004 奖状发送完成通知规格。
+- 已确认事实：
+  - 当前 `processCampCandidate` 中 `renderUploadCertificate` 为串行调用，每个学员逐个执行 SVG 渲染 + OSS 上传。
+  - **并发安全性已确认**：`LearningStarCertificateRenderer` 实例字段 effectively immutable，`render()` 每次调用无共享可变状态，`OssUtil.upload()` 底层线程安全，并发图片生成不会导致相互影响。
+  - `ThreadPoolConfig` 已有 9 个命名线程池，`corePoolSize=4, maxPoolSize=8`，使用 `CallerRunsPolicy`；学习之星可新增专用线程池。
+  - `AsyncAutoConfig.MdcTaskDecorator` 已实现 MDC 上下文传递模式：提交前 `MDC.getCopyOfContextMap()`，子线程恢复 `MDC.setContextMap()`。
+  - `CompletableFuture.supplyAsync()` + 命名线程池在 `UserProfileSummaryFacade` 中有成熟使用参考。
+  - `notifyPianoVideoRecognitionWarn` 中 WX003 发送模式：构造 `taskObj`（含 `external_key` + `sendTemplateList`），调用 `common_warn_sender` FC 函数。
+- 验证方式：静态分析现有代码和参考模式。
+- 自检结论：本阶段未修改业务代码；WX_004 `external_key` 已确认由 `externalUserId:empId:campDateId:qwUserId` 组成，全部可获取；编码前仅需确认 `common_warn_sender` 模板变量传递方式。
+
+### D011 - 并发执行与 WX_004 通知代码实现
+
+- 执行内容：
+  - `ThreadPoolConfig` 新增 `learningStarRenderThreadPool`（core=4, max=4, queue=100, CallerRunsPolicy）。
+  - `LearningStarCertificateServiceImpl` 重构 `processCampCandidate` 学员处理流程为三阶段：
+    - Phase 1：顺序预检（校验、幂等、加锁、OTS 验证、标签匹配），主线程执行。
+    - Phase 2：并发渲染上传（`CompletableFuture.supplyAsync` + `learningStarRenderThreadPool`），MDC 上下文传递（campDateId、externalUserId），异常隔离到单学员。
+    - Phase 3：顺序 RocketMQ 延迟投递，主线程执行，投递成功后标记 queuedKey。
+  - 新增 `notifyCertificateSendComplete`：WX_004 通知，`buildWx004TaskObj` 构建 taskObj（external_key、sendTemplateList、templateParams），调用 `common_warn_sender` FC 函数；Redis 按 campDateId:empId 去重；异常仅记日志不影响主流程。
+  - 新增内部类 `StudentPreCheckResult`、`StudentRenderResult` 承载阶段间数据传递。
+  - 并发阶段 `incrementSummary` 使用 `synchronized(summary)` 保护 JSONObject 线程安全。
+  - 锁值统一为 "batch"，由 `processCampStudents` 的 finally 块统一释放。
+- 新增测试：6 个（T062-T067 覆盖并发上限、异常隔离、WX_004 参数构建、sendNums=0 跳过、Redis 去重、异常容错）。
+- 验证方式：运行 `mvn -pl ai -am "-Dtest=LearningStarCertificateServiceImplTest,LearningStarCertificateRendererTest" test`。
+- 验证结果：通过，`Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`（14 个原有 + 6 个新增）。
+- 自检结论：并发执行和 WX_004 通知已完成代码实现与单元测试覆盖；原 `processStudent` 方法保留作为向后兼容入口但不再被 `processCampCandidate` 调用。

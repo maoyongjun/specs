@@ -31,6 +31,15 @@
 - `LiveCampDO` 映射 `drh_live_camp`，包含 `speakerId`。
 - `SpeakerDO` 映射 `drh_speaker`，包含 `name`。
 - 用户补充学习状态标签规则：非图书渠道在 D3 当天触发后，学员需满足 `D1 完课` 与 `D2 完课`；图书渠道在 D4 当天触发后，学员需满足 `D1 完课`、`D2 完课` 与 `D3 到课`。
+- `LearningStarCertificateServiceImpl.processCampCandidate()` 中对每个学员的 `renderUploadCertificate()` 是串行调用（`for` 循环逐个执行 SVG 渲染 + OSS 上传），当学员较多时整体耗时线性增长。
+- **并发安全性已确认**：`LearningStarCertificateRenderer`（Spring `@Component` 单例）并发执行不会导致图片生成之间相互影响。实例字段全部 effectively immutable（构造函数后不变）；`render()` 每次调用新建 `TemplateImage`、`StringBuilder`、`PNGTranscoder`、`ByteArrayOutputStream`，无共享可变状态；`Font.deriveFont()` 返回新实例，`GlyphVector`/`PathIterator` 为局部变量；`OssUtil.upload()` 底层 `OSS.putObject()` 线程安全（Apache HttpClient 连接池），每次调用独立 `ObjectMetadata`/`InputStream`/`ossPath`。
+- `ThreadPoolConfig` 已定义 9 个命名线程池 Bean，`corePoolSize = 4, maxPoolSize = 8, queueCapacity = 100`，拒绝策略均为 `CallerRunsPolicy`；可参考风格新增 `learningStarRenderThreadPool`。
+- `AsyncAutoConfig.MdcTaskDecorator` 已实现 MDC 上下文传递：提交前 `MDC.getCopyOfContextMap()` 保存主线程上下文，子线程执行前 `MDC.setContextMap()` 恢复，执行后恢复原始上下文或 `MDC.clear()`。该模式可直接复用于并发图片生成。
+- `UserProfileSummaryFacade` 展示了 `CompletableFuture.supplyAsync(task, namedThreadPool)` + `CompletableFuture.allOf().get(timeout, unit)` 的成熟并发模式，可作为图片并发生成的参考。
+- `MessageListenerFDH` 和 `TraceIdFilter` 使用 `MDC.put("requestId", ...)` 设置请求追踪 ID；`BookEditAddressCompensationController` 展示了在子线程中手动传递 `requestId` 的模式。
+- `PianoVideoHomeWorkHandleServiceImpl.notifyPianoVideoRecognitionWarn()` 展示了 WX003 模板通知发送方式：构造 `taskObj` 含 `external_key` 和 `sendTemplateList`（`Collections.singletonList("WX003")`），通过 `FcInvokeInput`（`serviceName = "service_sys"`, `functionName = "common_warn_sender"`）调用 `FcInvokeUtils.doTask()`。
+- WX003 的 `taskObj` 中未传递模板变量（纯模板无替换），WX_004 需要额外传递 `{sendNums}` 变量，需要在 `taskObj` 中新增模板变量字段（待确认字段名）。
+- WX_004 `external_key` 已确认由 4 部分组成 `externalUserId:empId:campDateId:qwUserId`，对应 `split[0]` 至 `split[3]`；`common_warn_sender` FC 函数通过解析 `external_key` 确定通知接收人和上下文。所有字段在 `processCampCandidate` 流程中均可获取：`student.getExternalUserid()`、`candidate.getEmpId()`、`candidate.getCampDateId()`、`emp.getQyvxUserId()`。
 
 ## 推荐实现结构
 
@@ -53,6 +62,20 @@
    - 延迟消息投递成功可记录投递计数；全部 2 条消费调度成功后写 sent key。
    - 部分失败时允许 RocketMQ 重试，但 Juzi 层 externalRequestId 防止重复已接收消息。
 13. schedule 模块新增 Job 和 Feign 方法，参考 `BookLogisticsSignStatusJob` 的日志与异步调用模式。
+14. 图片生成并发化改造：
+   - 在 `ThreadPoolConfig` 新增 `learningStarRenderThreadPool`（`corePoolSize = 4, maxPoolSize = 4, queueCapacity = 100, CallerRunsPolicy`，线程前缀 `learning-star-render-`）。
+   - 将 `processCampCandidate` 中的学员循环改为 `CompletableFuture.supplyAsync()` 提交到 `learningStarRenderThreadPool`。
+   - 每个并发任务执行：OTS 标签校验 → `renderUploadCertificate`（SVG 渲染 + OSS 上传）；并发执行完成后，在主线程中串行执行 RocketMQ 延迟投递，避免 `DelayProducerBean` 线程安全问题。
+   - 提交前保存 `MDC.getCopyOfContextMap()`，任务内恢复并补充 `campDateId`、`externalUserId`；任务结束后恢复原始上下文。
+   - 使用 `CompletableFuture.allOf(futures).get(timeout, unit)` 等待所有学员完成，设置合理超时（如 5 分钟）。
+   - `CompletableFuture.exceptionally()` 捕获单学员异常，记录日志并计入 summary，不影响其他学员。
+15. WX_004 完成通知：
+   - 在每个营期候选（`processCampCandidate`）所有学员处理完成后，从该营期候选的 summary 中读取成功投递学员数。
+   - 若 `sendNums > 0`，构造 `FcInvokeInput`（`serviceName = "service_sys"`, `functionName = "common_warn_sender"`）。
+   - `taskObj` 包含 `sendTemplateList = ["WX_004"]`、`templateParams`（或等效字段）含 `sendNums` 值。
+   - `external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成：`externalUserId` 取该营期候选中任一成功发送学员的 `student.getExternalUserid()`，`empId` 来自 `candidate.getEmpId()`，`campDateId` 来自 `candidate.getCampDateId()`，`qwUserId` 来自 `emp.getQyvxUserId()`。
+   - 使用 Redis key `ai:learning-star:certificate:wx004:notify:{campDateId}:{empId}` 做按营期候选去重。
+   - 通知发送异常时 try-catch，仅记录日志，不影响主流程返回。
 
 ## 主要风险
 
@@ -67,6 +90,14 @@
 - topic 是共有的，隔离主要依赖新 tag、专用 MessageType 和 consumer group 配置；实现时不能复用图书物流 tag。
 - RocketMQ 消费存在重试和重复消费可能，必须将学员整组 key 与每条 `externalRequestId` 一起纳入幂等测试。
 - OSS 上传成功但 MQ 投递失败会留下未发送图片文件；日志必须记录 `ossPath`、`campDateId`、`externalUserId`、`unionId`，便于排查和必要时清理。
+- 并发执行风险：4 个并发线程同时对 OSS 上传，已确认 `OssUtil.upload()` 底层 `OSS.putObject()` 线程安全（阿里 OSS SDK 使用 Apache HttpClient 连接池），无共享可变状态，并发安全。
+- 并发 MDC 传递风险：`MDC.getCopyOfContextMap()` 返回 null 时（如主线程无 MDC 上下文），子线程不应调用 `MDC.setContextMap(null)`，需做 null 检查。
+- 并发异常传播风险：`CompletableFuture` 中未捕获的异常会导致 `allOf().get()` 抛出 `ExecutionException`；需使用 `exceptionally()` 或 `handle()` 确保单学员异常不中断整体。
+- `CompletableFuture.allOf().get(timeout)` 超时后，未完成的 Future 仍在后台执行；需要处理超时场景的日志记录和 summary 更新。
+- WX_004 通知风险：`common_warn_sender` FC 函数的模板变量字段名未确认（可能是 `templateParams`、`param`、`params` 或其他），编码前需查阅 FC 函数源码或配置。
+- WX_004 `external_key` 已确认由 `externalUserId:empId:campDateId:qwUserId` 组成，所有字段在 `processCampCandidate` 流程中均可获取（`candidate.getEmpId()`、`candidate.getCampDateId()`、`emp.getQyvxUserId()`、`student.getExternalUserid()`）；通知按营期候选维度发送，去重 key 按 `campDateId:empId` 维度。
+- WX_004 按营期候选去重（`campDateId:empId`），已确认不再按天去重。
+- 并发执行中 RocketMQ 延迟投递已设计为在并发完成后主线程串行执行，规避了 `DelayProducerBean.sendTagMessage()` 的线程安全问题；若后续调整为并发投递，需先确认线程安全性。
 
 ## 待实现测试映射
 
@@ -86,3 +117,9 @@
 | 日志与 summary | Mock 成功/失败路径，断言 OSS 上传、MQ 投递、MQ 消费、FC 发送关键计数 |
 | 幂等 | Redis mock 或包装层测试，覆盖重复调度、RocketMQ 重复消费、部分发送失败重试 |
 | schedule Job | Mock Feign 成功、失败、异常 |
+| 图片生成并发执行 | Mock 渲染器和 OssUtil 并设置耗时，断言 8 学员总耗时接近 2 批、并发度不超过 4 |
+| 并发 MDC 追踪 | 断言并发线程日志含主线程 `requestId`、`campDateId`、`externalUserId` |
+| 并发异常隔离 | Mock 某学员渲染抛异常，断言其他学员正常完成 |
+| WX_004 通知发送 | Mock `common_warn_sender` FC，断言 `sendNums > 0` 时调用一次、模板码和变量正确、`external_key` 四部分正确 |
+| WX_004 去重 | 模拟同一营期候选两次执行，断言第二次跳过（`campDateId:empId` 维度） |
+| WX_004 异常容错 | Mock FC 抛异常，断言主流程正常返回 |
