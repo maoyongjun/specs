@@ -1,0 +1,566 @@
+{
+  "risk": "readonly",
+  "row_count": 61,
+  "affected_rows": 0,
+  "truncated": false,
+  "columns": [
+    "priority",
+    "item_no",
+    "table_name",
+    "object_type",
+    "object_name",
+    "status",
+    "note"
+  ],
+  "rows": [
+    {
+      "priority": "P1",
+      "item_no": "P1-017",
+      "table_name": "drh_specail_user",
+      "object_type": "TABLE",
+      "object_name": "drh_specail_user",
+      "status": "missing",
+      "note": "p1"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-001",
+      "table_name": "drh_ad_count",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-001",
+      "table_name": "drh_ad_count",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-001",
+      "table_name": "drh_ad_count",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-001",
+      "table_name": "drh_ad_count",
+      "object_type": "INDEX",
+      "object_name": "idx_ad_count_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-002",
+      "table_name": "drh_ad_form_answer",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-002",
+      "table_name": "drh_ad_form_answer",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-002",
+      "table_name": "drh_ad_form_answer",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-002",
+      "table_name": "drh_ad_form_answer",
+      "object_type": "INDEX",
+      "object_name": "idx_ad_form_answer_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-003",
+      "table_name": "drh_applet_order",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-003",
+      "table_name": "drh_applet_order",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-003",
+      "table_name": "drh_applet_order",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-003",
+      "table_name": "drh_applet_order",
+      "object_type": "INDEX",
+      "object_name": "idx_applet_order_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-004",
+      "table_name": "drh_applet_small_user",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-004",
+      "table_name": "drh_applet_small_user",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-004",
+      "table_name": "drh_applet_small_user",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-004",
+      "table_name": "drh_applet_small_user",
+      "object_type": "INDEX",
+      "object_name": "idx_applet_small_user_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-005",
+      "table_name": "drh_goods_user_coupon",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-005",
+      "table_name": "drh_goods_user_coupon",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-005",
+      "table_name": "drh_goods_user_coupon",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-005",
+      "table_name": "drh_goods_user_coupon",
+      "object_type": "INDEX",
+      "object_name": "idx_goods_coupon_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-006",
+      "table_name": "drh_koc",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-006",
+      "table_name": "drh_koc",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-006",
+      "table_name": "drh_koc",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-006",
+      "table_name": "drh_koc",
+      "object_type": "INDEX",
+      "object_name": "idx_koc_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-007",
+      "table_name": "drh_order_refund_record",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-007",
+      "table_name": "drh_order_refund_record",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-007",
+      "table_name": "drh_order_refund_record",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-007",
+      "table_name": "drh_order_refund_record",
+      "object_type": "INDEX",
+      "object_name": "idx_order_refund_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-008",
+      "table_name": "drh_qwb_phone_info",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-008",
+      "table_name": "drh_qwb_phone_info",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-008",
+      "table_name": "drh_qwb_phone_info",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-008",
+      "table_name": "drh_qwb_phone_info",
+      "object_type": "INDEX",
+      "object_name": "idx_qwb_phone_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-009",
+      "table_name": "drh_short_message_operation",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-009",
+      "table_name": "drh_short_message_operation",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-009",
+      "table_name": "drh_short_message_operation",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-009",
+      "table_name": "drh_short_message_operation",
+      "object_type": "INDEX",
+      "object_name": "idx_short_msg_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-010",
+      "table_name": "drh_sms_trigger_user_callback",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-010",
+      "table_name": "drh_sms_trigger_user_callback",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-010",
+      "table_name": "drh_sms_trigger_user_callback",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-010",
+      "table_name": "drh_sms_trigger_user_callback",
+      "object_type": "INDEX",
+      "object_name": "idx_sms_trigger_cb_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-012",
+      "table_name": "drh_xe_order",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-012",
+      "table_name": "drh_xe_order",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-012",
+      "table_name": "drh_xe_order",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P2",
+      "item_no": "P2-012",
+      "table_name": "drh_xe_order",
+      "object_type": "INDEX",
+      "object_name": "idx_xe_order_phone_md5",
+      "status": "missing",
+      "note": "p2"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-001",
+      "table_name": "drh_register_works",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-001",
+      "table_name": "drh_register_works",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-001",
+      "table_name": "drh_register_works",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-001",
+      "table_name": "drh_register_works",
+      "object_type": "INDEX",
+      "object_name": "idx_register_works_phone_md5",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-002",
+      "table_name": "drh_sms_deal",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-002",
+      "table_name": "drh_sms_deal",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-002",
+      "table_name": "drh_sms_deal",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-002",
+      "table_name": "drh_sms_deal",
+      "object_type": "INDEX",
+      "object_name": "idx_sms_deal_phone_md5",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-003",
+      "table_name": "drh_temp_phone",
+      "object_type": "COLUMN",
+      "object_name": "phone_aes",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-003",
+      "table_name": "drh_temp_phone",
+      "object_type": "COLUMN",
+      "object_name": "phone_mask",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-003",
+      "table_name": "drh_temp_phone",
+      "object_type": "COLUMN",
+      "object_name": "phone_md5",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-003",
+      "table_name": "drh_temp_phone",
+      "object_type": "INDEX",
+      "object_name": "idx_temp_phone_phone_md5",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-004",
+      "table_name": "drh_mall_order",
+      "object_type": "COLUMN",
+      "object_name": "reciver_phone_aes",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-004",
+      "table_name": "drh_mall_order",
+      "object_type": "COLUMN",
+      "object_name": "reciver_phone_mask",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-004",
+      "table_name": "drh_mall_order",
+      "object_type": "COLUMN",
+      "object_name": "reciver_phone_md5",
+      "status": "missing",
+      "note": "p3 candidate"
+    },
+    {
+      "priority": "P3",
+      "item_no": "P3-004",
+      "table_name": "drh_mall_order",
+      "object_type": "INDEX",
+      "object_name": "idx_mall_order_reciver_phone_md5",
+      "status": "missing",
+      "note": "p3 candidate"
+    }
+  ]
+}

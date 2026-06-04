@@ -1,0 +1,26 @@
+{
+  "risk": "readonly",
+  "row_count": 1,
+  "affected_rows": 0,
+  "truncated": false,
+  "columns": [
+    "priority",
+    "item_no",
+    "table_name",
+    "object_type",
+    "object_name",
+    "status",
+    "note"
+  ],
+  "rows": [
+    {
+      "priority": "P1",
+      "item_no": "P1-017",
+      "table_name": "drh_specail_user",
+      "object_type": "TABLE",
+      "object_name": "drh_specail_user",
+      "status": "missing",
+      "note": "p1"
+    }
+  ]
+}
