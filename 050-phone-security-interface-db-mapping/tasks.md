@@ -8,7 +8,7 @@
 
 - [x] T001 复查用户需求，确认本文档覆盖 drh-pay、drh-endpoint、drh-kk-cms、drh-callback、drh-media-process 五个模块。
 - [x] T002 复查前置规格（032/036/041/048）已覆盖的数据库表和接口范围。
-- [x] T003 确认 26 张已改造数据库表（7 张核心 + 19 张 P1 扩展）的完整清单。
+- [x] T003 确认 28 张已改造数据库表（7 张核心 + 19 张 P1 扩展 + 2 张用户补充表）的完整清单。
 - [x] T004 确认每个接口的改动类型（保存/查询/展示/回调）、数据库表读写方向和前端调用页面。
 - [x] T005 确认前端投放页面、CMS 后台页面、小程序/APP 页面和中转页面的完整清单。
 
@@ -19,8 +19,8 @@
 - [ ] T006 测试团队按 spec.md 中"接口影响与数据库表映射"章节，为每个接口建立测试用例。
 - [ ] T007 按"数据库表 × 接口读写矩阵"确认每张表在各模块的读写方向无遗漏。
 - [ ] T008 按"前端页面与接口映射"确认每个前端页面的调用接口路径正确。
-- [ ] T009 准备测试数据：为每张目标表准备含 phone_mask/phone_md5/phone_aes 的测试记录，以及 phone 字段为空的测试记录。
-- [ ] T010 准备测试环境：确认测试库已执行 032 和 048 的 DDL，26 张表均具备安全字段和索引。
+- [ ] T009 准备测试数据：为每张目标表准备含 phone_mask/phone_md5/phone_aes 或 receiver_phone_mask/receiver_phone_md5/receiver_phone_aes 的测试记录，以及原手机号字段为空的测试记录。
+- [ ] T010 准备测试环境：确认测试库已执行 032、048 和 D003 补充 DDL，28 张表均具备安全字段和索引。
 
 ## Phase 3：分模块验证
 
@@ -32,6 +32,7 @@
 - [ ] T014 验证小程序支付（`/applet/order/page/pay`、`/applet/order/wx/notify`）：安全字段生成和回调解密正确。
 - [ ] T015 验证支付宝 H5（`/ali/pay/order`、`/ali/pay/notify`、`/ali/pay/orderNo/select`、`/ali/pay/phone/select`）：创建/回调/查询链路安全字段正确。
 - [ ] T016 验证学员手机号保存（`/activity/groupbuying/order/create`、`/common/order/pay`、`/salePay/createPay*`、`/live/order/pay`、`/live/order/applet/pay`）：`drh_live_user` 安全字段写入正确。
+- [ ] T016.1 **[D003]** 验证作品集订单支付（`/collection/order/pay`）：创建订单地址后 `drh_order_user_address.receiver_phone_mask`/`receiver_phone_md5`/`receiver_phone_aes` 均有值。
 
 ### drh-endpoint 模块验证
 
@@ -40,6 +41,7 @@
 - [ ] T019 验证线索查询（`/liveAuth/ad/applet/query`）：phone_md5 匹配正确。
 - [ ] T020 验证加V/二维码（`/ad/pic`、`/ad/v2/pic`、`/ad/base/pic`）：phone_md5 匹配正确。
 - [ ] T021 验证手机号授权/留资（`/liveAuth/auth/phone/v3`、`/liveAuth/auth/phone/v6`、`/liveAuth/works/auth/phone*`）：线索/学员安全字段写入和读取正确。
+- [ ] T021.1 **[D003]** 验证用户收货地址（`/user/address/list`、`/user/address/add`、`/user/address/update`、`/applet/works/collection/user/address`、`/applet/works/collection/user/address/query`）：`drh_user_address.receiver_phone_*` 写入正确，查询返回 `receiverPhone` 为掩码，掩码入参更新不覆盖原安全字段。
 
 ### drh-kk-cms 模块验证
 
@@ -52,6 +54,7 @@
 - [ ] T027.1 **[补充·已整改]** 验证学员管理列表（`/orderUser/user/list`）：① 搜索条件已改为 `phone_md5` 精确匹配（HandoverMapper.xml 3 处 LIKE 已替换）；② 返回的 `phone` 字段优先使用 `phoneMask`（OrderUser.getPhone() 已修改）；③ phoneMask/phoneMd5/phoneAes 三个安全字段已在 HandoverServiceImpl.fillOrderUserList() 中同步填充。
 - [ ] T027.2 **[补充·已整改]** 验证订单转交列表（`/order/hand/list`）：① 搜索条件已改为 `phone_md5` 匹配（HandoverMapper.xml 同上）；② `OrderHandVo` 已新增 phoneMask/phoneMd5/phoneAes 字段，`BeanUtils.copyProperties` 自动复制；③ `getPhone()` 自定义方法优先返回 `phoneMask`。
 - [ ] T027.3 **[补充·已整改]** 验证广告线索用户列表（`/ad/pic/user/list`）：① 搜索条件已改为 `phone_md5` 匹配；② `AdUserPicServiceImpl.getPageList` 的 forEach 末尾已将 phone 替换为 phoneMask；③ phoneMask/phoneMd5/phoneAes 三个安全字段已在响应中正确返回。
+- [ ] T027.4 **[D003]** 验证作品集订单列表/导出（`/collection/order/list`、`/collection/order/list/export`、`/collection/order/download/zip/list`）：按手机号搜索命中 `drh_order_user_address.receiver_phone_md5`，列表和导出展示掩码手机号。
 
 ### drh-callback 模块验证
 
@@ -69,7 +72,7 @@
 
 ## Phase 4：全量回归
 
-- [ ] T036 执行 26 张表的 phone 字段为空测试，确认所有查询链路不依赖明文 phone。
+- [ ] T036 执行 28 张表的原手机号字段为空测试，确认所有查询链路不依赖明文 phone / receiver_phone。
 - [ ] T037 执行前端投放页面全流程测试（从投放页 → 支付 → 回调 → CMS 查看），确认全链路安全字段正确。
 - [ ] T038 执行回调接口幂等性测试（重复回调不重复写入或产生异常数据）。
 - [ ] T039 确认生产环境 `/Test/*` 接口不可访问。
@@ -81,7 +84,7 @@
 
 - 执行内容：创建接口影响与数据库表全量映射规格文档。
 - 验证方式：文档审查，与前置规格交叉比对。
-- 自检结论：覆盖 5 个模块、50+ 接口、26 张表；包含读写矩阵和前端页面映射。
+- 自检结论：覆盖 5 个模块、50+ 接口、初始 26 张表；D003 后扩展为 28 张表；包含读写矩阵和前端页面映射。
 
 ### D002 - 人工核查补充接口与整改
 
@@ -98,9 +101,13 @@
 - 文档同步：已同步更新 `spec.md`（D002 记录 + 3.7 章节）、`tasks.md`（T027.x + 本记录）。
 - 自检结论：3 个接口已全部整改完成，T027.1/T027.2/T027.3 标记为"已整改"；代码已修改，待编译和接口验证。
 
-### D003 - 纠正记录模板
+### D003 - 用户补充 `drh_user_address` 与作品集订单地址表整改
 
-- 触发原因：`<说明为什么需要纠正>`。
-- 修正内容：`<说明具体修正>`。
-- 文档同步：`<说明同步了哪些文件>`。
-- 验证结果：`<说明测试或静态验证>`。
+- 触发原因：用户补充要求检查 `drh_user_address` 是否在 drh 中使用，并确认关联保存收货手机号的 `drh_order_user_address` 一并改造。
+- 执行内容：
+  - `drh_user_address`：补实体字段、保存/更新前生成安全字段、查询返回掩码，掩码手机号更新时沿用原安全字段。
+  - `drh_order_user_address`：补实体字段、`/collection/order/pay` 写入安全字段，CMS 作品集订单列表/导出按 `receiver_phone_md5` 查询并展示掩码。
+  - `ju-chat` / 回填：同步 `broadcast-common` 实体字段，`PhoneSecurityBackfillService` 新增两张表回填目标。
+- 影响范围：drh-common、drh-endpoint、drh-pay、drh-kk-cms、ju-chat broadcast-common、data-RC juzi-service、050/051 文档与 SQL。
+- 文档同步：已同步 `spec.md`、`tasks.md`、`AGENTS.md`、`checklists/requirements.md` 和 051 DDL 汇总/检查 SQL。
+- 自检结论：待静态搜索、模块编译和接口场景验证。

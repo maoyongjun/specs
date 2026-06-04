@@ -12,14 +12,15 @@
 - `048-phone-security-remaining-tables-audit/phone-security-p1-ddl.sql`：P1 扩展 19 张表。
 - `048-phone-security-remaining-tables-audit/phone-security-p2-ddl.sql`：P2 扩展 12 张表。
 - 用户本次补充的 12 张表 DDL：与 `phone-security-p2-ddl.sql` 一致。
+- `050-phone-security-interface-db-mapping` D003：用户地址 `drh_user_address` 与作品集订单地址 `drh_order_user_address`。
 - `048-phone-security-remaining-tables-audit/spec.md`：P3 待确认表清单。
-- `data-RC/juzi-service/.../PhoneSecurityBackfillService.java`：当前回填目标清单，已接入 P1 + P2 共 39 个回填目标。
+- `data-RC/juzi-service/.../PhoneSecurityBackfillService.java`：当前回填目标清单，已接入 P1 + P2 共 40 个实际回填目标（`drh_specail_user` 保持注释不执行）。
 
 ## 分级口径
 
 | 级别 | 口径 | 本文档覆盖 |
 |------|------|------------|
-| P1 | 核心业务表，或明文手机号清空后等值 / 批量查询直接失效的表 | 26 张表，27 个手机号字段组（`drh_live_user` 含 `phone` 与 `app_phone`） |
+| P1 | 核心业务表，或明文手机号清空后等值 / 批量查询直接失效的表 | 28 张表，29 个手机号字段组（`drh_live_user` 含 `phone` 与 `app_phone`） |
 | P2 | 有手机号写入链路，需同步生成 `phone_mask/phone_md5/phone_aes`，但当前无关键等值查询 | 12 张表 |
 | P3 | LIKE / NULL 判断 / 展示 / 日志 / 临时表 / 非标准手机号字段，需业务确认后再执行 | 4 张表建议 DDL |
 
@@ -55,6 +56,8 @@
 | P1-024 | P1 | `drh_voice_robot_task_user` | `phone` | `phone_mask`, `phone_md5`, `phone_aes` | `idx_vr_task_user_phone_md5` | 048 P1 |
 | P1-025 | P1 | `drh_wechat_complaint_order` | `phone` | `phone_mask`, `phone_md5`, `phone_aes` | `idx_wechat_complaint_phone_md5` | 048 P1 |
 | P1-026 | P1 | `order_book_reissue_detail` | `phone` | `phone_mask`, `phone_md5`, `phone_aes` | `idx_book_reissue_phone_md5` | 048 P1 |
+| P1-027 | P1 | `drh_user_address` | `receiver_phone` | `receiver_phone_mask`, `receiver_phone_md5`, `receiver_phone_aes` | `idx_user_address_receiver_phone_md5` | 用户补充 / D003 |
+| P1-028 | P1 | `drh_order_user_address` | `receiver_phone` | `receiver_phone_mask`, `receiver_phone_md5`, `receiver_phone_aes` | `idx_order_user_address_receiver_phone_md5` | 用户补充 / D003 |
 | P2-001 | P2 | `drh_ad_count` | `phone` | `phone_mask`, `phone_md5`, `phone_aes` | `idx_ad_count_phone_md5` | 用户补充 / 048 P2 |
 | P2-002 | P2 | `drh_ad_form_answer` | `phone` | `phone_mask`, `phone_md5`, `phone_aes` | `idx_ad_form_answer_phone_md5` | 用户补充 / 048 P2 |
 | P2-003 | P2 | `drh_applet_order` | `phone` | `phone_mask`, `phone_md5`, `phone_aes` | `idx_applet_order_phone_md5` | 用户补充 / 048 P2 |
@@ -76,6 +79,7 @@
 
 - `048-phone-security-remaining-tables-audit/spec.md` 曾将 `drh_import_address_record_detail` 标为 P1，但 `phone-security-p1-ddl.sql` 未生成该表 DDL，执行记录说明“实体类在 drh 工程中未找到，跳过”。本次代码搜索也未在 `C:\workspace\drh` / `C:\workspace\ju-chat` 找到该表或实体引用。暂不纳入 DDL 执行清单，如数据库确认存在且仍需按手机号查询，应另行补充 DDL。
 - `050-phone-security-interface-db-mapping/spec.md` 将 `drh_specail_user` 写为关联辅助表，但实际 P1 DDL 和 `PhoneSecurityBackfillService` 均已包含 `drh_specail_user`。本文档按实际 DDL 与回填目标保留为 P1-017。
+- D003 新增的 `drh_user_address` 和 `drh_order_user_address` 源字段为 `receiver_phone`，安全字段沿用源字段前缀 `receiver_phone_*`，索引列为 `receiver_phone_md5`。
 - 附件中 `drh_live_user.app_phone_*` 曾出现 `NOT NULL DEFAULT ''` 口径；前置正式规格 `032-phone-security-columns` 使用 `DEFAULT NULL` 和索引 `idx_live_user_app_phone_md5`。本文档以 `032` 正式 DDL 为准。
 
 ## 执行前检查模板
@@ -89,6 +93,7 @@ WHERE TABLE_SCHEMA = DATABASE()
   AND COLUMN_NAME IN (
     'phone_mask', 'phone_md5', 'phone_aes',
     'app_phone_mask', 'app_phone_md5', 'app_phone_aes',
+    'receiver_phone_mask', 'receiver_phone_md5', 'receiver_phone_aes',
     'reciver_phone_mask', 'reciver_phone_md5', 'reciver_phone_aes'
   )
 ORDER BY TABLE_NAME, COLUMN_NAME;
@@ -98,7 +103,7 @@ SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME
 FROM information_schema.STATISTICS
 WHERE TABLE_SCHEMA = DATABASE()
   AND TABLE_NAME IN ('<table_name>')
-  AND COLUMN_NAME IN ('phone_md5', 'app_phone_md5', 'reciver_phone_md5')
+  AND COLUMN_NAME IN ('phone_md5', 'app_phone_md5', 'receiver_phone_md5', 'reciver_phone_md5')
 ORDER BY TABLE_NAME, INDEX_NAME;
 ```
 
@@ -290,6 +295,20 @@ ALTER TABLE order_book_reissue_detail
   ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
   ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
   ADD INDEX idx_book_reissue_phone_md5 (phone_md5);
+
+-- P1-027. drh_user_address -- 用户收货地址表
+ALTER TABLE drh_user_address
+  ADD COLUMN receiver_phone_mask VARCHAR(32) DEFAULT NULL COMMENT '收货人手机号掩码展示值',
+  ADD COLUMN receiver_phone_md5 CHAR(32) DEFAULT NULL COMMENT '收货人手机号MD5摘要，用于等值查询',
+  ADD COLUMN receiver_phone_aes VARCHAR(255) DEFAULT NULL COMMENT '收货人手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_user_address_receiver_phone_md5 (receiver_phone_md5);
+
+-- P1-028. drh_order_user_address -- 作品集订单收货地址表
+ALTER TABLE drh_order_user_address
+  ADD COLUMN receiver_phone_mask VARCHAR(32) DEFAULT NULL COMMENT '收货人手机号掩码展示值',
+  ADD COLUMN receiver_phone_md5 CHAR(32) DEFAULT NULL COMMENT '收货人手机号MD5摘要，用于等值查询',
+  ADD COLUMN receiver_phone_aes VARCHAR(255) DEFAULT NULL COMMENT '收货人手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_order_user_address_receiver_phone_md5 (receiver_phone_md5);
 ```
 
 ## P2 DDL

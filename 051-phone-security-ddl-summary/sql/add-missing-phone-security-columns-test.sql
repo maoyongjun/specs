@@ -1,7 +1,21 @@
 -- Generated from check-missing-before.json on 2026-06-04.
 -- Target profile: dev-mysql (test).
--- Scope: only missing columns / indexes on existing P2 and P3 tables.
+-- Scope: only missing columns / indexes on existing P2 and P3 tables, plus D003 address tables.
 -- Excluded: P1 drh_specail_user because the table itself does not exist in the test database.
+
+-- D003-P1-027. drh_user_address
+ALTER TABLE drh_user_address
+  ADD COLUMN receiver_phone_mask VARCHAR(32) DEFAULT NULL COMMENT '收货人手机号掩码展示值',
+  ADD COLUMN receiver_phone_md5 CHAR(32) DEFAULT NULL COMMENT '收货人手机号MD5摘要，用于等值查询',
+  ADD COLUMN receiver_phone_aes VARCHAR(255) DEFAULT NULL COMMENT '收货人手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_user_address_receiver_phone_md5 (receiver_phone_md5);
+
+-- D003-P1-028. drh_order_user_address
+ALTER TABLE drh_order_user_address
+  ADD COLUMN receiver_phone_mask VARCHAR(32) DEFAULT NULL COMMENT '收货人手机号掩码展示值',
+  ADD COLUMN receiver_phone_md5 CHAR(32) DEFAULT NULL COMMENT '收货人手机号MD5摘要，用于等值查询',
+  ADD COLUMN receiver_phone_aes VARCHAR(255) DEFAULT NULL COMMENT '收货人手机号AES密文，用于单条结果解密',
+  ADD INDEX idx_order_user_address_receiver_phone_md5 (receiver_phone_md5);
 
 -- P2-001. drh_ad_count
 ALTER TABLE drh_ad_count

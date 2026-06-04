@@ -7,10 +7,10 @@
 
 ## 背景
 
-- 当前问题：手机号安全改造横跨 5 个微服务模块、50+ 个接口、26+ 张数据库表。此前各 spec 分别从代码改造、XML 兼容、返回掩码、剩余表排查等维度分别记录，缺少一份以"接口 × 数据库表"为主轴的完整映射文档，测试团队难以按统一口径执行全量验证。
+- 当前问题：手机号安全改造横跨 5 个微服务模块、50+ 个接口、28 张数据库表。此前各 spec 分别从代码改造、XML 兼容、返回掩码、剩余表排查等维度分别记录，缺少一份以"接口 × 数据库表"为主轴的完整映射文档，测试团队难以按统一口径执行全量验证。
 - 当前行为：各模块接口的影响点散落在 032/036/041/048 四个 spec 中，部分接口的数据库表映射关系不够明确，前端投放页面与接口的对应关系未统一记录。
 - 目标行为：以模块为一级分类、接口为二级分类，完整列出每个接口的改动类型（保存/查询/展示/回调）、影响的数据库表（含安全字段读写方向）、前端调用页面，以及测试验证要点。
-- 非目标：本阶段只编写映射文档，不修改业务代码、不执行 DDL、不回填数据。
+- 非目标：本文档不直接执行数据库 DDL、不直接回填数据；代码整改需通过 Dxxx 执行记录同步说明。
 
 ## 数据库表清单
 
@@ -49,6 +49,13 @@
 | 24 | `drh_user_service_record` | — / `UserServiceRecordDO`（lms/ai-common） | `phone` | 048 |
 | 25 | `drh_leads_noqw_send_msg_task_detail` | — / `LeadsNoqwSendMsgTaskDetailDO`（lms/ai-common） | `phone` | 048 |
 | 26 | `drh_wechat_complaint_order` | — / `WechatComplaintOrderDO`（lms-common） | `phone` | 048 |
+
+### 用户补充目标表（D003 覆盖，2 张）
+
+| # | 数据库表 | 实体类 | 手机号字段 | 改造规格 |
+|---|---------|--------|-----------|---------|
+| 27 | `drh_user_address` | `UserAddress`（drh-common）/ `UserAddress`（broadcast-common） | `receiver_phone` | 用户补充 / D003 |
+| 28 | `drh_order_user_address` | `OrderUserAddress`（drh-common） | `receiver_phone` | 用户补充 / D003 |
 
 ### 关联辅助表（无安全字段，但接口链路中间接使用手机号）
 
@@ -115,6 +122,12 @@
 | `/live/order/pay` | POST | 保存 | 直播订单支付涉及学员手机号保存 | `drh_live_user`（写 phone 安全字段）；`drh_h5_order`（写 phone 安全字段） | 直播购买页面 | — |
 | `/live/order/applet/pay` | POST | 保存 | 小程序直播订单支付 | `drh_live_user`（写 phone 安全字段） | 小程序直播购买页面 | — |
 
+#### 1.7 作品集订单支付（D003 用户补充）
+
+| 接口 | 方法 | 改动类型 | 影响点 | 涉及数据库表 | 前端调用页面 | 测试备注 |
+|------|------|---------|--------|-------------|-------------|---------|
+| `/collection/order/pay` | POST | 保存 | 作品集订单支付创建订单收货地址时同步写 `receiver_phone_mask`/`receiver_phone_md5`/`receiver_phone_aes` | `drh_order_user_address`（写 receiver_phone 安全字段） | 小程序作品集订单支付页 | 保存后确认 `receiver_phone_*` 三字段均有值 |
+
 ---
 
 ### 二、drh-endpoint 模块
@@ -154,6 +167,16 @@
 | `/liveAuth/auth/phone/v6` | POST | 保存+查询 | 同上（V6 版本） | `drh_applet_user`（写/读 phone 安全字段）；`drh_live_user`（写/读 phone 安全字段） | 同上 | — |
 | `/liveAuth/works/auth/phone*` | POST | 保存+查询 | 作品授权手机号 | `drh_live_works_user`（写 phone 安全字段）；`drh_applet_user`（写/读 phone 安全字段） | 作品授权页面 | 通配符接口 |
 | `/liveAuth/*/pic` | POST | 查询 | 获客助手查询链路读取线索安全字段 | `drh_applet_user`（读 phone_md5 → 查，返回 phone_mask） | 获客助手相关页面 | — |
+
+#### 2.6 用户收货地址（D003 用户补充）
+
+| 接口 | 方法 | 改动类型 | 影响点 | 涉及数据库表 | 前端调用页面 | 测试备注 |
+|------|------|---------|--------|-------------|-------------|---------|
+| `/user/address/list` | GET | 查询 | 用户地址列表读取 `receiver_phone_mask`/`receiver_phone_aes`，对外 `receiverPhone` 返回掩码 | `drh_user_address`（读 receiver_phone 安全字段） | 小程序收货地址列表 | 验证不返回明文 receiverPhone |
+| `/user/address/add` | POST | 保存 | 新增收货地址时同步写 `receiver_phone_mask`/`receiver_phone_md5`/`receiver_phone_aes` | `drh_user_address`（写 receiver_phone 安全字段） | 小程序收货地址新增 | 保存后确认安全字段完整 |
+| `/user/address/update` | POST | 保存 | 更新收货地址时同步写安全字段；入参若为掩码手机号则沿用原记录安全字段 | `drh_user_address`（写 receiver_phone 安全字段） | 小程序收货地址编辑 | 验证掩码入参不会覆盖为错误密文 |
+| `/applet/works/collection/user/address` | POST | 保存 | 作品集链路新增/更新用户地址，同步写安全字段；掩码入参沿用原记录安全字段 | `drh_user_address`（写 receiver_phone 安全字段） | 小程序作品集地址编辑 | 同 `/user/address/update` |
+| `/applet/works/collection/user/address/query` | GET | 查询 | 作品集链路查询用户地址，对外 `receiverPhone` 返回掩码 | `drh_user_address`（读 receiver_phone 安全字段） | 小程序作品集地址页 | 验证不返回明文 receiverPhone |
 
 ---
 
@@ -211,13 +234,13 @@
 
 #### 3.7 [补充] 人工核查补充接口
 
-> 以下 3 个接口由人工核查发现未纳入原始文档，经代码分析后补充。XML Mapper 已包含 `phone_mask`/`phone_md5`/`phone_aes` 查询列，但部分接口的 **phone 字段返回仍为明文**、**搜索条件仍使用 LIKE 明文匹配**、**DTO 缺少安全字段定义**，需要进一步整改。
+> 以下 3 个接口由人工核查发现未纳入原始文档，经代码分析后补充。D002 已完成整改：搜索条件改为 `phone_md5` 精确匹配，返回字段优先使用掩码，缺失的 DTO 安全字段已补齐。
 
 | 接口 | 方法 | 改动类型 | 影响点 | 涉及数据库表 | 前端调用页面 | 测试备注 |
 |------|------|---------|--------|-------------|-------------|---------|
-| `/orderUser/user/list` | POST | 查询 | **[补充]** 学员管理列表，从 `drh_live_user` 关联查询手机号。XML 已 SELECT phone_mask/phone_md5/phone_aes，但存在两个问题：① 搜索条件仍使用 `luser.phone LIKE concat('%',#{input.phone},'%')` 明文模糊匹配，未改为 phone_md5；② `OrderUser.getPhone()` 有 DTO 层掩码逻辑（seaPhone=false 时返回掩码），但 phone 字段来源仍为明文 `luser.phone`，应改为返回 `phoneMask` | `drh_live_user`（读 phone/phone_mask/phone_md5/phone_aes）；`drh_handover_plus`（主查询表）；`drh_user_form`（注册判断）；`drh_sea_phone`（号码可见性权限） | CMS 后台-学员管理列表 | **待整改**：① LIKE 搜索需改为 phone_md5 精确匹配或业务确认脱敏搜索方案；② phone 返回值应统一使用 phoneMask |
-| `/order/hand/list` | POST | 查询 | **[补充]** 订单转交记录列表，从 `drh_live_user` 关联查询手机号。XML 已 SELECT phone_mask/phone_md5/phone_aes，搜索已改为 `lu.phone_md5 = #{phoneMd5}`。但 `OrderHandVo` DTO 可能缺少 phoneMask/phoneMd5/phoneAes 字段定义，导致安全字段无法映射到响应 | `drh_live_user`（读 phone/phone_mask/phone_md5/phone_aes）；`drh_order_hand_record`（未处理记录表）；`drh_order_hand_record_del`（已处理记录表） | CMS 后台-订单转交列表 | **待确认**：验证 `OrderHandVo`（或 `OrderHandUserGroupDto`）是否包含 phoneMask/phoneMd5/phoneAes 字段，若缺少需补充 |
-| `/ad/pic/user/list` | POST | 查询 | **[补充]** 广告线索用户列表，从 `drh_applet_user` 查询手机号。XML 已 SELECT phone_mask/phone_md5/phone_aes，搜索已改为 phone_md5 匹配。但 `AdUserPicDto.phone` 字段返回仍为数据库明文值，未改为 `phoneMask` | `drh_applet_user`（读 phone/phone_mask/phone_md5/phone_aes）；`drh_ad_user_pic`（广告用户关联）；`drh_gx_channel`（国学渠道，getGxPage）；`drh_book_question_record`（地址判断） | CMS 后台-广告线索用户列表 | **待整改**：`AdUserPicDto.phone` 返回值应改为 phoneMask，避免暴露明文 |
+| `/orderUser/user/list` | POST | 查询 | **[补充·已整改]** 学员管理列表，从 `drh_live_user` 关联查询手机号。搜索条件已由 `phone LIKE` 改为 `phone_md5` 精确匹配；`OrderUser.getPhone()` 优先返回 `phoneMask` | `drh_live_user`（读 phone_mask/phone_md5/phone_aes）；`drh_handover_plus`（主查询表）；`drh_user_form`（注册判断）；`drh_sea_phone`（号码可见性权限） | CMS 后台-学员管理列表 | **已整改**：验证精确搜索和掩码展示 |
+| `/order/hand/list` | POST | 查询 | **[补充·已整改]** 订单转交记录列表，从 `drh_live_user` 关联查询手机号。搜索条件使用 `phone_md5`；`OrderHandVo` 已补充 phoneMask/phoneMd5/phoneAes 并优先返回 `phoneMask` | `drh_live_user`（读 phone_mask/phone_md5/phone_aes）；`drh_order_hand_record`（未处理记录表）；`drh_order_hand_record_del`（已处理记录表） | CMS 后台-订单转交列表 | **已整改**：验证安全字段映射和掩码展示 |
+| `/ad/pic/user/list` | POST | 查询 | **[补充·已整改]** 广告线索用户列表，从 `drh_applet_user` 查询手机号。搜索条件使用 `phone_md5`；`AdUserPicServiceImpl.getPageList` 在中间处理完成后将 `phone` 替换为 `phoneMask` | `drh_applet_user`（读 phone_mask/phone_md5/phone_aes）；`drh_ad_user_pic`（广告用户关联）；`drh_gx_channel`（国学渠道，getGxPage）；`drh_book_question_record`（地址判断） | CMS 后台-广告线索用户列表 | **已整改**：验证 phone 字段不暴露明文 |
 
 **未纳入原始文档的原因分析**：
 
@@ -233,6 +256,14 @@
 | `/orderUser/user/list` | `phone` 返回值来源为明文 `luser.phone` | OrderUser.getPhone() 优先返回 phoneMask；fillOrderUserList 同步设置 phoneMask | P1 | **已整改** |
 | `/order/hand/list` | `OrderHandVo` 缺少安全字段定义 | OrderHandVo 新增 phoneMask/phoneMd5/phoneAes 字段 + getPhone() 优先返回 phoneMask | P2 | **已整改** |
 | `/ad/pic/user/list` | `phone` 字段返回数据库明文值 | AdUserPicServiceImpl forEach 末尾将 phone 替换为 phoneMask | P1 | **已整改** |
+
+#### 3.8 作品集订单地址查询与导出（D003 用户补充）
+
+| 接口 | 方法 | 改动类型 | 影响点 | 涉及数据库表 | 前端调用页面 | 测试备注 |
+|------|------|---------|--------|-------------|-------------|---------|
+| `/collection/order/list` | POST | 查询 | 作品集订单列表按收货手机号搜索改为 `receiver_phone_md5` 精确匹配，列表展示 `COALESCE(receiver_phone_mask, receiver_phone)` | `drh_order_user_address`（读 receiver_phone_md5 / receiver_phone_mask） | CMS 后台-作品集订单列表 | 验证手机号搜索命中和掩码展示 |
+| `/collection/order/list/export` | GET | 查询 | 导出沿用列表查询，收货手机号搜索走 `receiver_phone_md5`，导出展示掩码 | `drh_order_user_address`（读 receiver_phone_md5 / receiver_phone_mask） | CMS 后台-作品集订单导出 | 验证导出 CSV 不含明文手机号 |
+| `/collection/order/download/zip/list` | GET | 查询 | 批量下载图片前按作品集订单列表筛选，收货手机号搜索走 `receiver_phone_md5` | `drh_order_user_address`（读 receiver_phone_md5 / receiver_phone_mask） | CMS 后台-作品集订单图片批量下载 | 验证按手机号筛选结果正确 |
 
 ---
 
@@ -322,6 +353,8 @@
 | `drh_applet_player` | — | — | R | — | — |
 | `drh_import_address_record_detail` | — | — | W | — | — |
 | `drh_specail_user` | — | — | R | — | — |
+| `drh_user_address` | — | W / R | — | — | — |
+| `drh_order_user_address` | W | R | R | — | — |
 
 注：`drh_book_edit_address_compensation` 的读写由 ju-chat ai 模块内部处理，不直接通过 drh 微服务接口暴露。
 
@@ -418,14 +451,14 @@
 - **FR-002**：每个接口 MUST 标注改动类型（保存/查询/展示/回调）、影响的数据库表（含读写方向）、前端调用页面。
 - **FR-003**：本文档 MUST 包含数据库表 × 接口读写矩阵，标注每张表在各模块的读写方向。
 - **FR-004**：本文档 MUST 包含前端页面与接口的映射关系，覆盖投放页面、CMS 后台页面、小程序/APP 页面。
-- **FR-005**：本文档 MUST 列出全部 26 张已改造数据库表（7 张核心表 + 19 张 P1 扩展表）。
-- **FR-006**：本阶段 MUST NOT 修改业务代码。
+- **FR-005**：本文档 MUST 列出全部 28 张已改造数据库表（7 张核心表 + 19 张 P1 扩展表 + 2 张用户补充表）。
+- **FR-006**：本文档 MUST NOT 直接执行数据库 DDL 或历史回填；代码整改必须在执行记录中说明。
 
 ## 成功标准
 
 - **SC-001**：测试团队可按本文档的模块 × 接口 × 数据库表维度执行全量验证，无遗漏。
 - **SC-002**：每个接口有明确的数据库表读写方向和前端页面映射。
-- **SC-003**：数据库表 × 接口读写矩阵覆盖所有 26 张已改造表和 5 个微服务模块。
+- **SC-003**：数据库表 × 接口读写矩阵覆盖所有 28 张已改造表和 5 个微服务模块。
 - **SC-004**：前端页面清单覆盖所有已知投放页面、CMS 后台页面、小程序/APP 页面和中转页面。
 
 ## 假设
@@ -442,7 +475,7 @@
 
 - 已创建本 Spec Kit 文档。
 - 已完成五个微服务模块的全量接口影响分析。
-- 已完成 26 张数据库表与接口的读写矩阵映射。
+- 已完成初始 26 张数据库表与接口的读写矩阵映射；D003 后扩展为 28 张。
 - 已完成前端页面与接口的映射关系。
 - 已整合 032/036/041/048 四个前置规格的影响信息。
 - 本阶段未修改业务代码。
@@ -467,9 +500,12 @@
 - 文档同步：已同步更新 `spec.md`（本记录）、`tasks.md`。
 - 验证结果：代码已修改，待编译和接口验证。
 
-### D003 - 纠正记录模板
+### D003 - 用户补充 `drh_user_address` 与作品集订单地址表整改
 
-- 触发原因：`<用户补充/测试失败/代码审查发现/参数遗漏/调用顺序问题>`。
-- 修正内容：`<写清楚旧口径和新口径>`。
-- 文档同步：`<spec/tasks/AGENTS/checklist 是否已同步>`。
-- 验证结果：`<测试或静态检查结果>`。
+- 触发原因：用户补充要求核查 `drh_user_address`，并确认关联保存收货手机号的 `drh_order_user_address` 一并改造。
+- 修正内容：
+  - 新增 `drh_user_address.receiver_phone_*`、`drh_order_user_address.receiver_phone_*` 安全字段和 `receiver_phone_md5` 索引口径。
+  - `drh-common` 的 `UserAddress`、`OrderUserAddress` 增加安全字段和 `createAesInfo()`；`drh-endpoint` 的用户地址保存/更新/查询链路补生成、掩码展示和掩码入参沿用逻辑；`drh-pay` 的 `/collection/order/pay` 写入订单地址安全字段；`drh-kk-cms` 的作品集订单列表/导出按 `receiver_phone_md5` 查询并展示掩码。
+  - `ju-chat` 的 `broadcast-common` 地址实体同步字段；`data-RC` 历史回填目标新增两张表。
+- 文档同步：已同步 `spec.md`、`tasks.md`、`AGENTS.md`、`checklists/requirements.md`、`051-phone-security-ddl-summary` 及 SQL 检查/DDL 文件。
+- 验证结果：待执行静态检查、模块编译和接口场景验证。
