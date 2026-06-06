@@ -3,7 +3,7 @@
 **功能目录**：`056-book-order-unionid-fallback`  
 **创建日期**：2026-06-06  
 **状态**：Implemented  
-**输入**：修改图书物流登记链路。`external-info-save` 调用 `getBookOrderByPhone` 时增加 `unionId` 参数；`unionId` 通过 OTS 表 `drh_emp_external_user` 按 `external_userid` 获取。AI 接口先通过手机号查询订单，查不到时再按 `unionId` 查询 `drh_h5_order` 近 7 天订单并返回。
+**输入**：修改图书物流登记链路。`external-info-save` 调用 `getBookOrderByPhone` 时增加 `unionId` 参数；`unionId` 通过 OTS 表 `drh_emp_external_user` 按 `external_userid` 获取。AI 接口先通过手机号查询订单，查不到时再按 `drh_h5_order.union_id` 查询近 7 天订单；仍查不到时，通过 `drh_h5_order.applet_user_id = drh_applet_user.id` 且 `drh_applet_user.union_id = unionId` 关联查询近 7 天订单并返回。
 
 ## 用户场景与测试
 
@@ -25,8 +25,9 @@ AI 服务收到手机号和可选 `unionId` 后，先保留现有手机号查询
 
 1. **Given** 手机号近 7 天有订单，**When** 调用 `/ai/getBookOrderByPhone?phone=xxx&unionId=yyy`，**Then** 返回手机号订单，不执行 unionId 替换逻辑。
 2. **Given** 手机号近 7 天无订单且 `unionId` 非空，**When** `drh_h5_order.union_id` 近 7 天有订单，**Then** 返回 unionId 命中的订单。
-3. **Given** 手机号近 7 天无订单且 `unionId` 为空，**When** 调用接口，**Then** 返回空列表。
-4. **Given** 旧调用只传 `phone`，**When** 调用接口，**Then** 响应结构和原逻辑兼容。
+3. **Given** 手机号近 7 天无订单且 `drh_h5_order.union_id` 无订单，**When** `drh_applet_user.union_id` 关联到的 `applet_user_id` 近 7 天有订单，**Then** 返回关联命中的订单。
+4. **Given** 手机号近 7 天无订单且 `unionId` 为空，**When** 调用接口，**Then** 返回空列表。
+5. **Given** 旧调用只传 `phone`，**When** 调用接口，**Then** 响应结构和原逻辑兼容。
 
 ## 功能需求
 
@@ -36,10 +37,11 @@ AI 服务收到手机号和可选 `unionId` 后，先保留现有手机号查询
 - **FR-004**：`external-info-save` MUST 在 `unionId` 为空时跳过 `OtsUtil.searchRow`，避免空值查询。
 - **FR-005**：AI Controller MUST 将 `unionId` 声明为可选请求参数。
 - **FR-006**：AI Service MUST 先按手机号和近 7 天时间窗口查询 `drh_h5_order`。
-- **FR-007**：手机号查询结果为空且 `unionId` 非空时，AI Service MUST 再按 `unionId` 和近 7 天时间窗口查询 `drh_h5_order`。
-- **FR-008**：`BookOrderDto` 响应结构 MUST 保持不变。
-- **FR-009**：订单商品的图书类目判定 MUST 保持现有启用组合商品集合逻辑。
-- **FR-010**：实现 MUST 不新增数据库表、公共 DTO 字段或配置项。
+- **FR-007**：手机号查询结果为空且 `unionId` 非空时，AI Service MUST 再按 `drh_h5_order.union_id` 和近 7 天时间窗口查询 `drh_h5_order`。
+- **FR-008**：手机号和 `drh_h5_order.union_id` 均无结果且 `unionId` 非空时，AI Service MUST 通过 `drh_h5_order.applet_user_id = drh_applet_user.id AND drh_applet_user.union_id = unionId` 关联查询近 7 天订单。
+- **FR-009**：`BookOrderDto` 响应结构 MUST 保持不变。
+- **FR-010**：订单商品的图书类目判定 MUST 保持现有启用组合商品集合逻辑。
+- **FR-011**：实现 MUST 不新增数据库表、公共 DTO 字段或配置项。
 
 ## 边界情况
 
@@ -48,16 +50,18 @@ AI 服务收到手机号和可选 `unionId` 后，先保留现有手机号查询
 - `drh_external_user_info` 只有 `union_id` 而没有 `unionid`。
 - 手机号查询命中非图书商品订单。
 - 手机号查询为空，`unionId` 查询命中多个近 7 天订单。
+- `drh_h5_order.union_id` 为空但 `applet_user_id` 关联的 `drh_applet_user.union_id` 命中。
 - 旧调用方只传 `phone`。
 
 ## 成功标准
 
 - **SC-001**：`AppTask` 可以稳定把非空 `unionId` 传入 `getBookOrderByPhone`。
 - **SC-002**：手机号有结果时接口结果不因 `unionId` 改变。
-- **SC-003**：手机号无结果且 `unionId` 有近 7 天订单时接口能返回订单。
-- **SC-004**：旧 URL `/ai/getBookOrderByPhone?phone=xxx` 继续可用。
-- **SC-005**：`mvn -f C:\workspace\ju-chat\coze_plugin\pom.xml -pl common,external-info-save -am -DskipTests package` 编译通过。
-- **SC-006**：`mvn -f C:\workspace\ju-chat\kkhc\kkhc-idc\pom.xml -pl ai -am -DskipTests compile` 编译通过。
+- **SC-003**：手机号无结果且 `drh_h5_order.union_id` 有近 7 天订单时接口能返回订单。
+- **SC-004**：手机号和 `drh_h5_order.union_id` 均无结果，但 `drh_applet_user.union_id` 关联有近 7 天订单时接口能返回订单。
+- **SC-005**：旧 URL `/ai/getBookOrderByPhone?phone=xxx` 继续可用。
+- **SC-006**：`mvn -f C:\workspace\ju-chat\coze_plugin\pom.xml -pl common,external-info-save -am -DskipTests package` 编译通过。
+- **SC-007**：`mvn -f C:\workspace\ju-chat\kkhc\kkhc-idc\pom.xml -pl ai -am -DskipTests compile` 编译通过。
 
 ## 假设
 

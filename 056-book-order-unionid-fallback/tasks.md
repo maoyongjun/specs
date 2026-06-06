@@ -21,18 +21,19 @@
 - [x] T008 `AiController#getBookOrderByPhone` 增加可选 `unionId` 参数。
 - [x] T009 `AiService#getBookOrderByPhone` 签名改为 `phone, unionId`。
 - [x] T010 `AiServiceImpl#getBookOrderByPhone` 实现手机号优先、unionId 兜底。
-- [x] T011 抽取订单 DTO 映射 helper，保持 `goodsId` 回填规则不变。
+- [x] T011 `AiServiceImpl#getBookOrderByPhone` 增加 `drh_h5_order.applet_user_id = drh_applet_user.id` 的 `unionId` 关联查询兜底。
+- [x] T012 抽取订单 DTO 映射 helper，保持 `goodsId` 回填规则不变。
 
 ## Phase 4：验证
 
-- [x] T012 文档结构检查。
-- [x] T013 运行 `mvn -f C:\workspace\ju-chat\coze_plugin\pom.xml -pl common,external-info-save -am -DskipTests package`。
-- [x] T014 运行 `mvn -f C:\workspace\ju-chat\kkhc\kkhc-idc\pom.xml -pl ai -am -DskipTests compile`。
+- [x] T013 文档结构检查。
+- [x] T014 运行 `mvn -f C:\workspace\ju-chat\coze_plugin\pom.xml -pl common,external-info-save -am -DskipTests package`。
+- [x] T015 运行 `mvn -f C:\workspace\ju-chat\kkhc\kkhc-idc\pom.xml -pl ai -am -DskipTests compile`。
 
 ## 执行记录
 
 ### D001 - 初始实现
 
-- 执行内容：创建 Spec Kit 文档，完成调用端 OTS unionId 解析、AI 接口可选参数和 unionId 兜底查询。
+- 执行内容：创建 Spec Kit 文档，完成调用端 OTS unionId 解析、AI 接口可选参数、`drh_h5_order.union_id` 兜底查询，以及通过 `drh_applet_user.union_id` 关联 `applet_user_id` 的第三层兜底查询。
 - 验证方式：编译 `coze_plugin` 的 `common,external-info-save` 链路和 `kkhc-idc/ai` 模块。
 - 自检结论：实现保持旧 `phone` 调用兼容，不新增数据库表、DTO 字段或配置项。

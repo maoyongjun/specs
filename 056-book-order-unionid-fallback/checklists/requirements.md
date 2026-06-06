@@ -27,7 +27,8 @@
 - [x] `unionId` 是可选请求参数。
 - [x] 旧 `phone` 调用兼容。
 - [x] 查询顺序为手机号优先、unionId 兜底。
-- [x] 两段查询都限制近 7 天。
+- [x] 查询顺序为手机号、`drh_h5_order.union_id`、`drh_applet_user.union_id` 关联订单。
+- [x] 三段查询都限制近 7 天。
 - [x] 响应 DTO 结构不变。
 - [x] 图书商品 `goodsId` 回填规则不变。
 
