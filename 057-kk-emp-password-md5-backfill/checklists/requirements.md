@@ -31,3 +31,13 @@
 - [x] 服务单元测试断言两张固定表 SQL 和更新数汇总。
 - [x] 控制器单元测试断言响应包装。
 - [x] 指定 Maven 测试通过。
+
+## 测试库备份
+
+- [x] 使用 `database-sql-skill` 测试库 profile `dev-mysql`。
+- [x] 备份前执行只读 count SQL。
+- [x] `drh_kk_emp` 导出 309 行。
+- [x] `drh_kk_one_emp` 导出 239 行。
+- [x] 备份 SQL 已放入本规格目录。
+- [x] 未执行备份 SQL。
+- [x] 临时导出文件已清理。

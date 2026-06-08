@@ -89,3 +89,11 @@
 - 测试命令：`mvn -pl juzi-service -DskipTests=false "-Dtest=PhoneSecurityBackfillServicePasswordMd5Test,PhoneSecurityBackfillAdminControllerTest" test`
 - 测试结果：`Tests run: 2, Failures: 0, Errors: 0, Skipped: 0`，`BUILD SUCCESS`。
 - 自检结论：表名和字段名均为服务内固定白名单；SQL 覆盖非空、非空白、非 MD5 判断；日志和响应不输出密码值；原手机号回填 `start/status` 未改动。
+
+### D003 - 测试库数据备份记录
+
+- 执行内容：使用 `database-sql-skill` 的测试库 profile `dev-mysql` 备份 `drh_kk_emp` 和 `drh_kk_one_emp` 数据。
+- 只读查询：`kk-emp-password-backup-count.sql`、`kk-emp-backup-export-drh_kk_emp-json.sql`、`kk-emp-backup-export-drh_kk_one_emp-json.sql` 均已通过 `readonly` 分析后执行。
+- 备份结果：`drh_kk_emp` 309 行，`drh_kk_one_emp` 239 行，共 548 行。
+- 备份文件：`test-drh-kk-emp-password-backup-20260608.sql`。
+- 自检结论：备份 SQL 只包含 `SET NAMES` 和 `INSERT`；未执行备份 SQL；临时 CSV/JSON 导出文件已清理。
