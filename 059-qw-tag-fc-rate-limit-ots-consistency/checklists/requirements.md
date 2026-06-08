@@ -11,7 +11,7 @@
 - [x] 已包含 `tasks.md`。
 - [x] 已包含 `AGENTS.md`。
 - [x] 已包含 `checklists/requirements.md`。
-- [x] 已明确本阶段只编写文档，不修改业务代码。
+- [x] 已明确实现阶段代码改造范围和数据库 SQL 只写入文档、不直接执行。
 
 ## 内容质量
 
@@ -21,7 +21,7 @@
 - [x] 明确日志、时间、延迟、幂等、fallback、兼容性和异常处理要求。
 - [x] 明确后续实现必须增加测试或静态验证记录。
 
-## FC 双模式
+## AppTask 旧链路兼容
 
 - [x] 明确 `EmpExternalTag` 需要新增 `fc_action`。
 - [x] 明确 `EmpExternalTag` 需要新增 `ots_write_mode`。
@@ -31,26 +31,40 @@
 - [x] 明确旧调用不传新增参数时，FC 保持内部写 OTS。
 - [x] 明确 `AppTask` 必须先判断 `fc_action`，再执行旧标签列表校验。
 
+## 新链路企微代理调用
+
+- [x] 明确新链路 MARK 不再通过 `fc/qw-tag/AppTask` 中转。
+- [x] 明确新链路 GET 不再通过 `fc/qw-tag/AppTask` 中转。
+- [x] 明确 `mq.delay.topic=test_delay` 时调用 `service_sys/qw-api-proxy-test`。
+- [x] 明确其他 topic 调用 `ai-service/qw-api-proxy`。
+- [x] 明确 MARK 代理入参包含 `source`、`reqType=2`、`actionType=1`、`url`、`body`。
+- [x] 明确 MARK body 使用企微原始 `userid`、`external_userid`、`add_tag`、`remove_tag`。
+- [x] 明确 GET 代理入参包含 `source`、`reqType=1`、`actionType=1`、`url`。
+- [x] 明确 GET URL 为 `https://qyapi.weixin.qq.com/cgi-bin/externalcontact/get?external_userid={urlEncodedExternalUserId}`。
+
 ## get 调用方式
 
 - [x] 明确三次 get 逻辑写在 `kkhc-idc/ai`。
-- [x] 明确每次 get 都通过同一个 `fc/qw-tag/AppTask` 调用。
-- [x] 明确 get 模式入参为 `fc_action=GET_EXTERNAL_CONTACT`。
+- [x] 明确每次 get 都直接调用企微代理函数。
+- [x] 明确新链路 get 不传 `fc_action=GET_EXTERNAL_CONTACT` 给 `AppTask`。
 - [x] 明确 `kkhc-idc/ai` 不能直接 HTTP 调企微 get。
-- [x] 明确 `CompleteTagUtil.doGetExternalContact(...)` 通过 `invokeQwProxyFc(...)` 调用企微代理函数。
-- [x] 明确 get URL 为 `https://qyapi.weixin.qq.com/cgi-bin/externalcontact/get?external_userid={externalUserId}`。
-- [x] 明确 get 使用 `QwFcProxyInput.reqType=1`、`actionType=1`。
+- [x] 明确旧 AppTask 兼容路径的 `CompleteTagUtil.doGetExternalContact(...)` 仍通过企微代理函数。
 
 ## MQ 与限流
 
-- [x] 明确接口只落任务和发 MQ，不直接调用 FC。
+- [x] 明确接口只落任务和发 MQ，不直接调用企微代理函数。
 - [x] 明确 topic 使用现有 `mq.delay.topic`。
 - [x] 明确测试 topic 为 `test_delay`，生产 topic 为 `delay`。
 - [x] 明确打标签 tag 为 `QW_EXTERNAL_TAG_MARK`。
 - [x] 明确确认 tag 为 `QW_EXTERNAL_TAG_VERIFY`。
 - [x] 明确新增 `MessageType.QW_EXTERNAL_TAG_MARK`，建议 code 为 `136`。
-- [x] 明确打标签 FC 限速 key 为 `ai:qwExternalTagFcRateLimiter`。
-- [x] 明确 get FC 限速 key 为 `ai:qwExternalTagGetFcRateLimiter`。
+- [x] 明确新增 `MessageType.QW_EXTERNAL_TAG_VERIFY`，code 为 `137`。
+- [x] 明确 MQ 发送使用 `delayProducerBean.sendTagMessage(...)`。
+- [x] 明确 `QW_EXTERNAL_TAG_MARK` 初始投递延迟 `10ms`。
+- [x] 明确 `QW_EXTERNAL_TAG_VERIFY` 第 2/3 次确认延迟为 `10s/20s`。
+- [x] 明确消费端使用独立 consumer group `GID_delay_qw_external_tag`。
+- [x] 明确打标签企微代理函数限速 key 为 `ai:qwExternalTagFcRateLimiter`。
+- [x] 明确 get 企微代理函数限速 key 为 `ai:qwExternalTagGetFcRateLimiter`。
 
 ## 一致性与失败处理
 
@@ -68,6 +82,7 @@
 - [x] 明确任务主表 `drh_qw_external_tag_task`。
 - [x] 明确任务日志表 `drh_qw_external_tag_task_log`。
 - [x] 明确主表核心字段。
+- [x] 明确两张表的完整 DDL、索引、状态字段和响应快照字段。
 - [x] 明确任务状态枚举。
 - [x] 明确过程日志记录 FC、get、OTS 和错误详情。
 
@@ -76,13 +91,14 @@
 - [ ] 后续实现需测试 `AppTask` 默认打标签路径保持兼容。
 - [ ] 后续实现需测试 `CALLER_VERIFY_WRITE` 路径不写 OTS。
 - [ ] 后续实现需测试 `GET_EXTERNAL_CONTACT` 路径不校验标签列表。
-- [ ] 后续实现需测试 `idc-ai` 打标签消费者 FC 入参。
-- [ ] 后续实现需测试 `idc-ai` 三次确认 FC 入参。
+- [ ] 后续实现需测试 `idc-ai` 打标签消费者企微代理函数入参。
+- [ ] 后续实现需测试 `idc-ai` 三次确认企微代理函数入参。
+- [x] 已静态验证新链路不再调用 `async-util/sync-external-tag`、`async-util/cpv-qw-tag-util-test`、`AppTask`。
 - [ ] 后续实现需测试 `60111` 不触发 get。
 - [ ] 后续实现需测试三次未确认置为 `VERIFY_TIMEOUT`。
 - [ ] 后续实现需测试确认成功后只更新目标 `external_user_id + userid` 的标签。
 
 ## 备注
 
-- 强制门禁未完成前，不进入实现。
-- 本清单当前只确认文档阶段完成；后续代码实现后需要更新未完成测试项。
+- 强制门禁未完成前，不进入发布。
+- 本清单已同步实现范围；目标模块 Maven 编译通过，最终发布前仍建议补齐自动化单测。
