@@ -16,12 +16,14 @@
 - 回填目标固定为 `drh_kk_emp.password` 和 `drh_kk_one_emp.password`。
 - 已完整匹配 `^[0-9a-fA-F]{32}$` 的密码视为已是 MD5，不再更新。
 - `NULL`、空字符串和纯空白密码不更新。
-- 非 MD5 密码使用 MySQL 内置 `MD5(password)` 回填。
-- 日志只允许记录表名、字段名和更新行数，不允许记录密码值。
+- 非 MD5 密码逐行调用 `PhoneSecurityEncryptClient.encryptPhone(password)`，运行时由 `DefaultPhoneSecurityEncryptClient` 调用 FC，取返回 `md5` 回填。
+- 使用数据库原始 `password` 字符串计算，不先 `trim` 后再加密。
+- 日志只允许记录表名、字段名、行数和失败类型，不允许记录密码原值或 md5 结果。
 
 ## 验证门禁
 
 - 新接口必须沿用 `/admin/phone-security-backfill/**` 现有后台鉴权。
 - 新接口必须同步返回两张表的更新行数和汇总更新行数。
 - 新接口不得影响原有 `POST /admin/phone-security-backfill/start` 和 `GET /admin/phone-security-backfill/status`。
-- 单元测试必须断言 SQL 使用固定白名单表名，且包含非空、非空白和非 MD5 判断。
+- 单元测试必须断言查询 SQL 使用固定白名单表名，且包含非空、非空白和非 MD5 判断。
+- 单元测试必须断言更新 SQL 不包含 `MD5(`，并使用 `WHERE id = ? AND password = ?` 避免覆盖并发修改。
