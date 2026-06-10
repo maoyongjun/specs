@@ -1,5 +1,5 @@
 -- 048-phone-security-remaining-tables-audit
--- Phone security fields (phone_mask / phone_md5 / phone_aes) for the remaining 19 P1 tables.
+-- Phone security fields (phone_mask / phone_md5 / phone_aes) for the remaining 18 P1 tables.
 -- Execute with migration-tool guards: skip columns / indexes that already exist.
 -- MySQL does not natively support ADD COLUMN IF NOT EXISTS;
 -- run the pre-check queries below first and skip ALTER statements whose columns/indexes already exist.
@@ -22,7 +22,6 @@ WHERE TABLE_SCHEMA = DATABASE()
     'drh_live_works_user',
     'drh_renew_data',
     'drh_sms_trigger_user',
-    'drh_specail_user',
     'drh_sph_supplier_info',
     'drh_user',
     'drh_user_assistant',
@@ -50,7 +49,6 @@ WHERE TABLE_SCHEMA = DATABASE()
     'drh_live_works_user',
     'drh_renew_data',
     'drh_sms_trigger_user',
-    'drh_specail_user',
     'drh_sph_supplier_info',
     'drh_user',
     'drh_user_assistant',
@@ -133,70 +131,63 @@ ALTER TABLE drh_sms_trigger_user
   ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
   ADD INDEX idx_sms_trigger_phone_md5 (phone_md5);
 
--- 10. drh_specail_user -- 特殊用户表，维护享有特殊权益或标记的用户
-ALTER TABLE drh_specail_user
-  ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
-  ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
-  ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
-  ADD INDEX idx_specail_user_phone_md5 (phone_md5);
-
--- 11. drh_sph_supplier_info -- 视频号供应商信息表，管理视频号业务供应商资料
+-- 10. drh_sph_supplier_info -- 视频号供应商信息表，管理视频号业务供应商资料
 ALTER TABLE drh_sph_supplier_info
   ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
   ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
   ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
   ADD INDEX idx_sph_supplier_phone_md5 (phone_md5);
 
--- 12. drh_user -- 用户主表，存储平台核心用户信息
+-- 11. drh_user -- 用户主表，存储平台核心用户信息
 ALTER TABLE drh_user
   ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
   ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
   ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
   ADD INDEX idx_user_phone_md5 (phone_md5);
 
--- 13. drh_user_assistant -- 用户助理表，记录用户绑定的专属助理/顾问
+-- 12. drh_user_assistant -- 用户助理表，记录用户绑定的专属助理/顾问
 ALTER TABLE drh_user_assistant
   ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
   ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
   ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
   ADD INDEX idx_user_assistant_phone_md5 (phone_md5);
 
--- 14. drh_user_form -- 用户表单表，收集用户填写的各类业务表单
+-- 13. drh_user_form -- 用户表单表，收集用户填写的各类业务表单
 ALTER TABLE drh_user_form
   ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
   ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
   ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
   ADD INDEX idx_user_form_phone_md5 (phone_md5);
 
--- 15. drh_user_service_record -- 用户服务记录表，记录客服/售后服务流水
+-- 14. drh_user_service_record -- 用户服务记录表，记录客服/售后服务流水
 ALTER TABLE drh_user_service_record
   ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
   ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
   ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
   ADD INDEX idx_user_svc_record_phone_md5 (phone_md5);
 
--- 16. drh_voice_robot_callback_details -- 语音机器人回调明细表，存储外呼回调的详细结果
+-- 15. drh_voice_robot_callback_details -- 语音机器人回调明细表，存储外呼回调的详细结果
 ALTER TABLE drh_voice_robot_callback_details
   ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
   ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
   ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
   ADD INDEX idx_vr_callback_phone_md5 (phone_md5);
 
--- 17. drh_voice_robot_task_user -- 语音机器人任务用户表，关联外呼任务与目标用户
+-- 16. drh_voice_robot_task_user -- 语音机器人任务用户表，关联外呼任务与目标用户
 ALTER TABLE drh_voice_robot_task_user
   ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
   ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
   ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
   ADD INDEX idx_vr_task_user_phone_md5 (phone_md5);
 
--- 18. drh_wechat_complaint_order -- 微信投诉工单表，记录微信渠道用户投诉及处理状态
+-- 17. drh_wechat_complaint_order -- 微信投诉工单表，记录微信渠道用户投诉及处理状态
 ALTER TABLE drh_wechat_complaint_order
   ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
   ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
   ADD COLUMN phone_aes VARCHAR(255) DEFAULT NULL COMMENT '手机号AES密文，用于单条结果解密',
   ADD INDEX idx_wechat_complaint_phone_md5 (phone_md5);
 
--- 19. order_book_reissue_detail -- 图书补发订单明细表，记录图书补发逐条明细
+-- 18. order_book_reissue_detail -- 图书补发订单明细表，记录图书补发逐条明细
 ALTER TABLE order_book_reissue_detail
   ADD COLUMN phone_mask VARCHAR(32) DEFAULT NULL COMMENT '手机号掩码展示值',
   ADD COLUMN phone_md5 CHAR(32) DEFAULT NULL COMMENT '手机号MD5摘要，用于等值查询',
@@ -207,8 +198,8 @@ ALTER TABLE order_book_reissue_detail
 -- POST-CHECK: verify all columns and indexes were created successfully
 -- ============================================================================
 
--- Verify phone_mask / phone_md5 / phone_aes columns exist on all 19 tables.
--- Expected: 57 rows (19 tables x 3 columns). Any missing row indicates a failure.
+-- Verify phone_mask / phone_md5 / phone_aes columns exist on all 18 tables.
+-- Expected: 54 rows (18 tables x 3 columns). Any missing row indicates a failure.
 SELECT t.TABLE_NAME, c_mask.COLUMN_NAME AS phone_mask, c_md5.COLUMN_NAME AS phone_md5, c_aes.COLUMN_NAME AS phone_aes
 FROM (
   SELECT 'app_study_info' AS TABLE_NAME
@@ -220,7 +211,6 @@ FROM (
   UNION ALL SELECT 'drh_live_works_user'
   UNION ALL SELECT 'drh_renew_data'
   UNION ALL SELECT 'drh_sms_trigger_user'
-  UNION ALL SELECT 'drh_specail_user'
   UNION ALL SELECT 'drh_sph_supplier_info'
   UNION ALL SELECT 'drh_user'
   UNION ALL SELECT 'drh_user_assistant'
@@ -239,8 +229,8 @@ LEFT JOIN information_schema.COLUMNS c_aes
   ON c_aes.TABLE_SCHEMA = DATABASE() AND c_aes.TABLE_NAME = t.TABLE_NAME AND c_aes.COLUMN_NAME = 'phone_aes'
 ORDER BY t.TABLE_NAME;
 
--- Verify idx_*_phone_md5 indexes exist on all 19 tables.
--- Expected: 19 rows. Any missing row indicates a failure.
+-- Verify idx_*_phone_md5 indexes exist on all 18 tables.
+-- Expected: 18 rows. Any missing row indicates a failure.
 SELECT t.TABLE_NAME, s.INDEX_NAME
 FROM (
   SELECT 'app_study_info' AS TABLE_NAME, 'idx_app_study_info_phone_md5' AS EXPECTED_INDEX
@@ -252,7 +242,6 @@ FROM (
   UNION ALL SELECT 'drh_live_works_user',        'idx_live_works_user_phone_md5'
   UNION ALL SELECT 'drh_renew_data',             'idx_renew_data_phone_md5'
   UNION ALL SELECT 'drh_sms_trigger_user',       'idx_sms_trigger_phone_md5'
-  UNION ALL SELECT 'drh_specail_user',           'idx_specail_user_phone_md5'
   UNION ALL SELECT 'drh_sph_supplier_info',      'idx_sph_supplier_phone_md5'
   UNION ALL SELECT 'drh_user',                   'idx_user_phone_md5'
   UNION ALL SELECT 'drh_user_assistant',         'idx_user_assistant_phone_md5'
