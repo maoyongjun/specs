@@ -1,0 +1,14 @@
+{
+  "risk": "readonly",
+  "row_count": 0,
+  "affected_rows": 0,
+  "truncated": false,
+  "columns": [
+    "object_type",
+    "table_name",
+    "object_name",
+    "expected_definition",
+    "existing_equivalent_index"
+  ],
+  "rows": []
+}
