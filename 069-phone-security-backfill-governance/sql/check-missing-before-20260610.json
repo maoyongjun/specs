@@ -1,0 +1,330 @@
+{
+  "risk": "readonly",
+  "row_count": 45,
+  "affected_rows": 0,
+  "truncated": false,
+  "columns": [
+    "object_type",
+    "table_name",
+    "object_name",
+    "expected_definition",
+    "existing_equivalent_index"
+  ],
+  "rows": [
+    {
+      "object_type": "INDEX",
+      "table_name": "app_study_info",
+      "object_name": "idx_app_study_info_phone_aes",
+      "expected_definition": "ADD INDEX idx_app_study_info_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_ad_count",
+      "object_name": "idx_ad_count_phone_aes",
+      "expected_definition": "ADD INDEX idx_ad_count_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_ad_form_answer",
+      "object_name": "idx_ad_form_answer_phone_aes",
+      "expected_definition": "ADD INDEX idx_ad_form_answer_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_app_white",
+      "object_name": "idx_app_white_phone_aes",
+      "expected_definition": "ADD INDEX idx_app_white_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_applet_black_phone",
+      "object_name": "idx_applet_black_phone_aes",
+      "expected_definition": "ADD INDEX idx_applet_black_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_applet_order",
+      "object_name": "idx_applet_order_phone_aes",
+      "expected_definition": "ADD INDEX idx_applet_order_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_applet_player",
+      "object_name": "idx_applet_player_phone_aes",
+      "expected_definition": "ADD INDEX idx_applet_player_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_applet_small_user",
+      "object_name": "idx_applet_small_user_phone_aes",
+      "expected_definition": "ADD INDEX idx_applet_small_user_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_applet_user",
+      "object_name": "idx_applet_user_phone_aes",
+      "expected_definition": "ADD INDEX idx_applet_user_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_book_edit_address_compensation",
+      "object_name": "idx_book_addr_comp_phone_aes",
+      "expected_definition": "ADD INDEX idx_book_addr_comp_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_book_question_record",
+      "object_name": "idx_book_q_record_phone_aes",
+      "expected_definition": "ADD INDEX idx_book_q_record_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_external_book_question_record",
+      "object_name": "idx_ext_book_q_record_phone_aes",
+      "expected_definition": "ADD INDEX idx_ext_book_q_record_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_goods_user_coupon",
+      "object_name": "idx_goods_coupon_phone_aes",
+      "expected_definition": "ADD INDEX idx_goods_coupon_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_gx_channel",
+      "object_name": "idx_gx_channel_phone_aes",
+      "expected_definition": "ADD INDEX idx_gx_channel_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_h5_order",
+      "object_name": "idx_h5_order_phone_aes",
+      "expected_definition": "ADD INDEX idx_h5_order_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_import_address_record_detail",
+      "object_name": "idx_import_address_detail_phone_aes",
+      "expected_definition": "ADD INDEX idx_import_address_detail_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_koc",
+      "object_name": "idx_koc_phone_aes",
+      "expected_definition": "ADD INDEX idx_koc_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_leads_noqw_send_msg_task_detail",
+      "object_name": "idx_leads_noqw_msg_phone_aes",
+      "expected_definition": "ADD INDEX idx_leads_noqw_msg_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_live_user",
+      "object_name": "idx_live_user_app_phone_aes",
+      "expected_definition": "ADD INDEX idx_live_user_app_phone_aes (app_phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_live_user",
+      "object_name": "idx_live_user_phone_aes",
+      "expected_definition": "ADD INDEX idx_live_user_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_live_works_user",
+      "object_name": "idx_live_works_user_phone_aes",
+      "expected_definition": "ADD INDEX idx_live_works_user_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_mall_order",
+      "object_name": "idx_mall_order_reciver_phone_aes",
+      "expected_definition": "ADD INDEX idx_mall_order_reciver_phone_aes (reciver_phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_order_refund_record",
+      "object_name": "idx_order_refund_phone_aes",
+      "expected_definition": "ADD INDEX idx_order_refund_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_order_user_address",
+      "object_name": "idx_order_user_address_receiver_phone_aes",
+      "expected_definition": "ADD INDEX idx_order_user_address_receiver_phone_aes (receiver_phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_qwb_phone_info",
+      "object_name": "idx_qwb_phone_phone_aes",
+      "expected_definition": "ADD INDEX idx_qwb_phone_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_real_address_record",
+      "object_name": "idx_real_addr_phone_aes",
+      "expected_definition": "ADD INDEX idx_real_addr_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_register_works",
+      "object_name": "idx_register_works_phone_aes",
+      "expected_definition": "ADD INDEX idx_register_works_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_renew_data",
+      "object_name": "idx_renew_data_phone_aes",
+      "expected_definition": "ADD INDEX idx_renew_data_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_short_message_operation",
+      "object_name": "idx_short_msg_phone_aes",
+      "expected_definition": "ADD INDEX idx_short_msg_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_sms_deal",
+      "object_name": "idx_sms_deal_phone_aes",
+      "expected_definition": "ADD INDEX idx_sms_deal_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_sms_trigger_user",
+      "object_name": "idx_sms_trigger_phone_aes",
+      "expected_definition": "ADD INDEX idx_sms_trigger_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_sms_trigger_user_callback",
+      "object_name": "idx_sms_trigger_cb_phone_aes",
+      "expected_definition": "ADD INDEX idx_sms_trigger_cb_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_sph_supplier_info",
+      "object_name": "idx_sph_supplier_phone_aes",
+      "expected_definition": "ADD INDEX idx_sph_supplier_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_submit_time",
+      "object_name": "idx_submit_time_phone_aes",
+      "expected_definition": "ADD INDEX idx_submit_time_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_temp_phone",
+      "object_name": "idx_temp_phone_phone_aes",
+      "expected_definition": "ADD INDEX idx_temp_phone_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_user",
+      "object_name": "idx_user_phone_aes",
+      "expected_definition": "ADD INDEX idx_user_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_user_address",
+      "object_name": "idx_user_address_receiver_phone_aes",
+      "expected_definition": "ADD INDEX idx_user_address_receiver_phone_aes (receiver_phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_user_assistant",
+      "object_name": "idx_user_assistant_phone_aes",
+      "expected_definition": "ADD INDEX idx_user_assistant_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_user_form",
+      "object_name": "idx_user_form_phone_aes",
+      "expected_definition": "ADD INDEX idx_user_form_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_user_service_record",
+      "object_name": "idx_user_svc_record_phone_aes",
+      "expected_definition": "ADD INDEX idx_user_svc_record_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_voice_robot_callback_details",
+      "object_name": "idx_vr_callback_phone_aes",
+      "expected_definition": "ADD INDEX idx_vr_callback_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_voice_robot_task_user",
+      "object_name": "idx_vr_task_user_phone_aes",
+      "expected_definition": "ADD INDEX idx_vr_task_user_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_wechat_complaint_order",
+      "object_name": "idx_wechat_complaint_phone_aes",
+      "expected_definition": "ADD INDEX idx_wechat_complaint_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "drh_xe_order",
+      "object_name": "idx_xe_order_phone_aes",
+      "expected_definition": "ADD INDEX idx_xe_order_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    },
+    {
+      "object_type": "INDEX",
+      "table_name": "order_book_reissue_detail",
+      "object_name": "idx_book_reissue_phone_aes",
+      "expected_definition": "ADD INDEX idx_book_reissue_phone_aes (phone_aes)",
+      "existing_equivalent_index": null
+    }
+  ]
+}
