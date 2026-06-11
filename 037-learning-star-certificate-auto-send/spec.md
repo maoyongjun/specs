@@ -89,13 +89,14 @@
 
 运营需要在每个营期候选的奖状发送任务完成后，对应销售收到一条汇总通知，告知本次触达了多少学员。
 
-**独立测试**：Mock `common_warn_sender` FC 调用，断言在每个营期候选所有学员处理完成后调用一次，`taskObj.sendTemplateList` 包含 `"WX_004"`，`templateParams.sendNums` 等于该营期候选实际成功投递数，`external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成。
+**独立测试**：Mock `common_warn_sender` FC 调用，断言生产端仅记录本营期候选 expected 数量，不在 MQ 投递完成后立即通知；延迟消费端在 expected 学员均完成 FC 延迟调度后，延迟调度一次 WX_004，`taskObj.sendTemplateList` 包含 `"WX_004"`，`templateVariable.sendNums` 等于实际完成调度的学员数，`appendJumpLink=false`，`external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成。
 
 **验收场景**：
 
-1. **Given** 某营期候选成功投递了 15 个学员的延迟消息，**When** 该营期候选所有学员处理完毕，**Then** 系统发送一次 WX_004 通知，内容中 `{sendNums}` 替换为 `15`，`external_key` 包含该营期候选的 `empId`、`campDateId`、`qwUserId` 和任一成功学员的 `externalUserId`。
-2. **Given** 某营期候选没有任何成功投递（`sendNums = 0`），**When** 处理完毕，**Then** 不发送 WX_004 通知。
-3. **Given** WX_004 通知发送失败，**When** FC 调用异常，**Then** 仅记录错误日志，不影响主流程返回。
+1. **Given** 某营期候选成功投递了 15 个学员的延迟消息，**When** 生产端投递完成但这些消息尚未被 RocketMQ 延迟消费，**Then** 系统不发送 WX_004 通知。
+2. **Given** 该营期候选 15 个学员均完成 2 条学员消息的 FC 延迟调度，**When** completed 数量达到 expected 数量，**Then** 系统将 WX_004 再延迟到最后一条学员消息预计触达后发送，内容中 `{sendNums}` 替换为 `15`，且正文不追加“查看聊天窗口”。
+3. **Given** 某营期候选没有任何成功投递（`sendNums = 0`），**When** 处理完毕，**Then** 不发送 WX_004 通知。
+4. **Given** WX_004 通知调度失败，**When** FC 调用异常或返回空 invocationId，**Then** 仅记录错误日志，不影响主流程返回。
 
 ## 核心业务口径
 
@@ -228,22 +229,23 @@ where a.id = #{drh_live_camp_date.camp_id}
 
 ### WX_004 奖状发送完成通知
 
-- 在每个营期候选（每个销售 + 营期组合）的所有学员 FC 消息调度完成之后，系统需要统计该营期候选本次成功发送了多少个奖状，并向对应销售发送一条完成通知。
-- **统计口径**：统计当前营期候选中成功投递 RocketMQ 延迟消息的学员数。该数值代表"该销售本次触达的学员数"。
+- 在每个营期候选（每个销售 + 营期组合）的所有学员 FC 消息调度完成之后，系统需要统计该营期候选本次预计触达了多少个奖状，并向对应销售发送一条完成通知。
+- **统计口径**：生产端记录当前营期候选成功投递 RocketMQ 延迟消息的学员数作为 `expected`；延迟消费端在单个学员 2 条消息均成功完成 FC 延迟调度并写入整组 sent key 后，按 `campDateId + empId` 递增 `completed`；只有 `completed >= expected` 时才允许调度 WX_004，`sendNums` 使用实际完成调度的学员数。
 - **通知模板编号**：`WX_004`。
 - **通知模板内容**：`【奖状发送完成通知】学习之星奖状已发送完成，触达了{sendNums}个学员。`
 - **变量替换**：`{sendNums}` 需替换为上述统计的实际发送学员数。
 - **发送方式**：参考 `PianoVideoHomeWorkHandleServiceImpl.notifyPianoVideoRecognitionWarn` 中 WX003 的发送模式：
   - 构造 `FcInvokeInput`，`serviceName = "service_sys"`，`functionName = "common_warn_sender"`。
-  - `taskObj` 中放入 `sendTemplateList`（包含 `"WX_004"`）和模板变量参数。
-  - 模板变量通过 `taskObj` 的 `templateParams`（或等效字段，如 `param` / `params`）传递，key 为 `sendNums`，value 为统计数值的字符串形式。
+  - `taskObj` 中放入 `sendTemplateList`（包含 `"WX_004"`）、`templateVariable={"sendNums":"..."}` 和 `appendJumpLink=false`。
+  - `common_warn_sender` 读取 `templateVariable` 做模板变量替换；WX_004 是完成汇总通知，企微正文不得追加“查看聊天窗口”。
 - **`external_key` 构成**：由 4 部分组成，以冒号分隔 `externalUserId:empId:campDateId:qwUserId`：
   - `externalUserId`（split[0]）：当前营期候选中任一成功发送学员的 `student.getExternalUserid()`，用于标识通知接收链路。
   - `empId`（split[1]）：当前营期销售的员工 ID，来源于 `candidate.getEmpId()` 或 `emp.getId()`。
   - `campDateId`（split[2]）：当前营期 ID，来源于 `candidate.getCampDateId()`。
   - `qwUserId`（split[3]）：当前营期销售的企微 userId，来源于 `emp.getQyvxUserId()`。
 - 上述 4 个字段在 `processCampCandidate` 流程中均可获取：`emp` 由 `resolveCampEmp(candidate)` 查询得到，`emp.getQyvxUserId()` 在校验环节已确认非空；`candidate.getEmpId()` 和 `candidate.getCampDateId()` 来源于营期候选 SQL；`student.getExternalUserid()` 来源于学员圈选结果。
-- **触发时机**：在每个营期候选的所有学员处理完毕后（即 `processCampCandidate` 的学员循环结束后），若该营期候选成功发送数 > 0，则触发一次 WX_004 通知；若该营期候选没有任何成功发送（`sendNums = 0`），不发送通知。
+- **触发时机**：`processCampCandidate` 的学员循环结束后只记录 `expected`，不触发通知；RocketMQ 延迟消费端完成某学员整组 FC 延迟调度后递增 `completed`，当 `completed >= expected` 且未通知过时，通过 Redis `setIfAbsent` 抢占通知权并调用 `FcInvokeUtils.doTaskWithDelay` 调度 WX_004。
+- **通知延迟**：WX_004 延迟秒数按 `messageIntervalMaxSeconds * messageCount + 2` 计算，确保通知晚于本批学员最后一条消息的预计触达时间。
 - **幂等和防重复**：同一营期候选只发送一次 WX_004 通知；可使用 Redis key 做去重，key 格式例如 `ai:learning-star:certificate:wx004:notify:{campDateId}:{empId}`。
 - 通知发送失败不影响主流程，仅记录日志。
 
@@ -271,9 +273,9 @@ where a.id = #{drh_live_camp_date.camp_id}
   - `learningStarDelayConsumerGroup`：配置方式参考 `delay-consumer-group: GID_delay_book_logistics_test`，实际值编码前确认并避免与图书物流消费者混用。
   - `renderThreadPool`：来源于 `ThreadPoolConfig` 中新增的 `learningStarRenderThreadPool`；并发图片生成前初始化，最大并发数 4。
   - `MDC contextMap`：来源于主线程 `MDC.getCopyOfContextMap()`；子线程执行前恢复，执行后清理。
-  - `sendNums`：来源于 `processLearningStarCertificateSend()` 中累计的 RocketMQ 延迟消息投递成功学员数；WX_004 通知发送前现算。
-  - `WX_004 external_key`：由 4 部分组成 `externalUserId:empId:campDateId:qwUserId`，分别来源于当前营期候选中任一成功发送学员的 `student.getExternalUserid()`、`candidate.getEmpId()`、`candidate.getCampDateId()`、`emp.getQyvxUserId()`；全部在 `processCampCandidate` 流程中可获取。
-  - `templateParams`：传递给 `common_warn_sender` 的模板变量 Map，当前仅含 `sendNums`；编码前确认 `common_warn_sender` 接收模板变量的字段名。
+  - `sendNums`：来源于延迟消费端完成 FC 延迟调度后的 `completed` 计数；生产端仅记录 RocketMQ 成功投递学员数作为 `expected`。
+  - `WX_004 external_key`：由 4 部分组成 `externalUserId:empId:campDateId:qwUserId`，分别来源于完成调度学员或 expected 记录中的 `externalUserId`、当前营期销售 `empId`、`campDateId`、`emp.getQyvxUserId()`。
+  - `templateVariable`：传递给 `common_warn_sender` 的模板变量 Map，当前仅含 `sendNums`；WX_004 同时传 `appendJumpLink=false`。
 - 下游读取字段清单：
   - 营期筛选读取 `campDateId`、`name`、`chatId`、`startTime`、`campId`、`classTime`、`empId`、`empOneId`。
   - 渠道分类读取 `campDateId`、`chatId`、`channelId`、`newChannelId`、`teachHelp`。
@@ -299,7 +301,7 @@ where a.id = #{drh_live_camp_date.camp_id}
   - 渠道缺失时是否跳过还是默认非图书；本规格默认“查到渠道但非图书/盒子才算非图书，完全查不到渠道则跳过”。
   - 是否需要持久化发送记录到数据库；本规格默认不新增表，使用 Redis key 和 `externalRequestId` 做幂等。
   - WX_004 通知的 `external_key` 已确认由 4 部分组成：`externalUserId:empId:campDateId:qwUserId`，所有字段在 `processCampCandidate` 流程中均可获取；通知按营期候选维度发送。
-  - `common_warn_sender` FC 函数接收模板变量的字段名（`templateParams` / `param` / `params` 或其他）；编码前需确认。
+  - `common_warn_sender` FC 函数接收模板变量字段已确认为 `templateVariable`。
   - WX_004 模板是否已在 `common_warn_sender` 后台配置完毕；上线前需确认模板内容已录入且变量名为 `sendNums`。
   - WX_004 通知去重维度已确认为按营期候选（`campDateId:empId`），不再按天去重。
 
@@ -356,7 +358,7 @@ where a.id = #{drh_live_camp_date.camp_id}
 - **FR-022**：系统 MUST 提供测试发送接口，输入 `userId` 和 `externalUserId` 后跳过营期/完课/到课标签校验，不走 RocketMQ，直接生成奖状并按 FC 累计延迟调度正式话术和图片。
 - **FR-023**：系统 MUST 对同一营期内的学员图片生成和 OSS 上传操作使用并发执行，最大并发数为 4。
 - **FR-024**：系统 MUST 在并发执行图片生成时传递主线程 MDC 上下文到子线程，日志中 MUST 包含 `requestId`、`campDateId` 和 `externalUserId` 字段以便追踪。
-- **FR-025**：系统 MUST 在所有学员的 RocketMQ 延迟消息投递完成后，统计成功发送的学员数 `sendNums`，若 `sendNums > 0`，则调用 `common_warn_sender` FC 发送一次编号为 `WX_004` 的通知，模板内容中 `{sendNums}` 替换为实际数值。
+- **FR-025**：系统 MUST 在生产端记录成功投递 RocketMQ 延迟消息的学员数 `expected`，并在延迟消费端完成全部 expected 学员的 FC 延迟调度后，再延迟调度一次编号为 `WX_004` 的通知；通知 `templateVariable.sendNums` MUST 替换为实际完成调度的学员数，且 `appendJumpLink=false`。
 - **FR-026**：WX_004 通知发送失败 MUST NOT 影响主流程返回和 summary 结果。
 
 ## 成功标准 *(必填)*
@@ -370,7 +372,7 @@ where a.id = #{drh_live_camp_date.camp_id}
 - **SC-007**：延迟投递测试中 RocketMQ 随机延迟分钟数始终位于 0 到 30 分钟，FC 消息间隔默认 4-7 秒并按学员维度累计。
 - **SC-008**：新增代码编译和目标单元测试通过，且不影响现有图书物流相关测试。
 - **SC-009**：给定同一营期 8 名学员，图片生成并发度不超过 4，总耗时接近 2 批而非 8 倍单条耗时，且并发线程日志中可观察到 MDC `requestId`、`campDateId` 和 `externalUserId`。
-- **SC-010**：给定某营期候选成功投递 15 个学员，WX_004 通知被调用一次，`templateParams.sendNums` 为 `15`，`external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成；给定该营期候选成功投递数为 0，WX_004 通知不被调用。
+- **SC-010**：给定某营期候选成功投递 15 个学员，生产端投递完成时 WX_004 不被调用；当 15 个学员均完成 FC 延迟调度后，WX_004 被延迟调度一次，`templateVariable.sendNums` 为 `15`、`appendJumpLink=false`、`external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成；给定该营期候选成功投递数为 0，WX_004 通知不被调用。
 
 ## 假设
 
@@ -448,14 +450,14 @@ where a.id = #{drh_live_camp_date.camp_id}
 - 已新增用户故事 6（并发执行）和用户故事 7（WX_004 通知），新增功能需求 FR-023 至 FR-026，新增成功标准 SC-009 和 SC-010。
 - 已新增边界条件：并发线程池拒绝策略、MDC 上下文 null 安全、并发异常隔离、WX_004 `external_key` 某字段为空、`sendNums = 0` 不发通知、按营期候选去重。
 - 已确认 WX_004 `external_key` 由 4 部分组成：`externalUserId:empId:campDateId:qwUserId`，所有字段在 `processCampCandidate` 流程中均可获取；通知按营期候选维度发送，去重 key 按 `campDateId:empId` 维度。
-- 待确认设计选择已缩减为：`common_warn_sender` 模板变量字段名、WX_004 模板后台配置确认。
-- 本阶段仍未修改业务代码；编码前需确认 `common_warn_sender` 模板变量传递方式。
+- 待确认设计选择已缩减为：WX_004 模板后台配置确认。
+- `common_warn_sender` 模板变量字段名已通过源码确认为 `templateVariable`。
 
 ### D011 - 并发执行与 WX_004 通知代码实现
 
 - 已完成 `ThreadPoolConfig` 新增 `learningStarRenderThreadPool`（core=4, max=4）。
 - 已完成 `processCampCandidate` 三阶段重构：顺序预检 → 并发渲染（MDC 追踪） → 顺序 MQ 投递。
-- 已完成 WX_004 通知实现：`buildWx004TaskObj` 构建参数 + `common_warn_sender` FC 调用 + Redis 去重 + 异常容错。
-- 新增 6 个单元测试覆盖并发上限、异常隔离、WX_004 参数构建、去重和容错。
+- 已完成 WX_004 通知实现：生产端记录 expected，延迟消费端累计 completed，达标后延迟调度 `common_warn_sender` FC；`buildWx004TaskObj` 使用 `templateVariable` 和 `appendJumpLink=false`；Redis 去重 + 异常容错。
+- 新增单元测试覆盖并发上限、异常隔离、WX_004 参数构建、expected/completed 达标、去重和容错。
 - 验证结果：`Tests run: 20, Failures: 0, Errors: 0, Skipped: 0`。
-- 待确认项：`common_warn_sender` 模板变量字段名（当前使用 `templateParams`）、WX_004 模板后台配置状态。
+- 待确认项：WX_004 模板后台配置状态。

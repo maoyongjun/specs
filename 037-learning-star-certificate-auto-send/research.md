@@ -72,7 +72,7 @@
 15. WX_004 完成通知：
    - 在每个营期候选（`processCampCandidate`）所有学员处理完成后，从该营期候选的 summary 中读取成功投递学员数。
    - 若 `sendNums > 0`，构造 `FcInvokeInput`（`serviceName = "service_sys"`, `functionName = "common_warn_sender"`）。
-   - `taskObj` 包含 `sendTemplateList = ["WX_004"]`、`templateParams`（或等效字段）含 `sendNums` 值。
+   - `taskObj` 包含 `sendTemplateList = ["WX_004"]`、`templateVariable` 含 `sendNums` 值，并传 `appendJumpLink=false`。
    - `external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成：`externalUserId` 取该营期候选中任一成功发送学员的 `student.getExternalUserid()`，`empId` 来自 `candidate.getEmpId()`，`campDateId` 来自 `candidate.getCampDateId()`，`qwUserId` 来自 `emp.getQyvxUserId()`。
    - 使用 Redis key `ai:learning-star:certificate:wx004:notify:{campDateId}:{empId}` 做按营期候选去重。
    - 通知发送异常时 try-catch，仅记录日志，不影响主流程返回。
@@ -94,7 +94,7 @@
 - 并发 MDC 传递风险：`MDC.getCopyOfContextMap()` 返回 null 时（如主线程无 MDC 上下文），子线程不应调用 `MDC.setContextMap(null)`，需做 null 检查。
 - 并发异常传播风险：`CompletableFuture` 中未捕获的异常会导致 `allOf().get()` 抛出 `ExecutionException`；需使用 `exceptionally()` 或 `handle()` 确保单学员异常不中断整体。
 - `CompletableFuture.allOf().get(timeout)` 超时后，未完成的 Future 仍在后台执行；需要处理超时场景的日志记录和 summary 更新。
-- WX_004 通知风险：`common_warn_sender` FC 函数的模板变量字段名未确认（可能是 `templateParams`、`param`、`params` 或其他），编码前需查阅 FC 函数源码或配置。
+- WX_004 通知风险：`common_warn_sender` FC 函数模板变量字段已确认为 `templateVariable`；WX_004 需要额外传 `appendJumpLink=false` 避免追加聊天窗口。
 - WX_004 `external_key` 已确认由 `externalUserId:empId:campDateId:qwUserId` 组成，所有字段在 `processCampCandidate` 流程中均可获取（`candidate.getEmpId()`、`candidate.getCampDateId()`、`emp.getQyvxUserId()`、`student.getExternalUserid()`）；通知按营期候选维度发送，去重 key 按 `campDateId:empId` 维度。
 - WX_004 按营期候选去重（`campDateId:empId`），已确认不再按天去重。
 - 并发执行中 RocketMQ 延迟投递已设计为在并发完成后主线程串行执行，规避了 `DelayProducerBean.sendTagMessage()` 的线程安全问题；若后续调整为并发投递，需先确认线程安全性。

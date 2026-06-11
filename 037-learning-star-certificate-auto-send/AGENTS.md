@@ -42,7 +42,7 @@
 - 图片生成 MUST 使用并发执行，最大并发数 4，通过专用线程池 `learningStarRenderThreadPool` 和 `CompletableFuture.supplyAsync()` 实现。并发安全性已确认：`LearningStarCertificateRenderer` 实例字段 effectively immutable，`render()` 每次调用无共享可变状态，`OssUtil.upload()` 底层线程安全。
 - 并发执行时 MUST 传递主线程 MDC 上下文到子线程，参考 `AsyncAutoConfig.MdcTaskDecorator` 模式；日志 MUST 包含 `requestId`、`campDateId`、`externalUserId`。
 - 并发执行中单学员失败 MUST NOT 影响其他学员处理。
-- 所有学员的 RocketMQ 延迟消息投递完成后，MUST 按营期候选维度统计成功发送学员数并通过 `common_warn_sender` FC 发送 WX_004 通知（模板变量 `{sendNums}`）。
+- 所有学员的 RocketMQ 延迟消息投递完成后，生产端只记录 expected；MUST 在延迟消费端完成全部 expected 学员的 FC 延迟调度后，再延迟调度 `common_warn_sender` WX_004 通知（`templateVariable.sendNums`，且 `appendJumpLink=false`）。
 - WX_004 通知的 `external_key` MUST 由 `externalUserId:empId:campDateId:qwUserId` 四部分组成，通知按营期候选维度发送。
 - WX_004 通知发送失败 MUST NOT 影响主流程返回。
 - 不改既有图书物流 Job、图书 unionId 补偿发送、AI 权限判断和 `sendJuzi(MsgSendInput)` 文字发送契约。
@@ -56,7 +56,7 @@
 - 编码前必须确认渠道缺失时跳过还是默认非图书；当前规格默认跳过。
 - 编码前必须确认 `kkhc-idc-ai` 加 Batik 依赖后仍兼容 JDK 1.8 和当前依赖树。
 - 编码前必须确认学习之星 RocketMQ 延迟消息的 `MessageType`、新 tag 常量和 consumer group 实际值；topic 已明确复用共有 `mq.delay.topic`。
-- 编码前必须确认 `common_warn_sender` 接收模板变量的字段名（`templateParams` / `param` / `params` 或其他）。
+- `common_warn_sender` 接收模板变量的字段名已确认为 `templateVariable`；WX_004 必须关闭聊天窗口追加链接。
 - 编码前必须确认 WX_004 模板已在 `common_warn_sender` 后台配置完毕。
 - WX_004 `external_key` 已确认由 `externalUserId:empId:campDateId:qwUserId` 组成，所有字段在 `processCampCandidate` 中可获取，通知按营期候选维度发送，去重 key 为 `campDateId:empId`。
 - 并发执行范围限定为图片生成和 OSS 上传；RocketMQ 延迟投递在并发完成后主线程串行执行，避免 `DelayProducerBean` 线程安全问题。

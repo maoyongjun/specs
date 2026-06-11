@@ -41,7 +41,7 @@
 - [x] T022B 检查延迟投递方案是否为“每个学员一条整组 RocketMQ 消息”，消费后再把 2 条消息（图片、合并文字）使用 `doTaskWithDelay` 按累计秒数调度。
 - [ ] T022C 检查随机延迟范围为 0 到 30 分钟，并能在日志和 summary 中观察共有 topic、新 tag、投递成功/失败。
 - [x] T022D 已确认 WX_004 通知的 `external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成，所有字段在 `processCampCandidate` 流程中均可获取；通知按营期候选维度发送。
-- [ ] T022E 编码前确认 `common_warn_sender` FC 函数接收模板变量的字段名（`templateParams` / `param` / `params` 或其他）。
+- [x] T022E 编码前确认 `common_warn_sender` FC 函数接收模板变量的字段名：已确认使用 `templateVariable`。
 - [ ] T022F 编码前确认 WX_004 模板是否已在 `common_warn_sender` 后台配置完毕，变量名为 `sendNums`。
 
 **检查点**：T013-T022C 必须在编码前有明确结论；发现口径变化时先更新 `spec.md`。
@@ -78,7 +78,7 @@
 - [x] T056 并发任务中传递 MDC 上下文：提交前 `MDC.getCopyOfContextMap()`，子线程执行前 `MDC.setContextMap()`，执行后恢复或清除；额外放入 `campDateId`、`externalUserId`。
 - [x] T057 并发异常隔离：`CompletableFuture.exceptionally()` 捕获单学员异常，记录日志并计入 summary，不影响其他学员处理。
 - [x] T058 并发执行完成后汇总各学员结果，继续后续流程；日志记录并发批次的开始/结束、每个学员的成功/失败。
-- [x] T059 实现 WX_004 奖状发送完成通知：在每个营期候选所有学员处理完毕后，从该营期候选的 summary 中读取成功投递学员数，若 > 0 则构造 `FcInvokeInput`（`serviceName="service_sys"`, `functionName="common_warn_sender"`），`taskObj` 包含 `sendTemplateList=["WX_004"]`、`templateParams={"sendNums": "..."}` 和 `external_key="{externalUserId}:{empId}:{campDateId}:{qwUserId}"`。
+- [x] T059 实现 WX_004 奖状发送完成通知：生产端在每个营期候选所有学员处理完毕后只记录成功投递学员数 `expected`；延迟消费端在学员整组 FC 延迟调度成功后递增 `completed`，当 `completed >= expected` 时通过 `FcInvokeUtils.doTaskWithDelay` 延迟调度 `common_warn_sender`，`taskObj` 包含 `sendTemplateList=["WX_004"]`、`templateVariable={"sendNums": "..."}`、`appendJumpLink=false` 和 `external_key="{externalUserId}:{empId}:{campDateId}:{qwUserId}"`。
 - [x] T060 WX_004 通知的 Redis 按营期候选去重（key 格式 `ai:learning-star:certificate:wx004:notify:{campDateId}:{empId}`），去重命中时跳过发送。
 - [x] T061 WX_004 通知发送异常时仅记录日志，不影响主流程返回和 summary。
 
@@ -105,7 +105,7 @@
 - [x] T062 新增并发执行测试：构造同一营期 8 名学员，Mock 渲染器和 OSS 上传并设置耗时，断言总耗时接近 2 批（8/4）而非 8 倍单条，且并发度不超过 4。
 - [x] T063 新增 MDC 追踪测试：断言并发线程日志中包含主线程 `requestId`、`campDateId` 和 `externalUserId`。
 - [x] T064 新增并发异常隔离测试：Mock 某学员渲染抛异常，断言其他学员正常完成，summary 中该学员计入失败。
-- [x] T065 新增 WX_004 通知测试：Mock `common_warn_sender` FC 调用，断言某营期候选成功投递数 > 0 时调用一次、`sendTemplateList` 包含 `"WX_004"`、`templateParams.sendNums` 等于该营期候选实际数、`external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成；成功数为 0 时不调用。
+- [x] T065 新增 WX_004 通知测试：Mock `common_warn_sender` FC 调用，断言生产端 MQ 投递完成时不调用 WX_004；expected 已记录但 completed 未达标时不调用；completed 达到 expected 时只延迟调度一次，`sendTemplateList` 包含 `"WX_004"`、`templateVariable.sendNums` 等于实际完成调度数、`appendJumpLink=false`、`external_key` 由 `externalUserId:empId:campDateId:qwUserId` 组成；成功数为 0 时不调用。
 - [x] T066 新增 WX_004 去重测试：模拟同一营期候选两次执行，断言第二次因 Redis 去重（`campDateId:empId` 维度）跳过通知发送。
 - [x] T067 新增 WX_004 异常容错测试：Mock FC 调用抛异常，断言主流程正常返回，summary 不受影响，仅记录日志。
 
@@ -188,7 +188,7 @@
     - Phase 1：顺序预检（校验、幂等、加锁、OTS 验证、标签匹配），主线程执行。
     - Phase 2：并发渲染上传（`CompletableFuture.supplyAsync` + `learningStarRenderThreadPool`），MDC 上下文传递（campDateId、externalUserId），异常隔离到单学员。
     - Phase 3：顺序 RocketMQ 延迟投递，主线程执行，投递成功后标记 queuedKey。
-  - 新增 `notifyCertificateSendComplete`：WX_004 通知，`buildWx004TaskObj` 构建 taskObj（external_key、sendTemplateList、templateParams），调用 `common_warn_sender` FC 函数；Redis 按 campDateId:empId 去重；异常仅记日志不影响主流程。
+  - 新增 WX_004 完成通知：生产端记录 expected，延迟消费端累计 completed，达标后延迟调度 `common_warn_sender`；`buildWx004TaskObj` 构建 taskObj（external_key、sendTemplateList、templateVariable、appendJumpLink=false）；Redis 按 campDateId:empId 去重；异常仅记日志不影响主流程。
   - 新增内部类 `StudentPreCheckResult`、`StudentRenderResult` 承载阶段间数据传递。
   - 并发阶段 `incrementSummary` 使用 `synchronized(summary)` 保护 JSONObject 线程安全。
   - 锁值统一为 "batch"，由 `processCampStudents` 的 finally 块统一释放。
