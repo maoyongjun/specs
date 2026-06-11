@@ -1,0 +1,381 @@
+{
+  "mode": "execute",
+  "started_at": "2026-06-11T03:16:25.478804+00:00",
+  "status": "success",
+  "profile": "prod-mysql",
+  "batch_size": 500,
+  "sleep_ms": 200,
+  "retries": 3,
+  "max_passes": 3,
+  "metadata_preflight": {
+    "tables_checked": 44,
+    "field_groups_checked": 45,
+    "columns_checked": 135
+  },
+  "total_candidate_rows_before": 133500,
+  "total_updated_rows": 133500,
+  "total_candidate_rows_after": 0,
+  "targets": [
+    {
+      "table": "drh_h5_order",
+      "field_prefix": "phone",
+      "candidate_rows_before": 8400,
+      "updated_rows": 8400,
+      "batches": 17,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_live_user",
+      "field_prefix": "phone",
+      "candidate_rows_before": 8100,
+      "updated_rows": 8100,
+      "batches": 17,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_live_user",
+      "field_prefix": "app_phone",
+      "candidate_rows_before": 35100,
+      "updated_rows": 35100,
+      "batches": 71,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_applet_user",
+      "field_prefix": "phone",
+      "candidate_rows_before": 64800,
+      "updated_rows": 64800,
+      "batches": 130,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_book_question_record",
+      "field_prefix": "phone",
+      "candidate_rows_before": 300,
+      "updated_rows": 300,
+      "batches": 1,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_external_book_question_record",
+      "field_prefix": "phone",
+      "candidate_rows_before": 2100,
+      "updated_rows": 2100,
+      "batches": 5,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_book_edit_address_compensation",
+      "field_prefix": "phone",
+      "candidate_rows_before": 1200,
+      "updated_rows": 1200,
+      "batches": 3,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_real_address_record",
+      "field_prefix": "phone",
+      "candidate_rows_before": 13500,
+      "updated_rows": 13500,
+      "batches": 27,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_import_address_record_detail",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_user_address",
+      "field_prefix": "receiver_phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_order_user_address",
+      "field_prefix": "receiver_phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "app_study_info",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_app_white",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_applet_black_phone",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_applet_player",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_gx_channel",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_leads_noqw_send_msg_task_detail",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_live_works_user",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_renew_data",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_sms_trigger_user",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_sph_supplier_info",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_user",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_user_assistant",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_user_form",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_user_service_record",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_voice_robot_callback_details",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_voice_robot_task_user",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_wechat_complaint_order",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "order_book_reissue_detail",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_ad_count",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_ad_form_answer",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_applet_order",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_applet_small_user",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_goods_user_coupon",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_koc",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_order_refund_record",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_qwb_phone_info",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_short_message_operation",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_sms_trigger_user_callback",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_submit_time",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_xe_order",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_register_works",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_sms_deal",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_temp_phone",
+      "field_prefix": "phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    },
+    {
+      "table": "drh_mall_order",
+      "field_prefix": "reciver_phone",
+      "candidate_rows_before": 0,
+      "updated_rows": 0,
+      "batches": 0,
+      "candidate_rows_after": 0
+    }
+  ],
+  "ended_at": "2026-06-11T03:20:40.206511+00:00"
+}

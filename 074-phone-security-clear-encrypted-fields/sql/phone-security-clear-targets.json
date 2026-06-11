@@ -1,0 +1,460 @@
+{
+  "source_ddl": "specs/069-phone-security-backfill-governance/sql/final-phone-security-ddl-and-indexes.sql",
+  "expected": {
+    "tables": 44,
+    "field_groups": 45,
+    "columns": 135
+  },
+  "targets": [
+    {
+      "table": "drh_h5_order",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_live_user",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_live_user",
+      "pk": "id",
+      "field_prefix": "app_phone",
+      "columns": {
+        "mask": "app_phone_mask",
+        "md5": "app_phone_md5",
+        "aes": "app_phone_aes"
+      }
+    },
+    {
+      "table": "drh_applet_user",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_book_question_record",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_external_book_question_record",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_book_edit_address_compensation",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_real_address_record",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_import_address_record_detail",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_user_address",
+      "pk": "id",
+      "field_prefix": "receiver_phone",
+      "columns": {
+        "mask": "receiver_phone_mask",
+        "md5": "receiver_phone_md5",
+        "aes": "receiver_phone_aes"
+      }
+    },
+    {
+      "table": "drh_order_user_address",
+      "pk": "id",
+      "field_prefix": "receiver_phone",
+      "columns": {
+        "mask": "receiver_phone_mask",
+        "md5": "receiver_phone_md5",
+        "aes": "receiver_phone_aes"
+      }
+    },
+    {
+      "table": "app_study_info",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_app_white",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_applet_black_phone",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_applet_player",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_gx_channel",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_leads_noqw_send_msg_task_detail",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_live_works_user",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_renew_data",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_sms_trigger_user",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_sph_supplier_info",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_user",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_user_assistant",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_user_form",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_user_service_record",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_voice_robot_callback_details",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_voice_robot_task_user",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_wechat_complaint_order",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "order_book_reissue_detail",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_ad_count",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_ad_form_answer",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_applet_order",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_applet_small_user",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_goods_user_coupon",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_koc",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_order_refund_record",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_qwb_phone_info",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_short_message_operation",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_sms_trigger_user_callback",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_submit_time",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_xe_order",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_register_works",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_sms_deal",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_temp_phone",
+      "pk": "id",
+      "field_prefix": "phone",
+      "columns": {
+        "mask": "phone_mask",
+        "md5": "phone_md5",
+        "aes": "phone_aes"
+      }
+    },
+    {
+      "table": "drh_mall_order",
+      "pk": "id",
+      "field_prefix": "reciver_phone",
+      "columns": {
+        "mask": "reciver_phone_mask",
+        "md5": "reciver_phone_md5",
+        "aes": "reciver_phone_aes"
+      }
+    }
+  ]
+}

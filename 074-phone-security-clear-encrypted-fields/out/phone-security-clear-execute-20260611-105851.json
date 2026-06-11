@@ -1,0 +1,7 @@
+{
+  "mode": "execute",
+  "started_at": "2026-06-11T02:58:51.751333+00:00",
+  "status": "failed",
+  "error": "--execute requires --confirm",
+  "ended_at": "2026-06-11T02:58:51.751465+00:00"
+}
