@@ -59,6 +59,11 @@
 - [x] T038 运行 DRH 目标模块测试或编译命令，并记录结果；当前失败为既有公共实体/安全字段不一致，非本次新增代码报错。
 - [x] T039 运行 KKHC 目标模块测试或编译命令，并记录结果。
 - [x] T040 搜索确认没有 `drh_phone_security_region.segment`、`setSegment` 写入或 `segment` insert 参数残留。
+- [ ] T041 kk-cms 运行时核查：确认当前数据源存在 `drh_phone_security_region` 表和 `uk_phone_md5` 唯一索引。
+- [ ] T042 kk-cms 运行时核查：用实际手机号前 7 位查询 `phone_segment.segment`，确认 `province/city` 非空。
+- [ ] T043 kk-cms 运行时核查：用实际手机号生成或查询 `phone_md5`，确认映射表是否已存在相同记录。
+- [ ] T044 kk-cms 运行时核查：检查日志关键字 `保存手机号省市映射失败`、`手机号省市映射已存在`。
+- [ ] T045 kk-cms 运行时核查：调用 `editAddress` 后等待异步 recorder 执行，再查询 `drh_phone_security_region`。
 
 ## 执行记录
 
@@ -86,3 +91,10 @@
   - `PhoneSecurityRegion` 共享实体和 DDL 均不包含 `segment`。
 - 文档同步：已同步 `spec.md`、`tasks.md`；DDL 不需要调整。
 - 验证结果：后续补充本轮编译和静态检查结果。
+
+### D004 - kk-cms editAddress 专项排查记录
+
+- 排查对象：`BookQuestionRecordServiceImpl#editAddress` 中 `bookQuestionRecord.createAesInfo();` 未写入 `drh_phone_security_region` 的原因。
+- 静态结论：`createAesInfo()` 只通过 `DataSecurityInvoke.buildPhoneSecurity()` 生成安全字段并异步触发 `PhoneSecurityRegionRecorder`，实际写表发生在 recorder 的 `record()` 方法。
+- 未落库优先排查：当前数据源是否执行 DDL、`phone_segment` 是否命中且省市非空、`phone_md5` 是否已存在、异步 recorder 是否尚未执行完成、日志是否记录插入失败。
+- 本次新增 T041-T045 作为运行时核查任务；本轮只更新规格文档，不执行 DDL，不修改业务代码。

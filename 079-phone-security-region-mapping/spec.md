@@ -220,3 +220,26 @@
   - 各运行模块提供 recorder Bean，内部缓存 `segment -> PhoneSegment`，按 `phone_md5` 幂等写入 `drh_phone_security_region`。
 - 文档同步：已同步 `spec.md`、`tasks.md`、DDL 仍不包含 `segment`。
 - 验证结果：后续记录编译与静态检查结果。
+
+### D004 - kk-cms editAddress 专项排查记录
+
+- 排查对象：`com.drh.kk.cms.service.impl.BookQuestionRecordServiceImpl#editAddress` 中 `bookQuestionRecord.createAesInfo();` 未写入 `drh_phone_security_region` 的原因。
+- 静态链路结论：
+  - `editAddress` 在保存 `BookQuestionRecord` 前调用 `bookQuestionRecord.createAesInfo()`。
+  - `BookQuestionRecord#createAesInfo()` 调用 `DataSecurityInvoke.buildPhoneSecurity(this.getPhone())`，用于生成 `phone_mask`、`phone_md5`、`phone_aes` 并回填业务实体。
+  - `DataSecurityInvoke.buildPhoneSecurity()` 成功生成安全字段后通过异步 `recordPhoneSecurityRegion()` 通知已注册的 `PhoneSecurityRegionRecorder`。
+  - `PhoneSecurityRegionRecorder#record()` 才会按原始手机号前 7 位查询或命中缓存中的 `phone_segment`，再按 `phone_md5` 幂等写入 `drh_phone_security_region`。
+- 重要结论：`createAesInfo()` 本身不直接写 `drh_phone_security_region`。它只触发统一安全字段生成和异步 recorder；未落库需要从 recorder 运行时条件排查。
+- 高概率原因：
+  - kk-cms 当前数据源未执行 `drh_phone_security_region` DDL，或缺少 `uk_phone_md5`，导致 recorder 插入失败；该异常会被捕获并只记录日志，不影响 `editAddress` 主流程。
+  - `phone_segment` 没有命中手机号前 7 位，或命中记录的 `province/city` 为空，recorder 会直接跳过写入。
+  - `drh_phone_security_region` 已存在相同 `phone_md5`，幂等逻辑认为已处理并跳过新增。
+  - 写入是异步旁路，调用方在 `editAddress` 返回后立即查表，可能早于 recorder 线程执行完成。
+  - recorder 查询或插入发生异常时仅记录日志，业务表 `drh_book_question_record` 仍会正常保存。
+- 运行时核查顺序：
+  - 确认 kk-cms 实际连接的数据源中存在 `drh_phone_security_region` 表，并存在 `uk_phone_md5` 唯一索引。
+  - 使用实际手机号前 7 位查询 `phone_segment.segment`，确认 `province` 和 `city` 非空。
+  - 使用同一手机号生成或查询 `phone_md5`，确认 `drh_phone_security_region` 是否已有记录。
+  - 检查 kk-cms 日志中的 `保存手机号省市映射失败`、`手机号省市映射已存在` 关键字。
+  - 调用 `editAddress` 后等待异步 recorder 执行，再查询 `drh_phone_security_region`。
+- 本次仅更新规格文档，不执行 DDL，不修改 DRH 业务代码。

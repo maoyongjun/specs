@@ -39,6 +39,7 @@
 - [x] 每个关键需求至少有一条测试、编译或静态验证任务。
 - [x] 单元测试计划避免真实访问 Redis、OTS、Center、RocketMQ、FC 或外部 HTTP，除非规格明确要求联调。
 - [x] 补充需求或纠正需求时，已同步更新 `spec.md`、`tasks.md` 和 `AGENTS.md`。
+- [x] 已记录 kk-cms `editAddress` 静态链路通过不等于运行时落库成功，必须核查 DDL、号段数据、异步日志和幂等状态。
 
 ## DDL 检查
 
