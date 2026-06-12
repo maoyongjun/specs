@@ -166,9 +166,13 @@
 - 效果：800 突发中需要 FC 延迟提交的任务（约 740 个）的 `delaySeconds` 均匀分布在 1-3600 秒内，每秒最多 2-3 个任务同时醒来，消除二次洪峰。
 - 验证结果：`mvn -q -Dtest=AppTaskRateLimitTest test` 通过；`mvn -q -DskipTests package` 通过。
 
-### D010 - FC 延迟唤醒后强制本地 sleep 防循环
+### D010 - 本地 sleep 阈值调低 + 防循环改用 re-reserve
 
-- 触发原因：D009 的 `reservedReadyAtMillis % 3600` 散布值是确定性的（同一任务每次重投递计算结果相同）。当 spread 值较小（如 2 秒）时，任务 FC 延迟 2 秒后醒来，剩余延迟仍远超 3600 秒，再次计算 spread 仍为 2 秒，导致约 3695 次 FC 延迟提交循环，严重浪费 FC 资源。
-- 修正内容：`delayAppTaskForRateLimitIfNeeded` 新增 `alreadyDelayed` 判断——如果 input 中已存在 `__appTaskRateLimitReservedAtMs`（说明该任务已经历过一次 FC 延迟重投递），则无论剩余延迟多长，都强制走本地 `sleepUntilReady`，不再提交 FC 延迟调用。每个任务最多只提交一次 FC 延迟，之后本地 sleep 到执行。
-- 效果：800 突发中每个任务最多 1 次 FC 延迟提交 + 1 次本地 sleep，彻底消除循环重投递风险。
-- 验证结果：`mvn -q -Dtest=AppTaskRateLimitTest test` 通过（9 用例）；`mvn -q compile` 通过。测试 `handleRequest_shouldForceSleepAfterFirstFcDelay` 覆盖已延迟任务强制 sleep 路径。
+- 触发原因：线上日志显示 `delayMillis=88947013`（约 24.7 小时），本地 sleep 超过 FC 函数超时导致失败重试。原 600 秒阈值也偏大，叠加业务耗时容易超时。
+- 修正内容：
+  - `APP_TASK_RATE_LIMIT_LOCAL_SLEEP_THRESHOLD_MILLIS` 从 600_000ms 降至 250_000ms（250 秒），给业务逻辑留足余量。
+  - Lua 脚本改为无排队压力时返回 `now`（立即执行），仅队列积压时才分配未来时间槽，避免无谓延迟。
+  - `alreadyDelayed` 不再强制 sleep：当已延迟任务剩余延迟仍超阈值时，丢弃旧 `reservedReadyAtMillis` 并重新向 Redis 预订。队列已空时立即执行，队列仍有压力时拿到新槽位继续 FC 延迟。
+  - 限速间隔从 10 秒改为 4 秒。
+- 效果：旧版残留的远未来时间戳任务不再被强制 sleep 到超时，而是重新排队后快速执行；新任务在无排队压力时零延迟直通。
+- 验证结果：`mvn -q -Dtest=AppTaskRateLimitTest test` 通过（11 用例）；`mvn -q compile` 通过。新增 `shouldReReserveAndExecuteWhenQueueClears` 和 `shouldReReserveAndDelayWhenQueueStillBusy` 两个测试覆盖 re-reserve 路径。

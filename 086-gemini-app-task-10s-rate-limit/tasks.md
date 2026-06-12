@@ -103,10 +103,13 @@
 - 文档同步：已同步 `spec.md` 和 `tasks.md`。
 - 验证结果：`mvn -q -Dtest=AppTaskRateLimitTest test` 通过；`mvn -q -DskipTests package` 通过。
 
-### D010 - FC 延迟唤醒后强制本地 sleep 防循环
+### D010 - 本地 sleep 阈值调低 + 防循环改用 re-reserve
 
-- 触发原因：D009 散布值确定性，小 spread 值导致同一任务反复 FC 延迟提交（可达数千次循环）。
-- 修正内容：`delayAppTaskForRateLimitIfNeeded` 新增 `alreadyDelayed` 标志，input 中已有 `__appTaskRateLimitReservedAtMs` 时强制走本地 `sleepUntilReady`，每个任务最多 1 次 FC 延迟。
-- 测试调整：`handleRequest_shouldSegmentDelayLongerThanOneHour` 重命名为 `handleRequest_shouldForceSleepAfterFirstFcDelay`，断言改为验证本地 sleep 路径。
+- 触发原因：线上 `delayMillis=88947013`（约 24.7 小时），本地 sleep 超 FC 函数超时导致失败重试；原 600s 阈值也偏大。
+- 修正内容：
+  - 本地 sleep 阈值 600s → 250s；限速间隔 10s → 4s。
+  - Lua 脚本改为无排队压力时返回 `now`（零延迟直通）。
+  - `alreadyDelayed` 不再强制 sleep；超阈值时丢弃旧时间戳重新预订，队列空则立即执行。
+- 测试调整：新增 `shouldReReserveAndExecuteWhenQueueClears` 和 `shouldReReserveAndDelayWhenQueueStillBusy`。
 - 文档同步：已同步 `spec.md` 和 `tasks.md`。
-- 验证结果：`mvn -q -Dtest=AppTaskRateLimitTest test` 通过（9 用例）；`mvn -q compile` 通过。
+- 验证结果：`mvn -q -Dtest=AppTaskRateLimitTest test` 通过（11 用例）；`mvn -q compile` 通过。
