@@ -1,0 +1,56 @@
+# 规格质量检查清单：liveAuth/ad/applet/v4 接口 AES 解密报错分析
+
+**用途**：验证需求完整性、参数完整性和实施就绪度  
+**创建日期**：`2026-06-13`  
+**功能**：[spec.md](../spec.md)
+
+## 内容质量
+
+- [x] 明确目标项目、模块、入口和核心实现位置。
+  - 项目 `drh`，模块 `drh-endpoint` + `drh-common`，入口 `LiveAuthController.adAuth()`，核心 `DataSecurityInvoke.normalizePhoneInput()`。
+- [x] 明确用户目标、成功标准和非目标。
+  - 目标：消除明文手机号传入时的无意义 ERROR 日志。非目标：不改变 AES 算法、存储格式或 FC 调用。
+- [x] 明确新增、修改和禁止改变的行为。
+  - 新增：`isAesString` 预判。禁止改变：`aesDecrypt` 本身的日志级别、`normalizePhoneInput` 的返回结果语义。
+- [x] 明确日志、时间、延迟、幂等、fallback、兼容性或异常处理要求。
+  - fallback：`normalizePhoneInput` 的 catch 块保留。日志：ERROR 降为仅在真正解密失败时触发。
+- [x] 明确后续实现必须增加测试或静态验证记录。
+
+## 需求完整性
+
+- [x] 无 `[NEEDS CLARIFICATION]` 或未替换占位内容残留。
+- [x] 需求可测试且无明显歧义。
+- [x] 成功标准可衡量。
+  - SC-001：日志中不再出现 `AES aesDecrypt failed` ERROR。SC-002：密文解密功能正常。SC-003：已有测试不回归。
+- [x] 验收场景覆盖正常路径、边界路径和不回归路径。
+- [x] 边界情况已识别，并明确跳过、兜底、抛错或记录日志的策略。
+
+## 参数完整性门禁
+
+- [x] 已列出关键参数来源和赋值时机。
+  - `phone`：请求体 JSON，Spring MVC 反序列化填充。
+- [x] 已列出下游读取字段清单。
+  - `normalizePhoneInput` 读取 `phone`，`buildPhoneSecurity` 读取 `phone` 并写入 `phoneMask/phoneMd5/phoneAes`。
+- [x] 没有未解释的 `new XxxDto()`、空 JSON、空 Map 或占位参数。
+- [x] 下游读取字段在调用前已赋值，或在当前层现算现用。
+- [x] 不存在未处理的调用后赋值风险。
+- [x] 外部接口、Feign、FC、MQ、Redis 或数据库写入的关键参数已有下游参数断言方案。
+  - 本次修复不涉及 FC 调用参数变化。
+- [x] 若修复会改变调用顺序、接口契约、远程调用或业务语义，已记录并完成用户确认。
+  - 不涉及。
+
+## 实施就绪度
+
+- [x] 实现范围已限定，不扩散到无关模块。
+  - 仅修改 `DataSecurityInvoke.normalizePhoneInput()` 和 `isWritablePhoneInput()` 两个方法。
+- [x] 不新增数据库表、不新增对外 API、不修改 MQ/Redis/配置契约，除非规格明确要求。
+- [x] 已确认旧逻辑中必须保持不变的过滤、异常、日志、延迟和 fallback。
+- [x] 每个关键需求至少有一条测试、编译或静态验证任务。
+- [x] 单元测试计划避免真实访问 Redis、OTS、Center、RocketMQ、FC 或外部 HTTP，除非规格明确要求联调。
+  - 测试仅涉及 `normalizePhoneInput` 和 `isWritablePhoneInput` 的纯方法调用，不依赖外部服务。
+- [x] 补充需求或纠正需求时，已同步更新 `spec.md`、`tasks.md` 和 `AGENTS.md`。
+
+## 备注
+
+- 强制门禁已完成，可进入实现。
+- 修复方案明确：复用已有的 `isAesString()` 方法作为预判工具，改动范围极小，风险可控。
