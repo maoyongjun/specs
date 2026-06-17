@@ -44,3 +44,5 @@
 
 - `FX_002` 打标为 best-effort；发送成功和打标成功分别记录。
 - `markAsync` 返回成功只表示异步任务提交，最终以现有任务表和任务日志为准。
+- D003 用户画像结构变更已确认：`teacherInfo/courseData/logisticsData` 为数组，`teacherInfo/courseData` 条目包含 `skuName`，`logisticsData` 使用正确字段名 `hasDeliveredOrder`。
+- D003 正价课分组口径已确认：按营期返回，重复 `campId + category/skuName` 去重，主讲去重后用顿号拼接，`classTime` 使用营期开课时间。

@@ -137,3 +137,11 @@
 - 测试命令：`mvn -pl common_warn_sender "-DskipTests=false" "-Dmaven.test.skip=false" "-Dtest=AppTaskTest" test`；`mvn -pl ai -am "-Dtest=QwTagQueryServiceImplTest" test`。
 - 测试结果：两个命令均 `BUILD SUCCESS`；`common_warn_sender` 8 tests passed，`kkhc-idc-ai ai` 2 tests passed。
 - 自检结论：关键字段在调用前已赋值或缺失时跳过打标；`markAsync` 不传空 `remove_tag_list`；debug 模式不产生真实打标；打标失败不阻断预警发送。
+
+### D003 - 用户画像私域返回结构变更
+
+- 变更内容：`POST /ai/userPortrait` 的 `teacherInfo` 和 `courseData` 从单对象改为 list；`logisticsData` 保持 list；`userProfile.payStatus` 保持对象字段。
+- 字段来源：体验课 `teacherInfo` 通过 `drh_applet_user -> drh_kk_emp -> drh_live_camp_date -> drh_speaker -> drh_business_line` 返回 `speakerName/headTeacherName/skuName`；正价课 `courseData` 通过 `drh_handover_plus -> drh_live_camp -> drh_live_camp_group -> drh_business_line` 返回 `campName/classTime/courseLink/skuName`，主讲取该营期 `drh_live -> drh_speaker` 并去重后用顿号拼接。
+- 分组口径：`courseData` 按营期返回；同一 `campId + category/skuName` 重复交接记录只返回一条，保持最近优先；`classTime` 使用班级/营期开课时间 `drh_live_camp_group.start_class_time`，不是直播课时间。
+- 兼容性决策：不保留旧的 `teacherInfo/courseData` 单对象字段；私域插件 `external-info-select` 透传新数组结构，并补充单测锁定 `skuName` 和 `hasDeliveredOrder` 字段名。
+- 测试结果：`mvn -pl ai -am "-Dtest=AiUserPortraitServiceImplTest" test` 通过，22 tests passed；`mvn -pl external-info-select "-Dmaven.test.skip=false" "-DskipTests=false" "-Dtest=AppTaskPrivateDomainTest" test` 通过，8 tests passed。

@@ -15,6 +15,7 @@
 - `templateVariable.unionId/userName` 有值时优先用于模板渲染；缺失时通过 `/ai/getEmpExternalUserDO` 补齐。
 - `sendTemplateList` 包含 `FX_002` 时，按 `source + name='请勿打扰' + is_del=0` 查询 `drh_qw_tag.tagId`，再调用 `POST /qwTag/markAsync` 给外部联系人打“请勿打扰”标签。
 - `FX_002` 发送消息时，飞书接收人固定为 `ed27a7bb`，不使用销售 `fBookId`。
+- 追加变更：私域插件聚合的 `/ai/userPortrait` 返回结构中，`teacherInfo` 和 `courseData` 改为 list，并在体验课/正价课条目中返回 `skuName`；`courseData` 按营期返回，重复 `campId + category/skuName` 去重。
 
 ## 执行原则
 
@@ -37,8 +38,11 @@
 
 - `coze_plugin\common_warn_sender\src\main\java\com\drh\commonwarnsender\service\AppTask.java`
 - `coze_plugin\common_warn_sender\src\main\java\com\drh\commonwarnsender\util\CenterUtil.java`
+- `coze_plugin\external-info-select\src\main\java\com\drh\select\service\AppTask.java`
 - `kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\ai\controller\QwTagController.java`
 - `kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\ai\service\impl\QwTagQueryServiceImpl.java`
+- `kkhc\kkhc-idc\ai\src\main\java\com\kkhc\idc\crm\service\ai\impl\AiUserPortraitServiceImpl.java`
+- `kkhc\kkhc-idc\ai\src\main\resources\mapper\ai\AiUserPortraitMapper.xml`
 - `kkhc\kkhc-idc\ai-common\src\main\java\com\kkhc\idc\lms\common\module\input\ai\QwTagNameQueryInput.java`
 - `kkhc\kkhc-idc\ai-common\src\main\java\com\kkhc\idc\lms\common\module\output\ai\QwTagOutput.java`
 

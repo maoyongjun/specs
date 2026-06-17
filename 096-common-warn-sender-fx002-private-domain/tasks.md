@@ -55,3 +55,20 @@
 - 测试命令：`mvn -pl common_warn_sender "-DskipTests=false" "-Dmaven.test.skip=false" "-Dtest=AppTaskTest" test`；`mvn -pl ai -am "-Dtest=QwTagQueryServiceImplTest" test`。
 - 测试结果：`common_warn_sender` 8 tests passed，`kkhc-idc-ai ai` 2 tests passed，两个命令均 `BUILD SUCCESS`。
 - 自检结论：模板变量优先级、私域 key 解析、`FX_002` 固定飞书 ID、tag 查询条件和 `markAsync` 请求体已覆盖；打标缺少必要上下文或异常时仅记录 detail，不阻断发送；非 `FX_002` 不打标。
+
+## Phase 5：用户画像返回结构变更
+
+- [x] T026 将 `AiUserPortraitOutput.teacherInfo/courseData` 从单对象改为 list，默认空数组。
+- [x] T027 在 `TeacherInfo` 和 `CourseData` 增加 `skuName`。
+- [x] T028 调整体验课 mapper，返回多条 `speakerName/headTeacherName/skuName`，不再 `LIMIT 1`。
+- [x] T029 调整正价课 mapper，返回多个营期中间结果 `campId/campName/campClassTime/category/skuName`。
+- [x] T030 在 service 层按 `campId + category/skuName` 去重正价课，并按营期生成 `courseLink`、格式化 `classTime`。
+- [x] T031 补充后端单测，覆盖体验课数组、正价课营期数组、主讲去重拼接、默认空数组。
+- [x] T032 抽出 `external-info-select` 用户画像 HTTP 请求方法，测试中 mock 新结构响应。
+- [x] T033 补充插件单测，覆盖 `teacherInfo/courseData/logisticsData` 数组透传、`skuName` 和 `hasDeliveredOrder`。
+
+### D003 - 用户画像结构变更记录
+
+- 实现内容：`/ai/userPortrait` 返回新数组结构；体验课与正价课补充 `skuName`；`external-info-select` 私域返回透传新数组结构。
+- 测试命令：`mvn -pl ai -am "-Dtest=AiUserPortraitServiceImplTest" test`；`mvn -pl external-info-select "-Dmaven.test.skip=false" "-DskipTests=false" "-Dtest=AppTaskPrivateDomainTest" test`。
+- 测试结果：后端 22 tests passed，插件 8 tests passed，两个命令均 `BUILD SUCCESS`。
