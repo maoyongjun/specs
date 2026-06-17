@@ -96,8 +96,8 @@
 - **FR-001**：系统 MUST 新增 `POST /ai/userPortrait`，入参支持 `unionId` 与 `externalUserId`，返回 `BaseResponse<AiUserPortraitOutput>`（4 个子对象）。
 - **FR-002**：系统 MUST 在 `unionId` 为空时用 `externalUserId` 经 `drh_emp_external_user` 解析为最新非空 `union_id`。
 - **FR-003**：`payStatus` MUST 由 `drh_collect_order`（`collect_pay_status in (2,3) and price>88000`）判定。
-- **FR-004**：`teacherInfo` MUST 通过**线索表 `drh_applet_user`**（按 `union_id`，按线索 id 倒序取最近一条）查询：`headTeacherName` 取 `emp_id → drh_kk_emp.name`，`speakerName` 取 `camp_date_id → drh_live_camp_date.speaker_id → drh_speaker.name`。
-- **FR-005**：`courseData` MUST 通过**交接表 `drh_handover_plus`**（按 `union_id`，按交接 id 倒序取最近一条）查询：`campId=class_camp_id`，`campName=drh_live_camp.name`，`classTime` MUST 取自 `drh_live_camp_group.start_class_time`（`drh_live_camp.group_id → drh_live_camp_group`）并格式化为 `yyyy-MM-dd`；`speakerName` 取该营期 `drh_live(live_camp_id=class_camp_id).speaker_id → drh_speaker.name` 去重后用顿号（、）拼接。
+- **FR-004**：`teacherInfo` MUST 通过**线索表 `drh_applet_user`**（按 `union_id`，**过滤 `drh_speaker.name IS NOT NULL`**，按线索 id 倒序取最近一条）查询：`headTeacherName` 取 `emp_id → drh_kk_emp.name`，`speakerName` 取 `camp_date_id → drh_live_camp_date.speaker_id → drh_speaker.name`。
+- **FR-005**：`courseData` MUST 通过**交接表 `drh_handover_plus`**（按 `union_id`，**过滤 `drh_live_camp.name IS NOT NULL`**，按交接 id 倒序取最近一条）查询：`campId=class_camp_id`，`campName=drh_live_camp.name`，`classTime` MUST 取自 `drh_live_camp_group.start_class_time`（`drh_live_camp.group_id → drh_live_camp_group`）并格式化为 `yyyy-MM-dd`；`speakerName` 取该营期 `drh_live(live_camp_id=class_camp_id).speaker_id → drh_speaker.name` 去重后用顿号（、）拼接。
 - **FR-006**：`courseLink` MUST 调 kapi 生成小程序码 base64 → 上传 OSS → 返回 URL，并 MUST 按 `campId` 缓存复用。
 - **FR-007**：`logisticsData` MUST 取近一个月图书物流记录（内部 + 外部表），状态先读 `sign_status`，非已签收 MUST 实时查物流 API（`104→已签收`，否则 `运输中`，无单号 `未发货`）。
 - **FR-008**：`logisticsLink` MUST 使用可配置域名（默认 `https://mp.likeduoduiyi.cn`）拼接 `/logisticsDetailV2.html?aesId=&type=`。
@@ -148,6 +148,15 @@
 - 修正内容：旧口径=抽取并让 `AiServiceImpl` 委托新组件；新口径=`AiUserPortraitServiceImpl` 置于同包 `com.kkhc.idc.crm.service.ai.impl`，直接复用 `AiServiceImpl` 的包级可见方法 `queryBookLogisticsDetail`（及 `getEmpExternalUserDO`），`AiServiceImpl` 零改动，行为完全不变。
 - 文档同步：已更新 `spec.md`（本记录）、`tasks.md`、`AGENTS.md`（重点代码位置去掉 BookLogisticsApiClient）。
 - 验证结果：`AiUserPortraitServiceImplTest` 通过；`ai` test-compile 通过；`AiServiceImpl` 未改动。
+
+### D007 - 查询增加非空过滤
+
+- 触发原因：用户要求体验课/正价课查询增加非空处理，避免取到主讲/营期名为空的脏数据。
+- 修正内容：
+  - 体验课 `selectLatestTrialTeacher` WHERE 增加 `AND d.name IS NOT NULL`（主讲名非空），即只取最近一条有主讲的线索。
+  - 正价课 `selectLatestClassCamp` WHERE 增加 `AND b.name IS NOT NULL`（营期名非空），即只取最近一条有有效营期的交接记录。
+- 文档同步：FR-004/FR-005 与本记录已更新。
+- 验证结果：仅 XML 条件调整；`AiUserPortraitServiceImplTest` 19 用例回归通过。
 
 ### D006 - 修复 courseLink base64 解码报错（Illegal base64 character 22）
 
