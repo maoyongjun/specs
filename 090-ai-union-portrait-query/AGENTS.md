@@ -14,7 +14,7 @@
 
 ## 当前目标
 
-- 新增按 `union_id`/`externalUserId` 聚合的用户画像查询接口，返回 4 个子对象：`userProfile`（payStatus）、`teacherInfo`（体验课主讲+班主任）、`courseData`（正价课营期名/主讲/营期开课时间/小程序码链接）、`logisticsData`（图书物流 list）。
+- 新增按 `union_id`/`externalUserId` 聚合的用户画像查询接口，返回 4 个子对象：`userProfile`（payStatus）、`teacherInfo`（体验课主讲+班主任，**走线索表 `drh_applet_user`**）、`courseData`（正价课营期名/主讲/营期开课时间/小程序码链接，**走交接表 `drh_handover_plus`**，classTime 取 `drh_live_camp_group.start_class_time`）、`logisticsData`（图书物流 list）。
 - 私域场景（`external_key` 前缀 `private-domain`）在 coze `AppTask` 私域分支取第 3 段 `externalUserId` 调用新接口，把 4 个子对象合并进私域返回。
 - 后端用 `drh_emp_external_user` 把 `externalUserId` 转 `unionId` 后复用全部聚合逻辑。
 
@@ -23,7 +23,7 @@
 - 先读代码，再定方案，后实现。
 - 不允许只根据需求文本猜测真实落点；实现前必须确认入口、调用链、字段来源、配置来源和测试落点。
 - 不允许把空对象、占位 DTO 或未赋值字段当成有效输入继续传递。
-- `classTime` 必须取自 `drh_live_camp_date.class_time`（营期开课时间），不得用直播课 `gl.class_time` 或 `drh_live.class_time`。
+- 正价课 `classTime` 必须取自 `drh_live_camp_group.start_class_time`（营期开课时间），不得用直播课 `drh_live.class_time`。
 - 物流状态先读持久化 `sign_status`，非已签收再实时查物流 API；实时查询逻辑复用，不改变原 `AiServiceImpl` 行为。
 - `courseLink` 按 `campId` 缓存复用，避免每次调用都请求 kapi + 上传 OSS。
 - 私域分支异常不阻断原返回；非私域逻辑完全不动。

@@ -15,11 +15,11 @@
 ### Phase 1 待核实项（编码前确认）
 
 - [ ] V1 kapi `endpoint/qr/code/v2` 响应结构：base64 字段名、是否含 `data:image/...;base64,` 前缀（无现存调用方，需实测/确认）。
-- [ ] V2 `drh_live_camp_user` 实体类名与字段（`user_id`/`live_camp_id`），确认体验课学员挂此表。
-- [ ] V3 `live_user.phone` 是否明文（ShowAPI 需手机号后 4 位）；解析失败兜底（book 记录自带 phone）。
-- [ ] V4 `GroupLiveDO` 表名/字段（`group_id/speaker_id/is_del`）与 `SpeakerDO.name`。
-- [ ] V5 模块内 Redis 访问方式（RedisTemplate/已有 util）与新 key 命名/TTL。
-- [ ] V6 正价课"最近一个营期"排序口径（`live_camp.create_time desc` 还是 `permission.create_time desc`）。
+- [x] V2 体验课线索表 `drh_applet_user`（`union_id/emp_id/camp_date_id`）；正价课交接表 `drh_handover_plus`（`union_id/class_camp_id/id`）已确认。
+- [x] V3 `live_user.phone` 明文可用；解析失败兜底（book 记录自带 phone）。
+- [x] V4 `drh_live_camp_group.start_class_time`（`LiveCampGroupDO.startClassTime`）与 `drh_live.speaker_id→drh_speaker.name` 已确认。
+- [x] V5 Redis 用 `DefineRedisTemplate<String,String>`，key `ai:user-portrait:course-link:{campId}`，TTL 7 天。
+- [x] V6 体验课/正价课"最近一条"按 `id desc limit 1`（线索表/交接表）。
 - [ ] V7 coze 私域分支合并 4 个子对象的位置；新接口响应统一为 `BaseResponse{code,message,data}`，coze 取 `data`。
 
 **检查点**：不得在未完成 T001-T005 与 V1-V7 前进入实现。
@@ -37,7 +37,7 @@
 
 ## Phase 3：实现
 
-- [ ] T012 后端：`AiUserPortraitInput/Output`（含 4 子 DTO）、`AiUserPortraitService(+Impl)`、`AiController.userPortrait`、`BookLogisticsApiClient` 抽取、`LinkDomainConfig`、mapper（体验课最近营期/正价课最近营期/营期组主讲）。
+- [ ] T012 后端：`AiUserPortraitInput/Output`（含 4 子 DTO + `ClassCampInfo`）、`AiUserPortraitService(+Impl)`、`AiController.userPortrait`、`@Value kkhc.link.domain`、mapper（体验课线索表 `drh_applet_user`、正价课交接表 `drh_handover_plus`、营期主讲 `drh_live`）。实时物流复用 `AiServiceImpl`（见 D003）。
 - [ ] T013 保持 `AiServiceImpl` 实时物流与定时处理、coze 非私域行为不变。
 - [ ] T014 为 CollectOrder 条件、kapi 请求体、OSS 上传入参、物流状态映射、缓存命中、externalUserId 解析增加可断言点。
 - [ ] T015 coze：`AppTask` 私域分支调用新接口并合并 4 个子对象；同步更新 spec/tasks/AGENTS。

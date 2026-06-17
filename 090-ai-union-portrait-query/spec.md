@@ -5,8 +5,8 @@
 **状态**：Draft  
 **输入**：在 `C:\workspace\ju-chat\kkhc\kkhc-idc\ai` 新增接口，按 `union_id` 查询用户画像，返回 4 个子对象：
 - `userProfile.payStatus`：是/否（金额 > 880 元、已支付订单认为已支付；金额单位为分，SQL：`drh_collect_order` 中 `union_id=? and collect_pay_status in (2,3) and price > 88000`）。
-- `teacherInfo`（体验课）：`speakerName` 主讲、`headTeacherName` 班主任（`emp_id` 是班主任/学管）。
-- `courseData`（正价课，取最近一个营期）：`campName` 营期名、`speakerName` 主讲（多个用顿号隔开）、`classTime` 营期开课时间（`select dlcd.class_time from drh_live_camp_date dlcd where dlcd.camp_id=?`，格式 `YYYY-MM-DD`，不是直播课开课时间）、`courseLink` 正价课小程序汇总路径（kapi `endpoint/qr/code/v2?appType=28&page=pages/subcontracting/schedule/index`，body `{"type":1,"id":campId}`，返回 base64 → 上传 OSS → 返回 URL）。
+- `teacherInfo`（体验课，**通过线索表 `drh_applet_user` 查询**）：`speakerName` 主讲（`camp_date_id→drh_live_camp_date.speaker_id→drh_speaker.name`）、`headTeacherName` 班主任（`emp_id→drh_kk_emp.name`）。
+- `courseData`（正价课，**通过交接表 `drh_handover_plus` 取最近一个营期**）：`campName` 营期名（`drh_live_camp.name`）、`speakerName` 主讲（该营期 `drh_live.speaker_id→drh_speaker.name`，多个用顿号隔开）、`classTime` 营期开课时间（`drh_live_camp_group.start_class_time`，格式 `YYYY-MM-DD`，不是直播课开课时间）、`courseLink` 正价课小程序汇总路径（kapi `endpoint/qr/code/v2?appType=28&page=pages/subcontracting/schedule/index`，body `{"type":1,"id":campId}`，campId=`class_camp_id`，返回 base64 → 上传 OSS → 返回 URL）。
 - `logisticsData`（list）：`hasDeliveredOrder` 是/否、`goodName` 商品名、`logisticsStatus`（未发货/运输中/已签收）、`trackingNumber` 物流单号、`logisticsLink` 物流链接（参考 `AppTask#setTushu`，`link_domain=https://mp.likeduoduiyi.cn`，查最近一个月；签收判定参考 `AiServiceImpl#processBookLogisticsSignReminder`）。
 - 私域：`coze_plugin/external-info-select` 在 `external_key` 前缀为 `private-domain` 时取第 3 段 `externalUserId` 调本接口；后端经 `drh_emp_external_user` 把 `externalUserId` 转 `unionId`。
 
@@ -50,14 +50,14 @@
   - `unionId`：来源入参；为空时由 `externalUserId` 经 `EmpExternalUserService`（`getOne(eq(externalUserid).isNotNull(unionId).ne(unionId,"").orderByDesc(id).last("limit 1"))`）解析；解析在所有子查询前完成。
   - `externalUserId`：来源入参（私域为 `external_key` 第 3 段）。
   - `phone`：来源 `LiveUserService.getLiveUserByUnionId(unionId).getPhone()`，兜底 `drh_applet_user` by union_id，再兜底 book 记录自带 phone；物流查询与 ShowAPI 调用前赋值。
-  - `campId/groupId/campName`（正价课）：来源"最近一个营期"查询结果，查营期日期/营期组主讲/courseLink 前已确定。
-  - `classTime`（正价课）：来源 `drh_live_camp_date.class_time`（按 `camp_id` 取 `limit 1`），格式化为 `yyyy-MM-dd`。
+  - `campId/campName/campClassTime`（正价课）：来源交接表"最近一个营期"查询（`drh_handover_plus → drh_live_camp → drh_live_camp_group`），查营期主讲/courseLink 前已确定。
+  - `classTime`（正价课）：来源 `drh_live_camp_group.start_class_time`，格式化为 `yyyy-MM-dd`。
   - `goodsId`：来源物流记录；`goodName` 由 `GoodsService.getMapByIds` 现查。
   - kapi `type=1`、`id=campId`：当前层现算现用。
 - 下游读取字段清单：
   - CollectOrder 查询读取 `union_id`、`collect_pay_status`、`price`。
-  - 体验课查询读取 `live_user.union_id`、`live_camp_user.user_id/live_camp_id`、`live_camp.is_class/is_del/emp_id`、`live.speaker_id/class_time`、`speaker.name`、`kk_emp.name`。
-  - 正价课查询读取 `class_user.union_id`、`class_user_permission.class_user_id/camp_id`、`live_camp.is_class/is_del/group_id/name/create_time`、`group_live.group_id/speaker_id/is_del`、`speaker.name`。
+  - 体验课查询读取 `applet_user.union_id/emp_id/camp_date_id`、`kk_emp.name`、`live_camp_date.speaker_id`、`speaker.name`。
+  - 正价课查询读取 `handover_plus.union_id/class_camp_id/id`、`live_camp.name/group_id`、`live_camp_group.start_class_time`、`live(live_camp_id).speaker_id/is_del`、`speaker.name`。
   - 物流读取 `book_question_record`/`external_book_question_record` 的 `phone/union_id/l_ids/l_id/aes_id/type/goods_id/sign_status/create_time`。
   - kapi 读取响应 base64 字段；OSS 读取上传字节、path、content-type。
 - 空对象 / 占位对象风险：
@@ -96,8 +96,8 @@
 - **FR-001**：系统 MUST 新增 `POST /ai/userPortrait`，入参支持 `unionId` 与 `externalUserId`，返回 `BaseResponse<AiUserPortraitOutput>`（4 个子对象）。
 - **FR-002**：系统 MUST 在 `unionId` 为空时用 `externalUserId` 经 `drh_emp_external_user` 解析为最新非空 `union_id`。
 - **FR-003**：`payStatus` MUST 由 `drh_collect_order`（`collect_pay_status in (2,3) and price>88000`）判定。
-- **FR-004**：`teacherInfo` MUST 取最近一个体验课营期（`is_class=0`）的主讲与该营期 `emp_id` 班主任。
-- **FR-005**：`courseData` MUST 取最近一个正价课营期（`is_class=1`）；`speakerName` 取营期组主讲去重后用顿号（、）拼接；`classTime` MUST 取自 `drh_live_camp_date.class_time` 并格式化为 `yyyy-MM-dd`。
+- **FR-004**：`teacherInfo` MUST 通过**线索表 `drh_applet_user`**（按 `union_id`，按线索 id 倒序取最近一条）查询：`headTeacherName` 取 `emp_id → drh_kk_emp.name`，`speakerName` 取 `camp_date_id → drh_live_camp_date.speaker_id → drh_speaker.name`。
+- **FR-005**：`courseData` MUST 通过**交接表 `drh_handover_plus`**（按 `union_id`，按交接 id 倒序取最近一条）查询：`campId=class_camp_id`，`campName=drh_live_camp.name`，`classTime` MUST 取自 `drh_live_camp_group.start_class_time`（`drh_live_camp.group_id → drh_live_camp_group`）并格式化为 `yyyy-MM-dd`；`speakerName` 取该营期 `drh_live(live_camp_id=class_camp_id).speaker_id → drh_speaker.name` 去重后用顿号（、）拼接。
 - **FR-006**：`courseLink` MUST 调 kapi 生成小程序码 base64 → 上传 OSS → 返回 URL，并 MUST 按 `campId` 缓存复用。
 - **FR-007**：`logisticsData` MUST 取近一个月图书物流记录（内部 + 外部表），状态先读 `sign_status`，非已签收 MUST 实时查物流 API（`104→已签收`，否则 `运输中`，无单号 `未发货`）。
 - **FR-008**：`logisticsLink` MUST 使用可配置域名（默认 `https://mp.likeduoduiyi.cn`）拼接 `/logisticsDetailV2.html?aesId=&type=`。
@@ -115,7 +115,8 @@
 ## 假设
 
 - kapi `endpoint/qr/code/v2` 返回体含 base64 图片字段（具体字段名与是否带 `data:` 前缀在 Phase 1 实测确认）。
-- `drh_live_camp_user.user_id` 关联 `drh_live_user.id`，体验课学员挂在该表（Phase 1 确认实体字段）。
+- 体验课线索挂在 `drh_applet_user`（含 `union_id/emp_id/camp_date_id`）；正价课学员挂在交接表 `drh_handover_plus`（含 `union_id/class_camp_id`）。
+- 一个 union_id 在线索表/交接表可能多行，按 `id` 倒序取最近一条。
 - `live_user.phone` 可用于物流查询（明文或可得后 4 位）；不可得时物流降级。
 - 新接口响应统一为 AiController 的 `BaseResponse{code,message,data}`，coze 取 `data`。
 - 私域 `external_key` 为 5 段冒号分隔，第 3 段为 `externalUserId`（已由现有 `parsePrivateDomainExternalKey` 确认）。
@@ -147,6 +148,16 @@
 - 修正内容：旧口径=抽取并让 `AiServiceImpl` 委托新组件；新口径=`AiUserPortraitServiceImpl` 置于同包 `com.kkhc.idc.crm.service.ai.impl`，直接复用 `AiServiceImpl` 的包级可见方法 `queryBookLogisticsDetail`（及 `getEmpExternalUserDO`），`AiServiceImpl` 零改动，行为完全不变。
 - 文档同步：已更新 `spec.md`（本记录）、`tasks.md`、`AGENTS.md`（重点代码位置去掉 BookLogisticsApiClient）。
 - 验证结果：`AiUserPortraitServiceImplTest` 通过；`ai` test-compile 通过；`AiServiceImpl` 未改动。
+
+### D005 - 数据来源调整：体验课走线索表、正价课走交接表
+
+- 触发原因：用户要求体验课通过线索表查询、正价课通过交接表查询。
+- 修正内容：
+  - 体验课旧口径=`drh_live_user → drh_live_camp_user → drh_live_camp(is_class=0) → drh_live → drh_speaker/drh_kk_emp`；新口径=`drh_applet_user`（按 `union_id`，`id` 倒序取一条）→ `emp_id→drh_kk_emp.name`(班主任) + `camp_date_id→drh_live_camp_date.speaker_id→drh_speaker.name`(主讲)。
+  - 正价课旧口径=`drh_class_user → drh_class_user_permission → drh_live_camp(is_class=1)`，主讲取 `drh_group_live`，classTime 取 `drh_live_camp_date.class_time`；新口径=`drh_handover_plus`（按 `union_id`，`id` 倒序取一条）→ `class_camp_id` → `drh_live_camp`(campName) → `drh_live_camp_group.start_class_time`(classTime)；主讲取该营期 `drh_live(live_camp_id).speaker_id→drh_speaker.name` 去重顿号拼接。
+  - mapper：`selectLatestTrialTeacher` 改线索表；`selectLatestClassCamp` 改交接表并返回 `ClassCampInfo{campId,campName,campClassTime}`；删除 `selectGroupSpeakerNames`/`selectCampClassTime`，新增 `selectCampSpeakerNames(campId)`。courseLink 仍按 `campId(=class_camp_id)` 生成与缓存。
+- 文档同步：已更新 `spec.md`(FR-004/005、防漏分析、假设、本记录)、`tasks.md`、`AGENTS.md`。
+- 验证结果：`ai` 重新编译通过；`AiUserPortraitServiceImplTest` 16 用例回归通过（纯函数与缓存逻辑不受数据源调整影响）。
 
 ### D004 - 待确认项
 
