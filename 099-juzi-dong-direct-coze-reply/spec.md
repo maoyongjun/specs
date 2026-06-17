@@ -3,7 +3,7 @@
 **功能目录**：`099-juzi-dong-direct-coze-reply`  
 **创建日期**：`2026-06-17`  
 **状态**：Implemented  
-**输入**：在 `C:\workspace\ju-chat\data-RC\juzi-service` 新增 Dong 专属链路。销售企微 `user_id=Dong` 的学员私聊文字/语音消息，直调 Coze Bot `7652273657926434831`，Coze `userID=demo:{botId}:{externalUserId}:{userId}:{env}`，请求消息按 `content_type=text` 的对象数组结构传入；收到返回文本后通过 Juzi 发送给学员。参考 `AiServiceImpl#rewriteBookLogisticsNotice` 的同步获取返回结果口径，以及私域链路的 Juzi 发送思路。需要单元测试验证可通过 Coze client 获取返回消息并触发 Juzi 发送。
+**输入**：在 `C:\workspace\ju-chat\data-RC\juzi-service` 新增 Dong 专属链路。销售企微 `user_id=Dong` 的学员私聊文字/语音消息，直调 Coze Bot `7652273657926434831`，Coze `userID=demo:{botId}:{externalUserId}:{userId}:{env}`，请求消息使用 Coze SDK `object_string` 文本对象数组传入；收到返回文本后通过 Juzi 发送给学员。参考 `AiServiceImpl#rewriteBookLogisticsNotice` 的同步获取返回结果口径，以及私域链路的 Juzi 发送思路。需要单元测试验证可通过 Coze client 获取返回消息并触发 Juzi 发送，并提供显式开启的真实 agent 验证用例。
 
 ## 背景
 
@@ -62,7 +62,7 @@
   - Coze 请求读取 `botID`、`userID`、`conversationID`、`messages.contentType`、`messages.content`。
   - Juzi 发送读取 `MessageDto.wecomUserId`、`externalUserId`、`messageType`、`payload.text`、`functionCode`、`type`。
 - 空对象 / 占位对象风险：
-  - 不允许 Coze content 中缺少 `content_type` 或 `content.text/image_url/file_url`。
+  - 不允许 Coze content 为空；真实验证确认 SDK 原生 `MessageObjectString.buildText` 生成的 `[{\"type\":\"text\",\"text\":\"...\"}]` 可被 chat API 接收。
   - 不允许空 `text`、空 `conversationId` 或空 Coze 回复继续发送 Juzi。
 - 调用顺序风险：
   - Dong 分支必须在私域判断之前；否则 `Dong` 若被配置进私域可能被旧私域链路抢先消费。
@@ -73,7 +73,8 @@
 - 需要用户确认的设计选择：
   - 已确认：直调 Coze Bot，不走 `works_flow`。
   - 已确认：Coze `userID` 使用 `demo:{botId}:{externalUserId}:{userId}:{env}`。
-  - 已确认：Coze 入参为 `content_type=text` 的对象数组结构。
+  - 已确认：Coze 调试页的用户输入显示为 `content_type=text` 的对象数组结构。
+  - 真实验证修正：chat API 直接传 `content_type/content` 会返回 `Request parameter error`；实现层使用 SDK 原生 `Message.buildUserQuestionObjects(MessageObjectString.buildText(text))`，平台可正常返回回复。
 
 ## 边界情况
 
@@ -94,7 +95,7 @@
 - **FR-002**：系统 MUST 默认只匹配销售企微 `user_id=Dong`。
 - **FR-003**：系统 MUST 默认使用 Coze Bot ID `7652273657926434831`。
 - **FR-004**：Coze `userID` MUST 为 `demo:{botId}:{externalUserId}:{userId}:{env}`。
-- **FR-005**：Coze 请求消息 MUST 使用 `contentType=OBJECT_STRING`，`content` 为 JSON 数组字符串，数组元素包含 `content_type=text`、`content.text`、`content.image_url`、`content.file_url`。
+- **FR-005**：Coze 请求消息 MUST 使用 `contentType=OBJECT_STRING`，实现层 MUST 使用 SDK 原生文本对象数组，实际 `content` 为 `[{\"type\":\"text\",\"text\":\"学员消息文本\"}]`。
 - **FR-006**：系统 MUST 通过独立 Redis key 缓存 Dong Coze conversationId，默认 TTL 24 小时。
 - **FR-007**：Coze 返回非空文本后，系统 MUST 通过 `juzi-api` 发送文本消息给学员。
 - **FR-008**：Dong 命中后系统 MUST NOT 继续进入私域、权限、SOP、路由或 `ai-reply FC` 链路。
@@ -104,7 +105,7 @@
 ## 成功标准
 
 - **SC-001**：Dong 私聊文字消息可构造出 `userID=demo:7652273657926434831:{externalUserId}:Dong:{env}` 的 Coze 请求。
-- **SC-002**：Coze 请求 content 与用户指定数组结构一致，并包含学员文本。
+- **SC-002**：Coze 请求 content 使用真实 agent 验证通过的 SDK object JSON 数组，并包含学员文本。
 - **SC-003**：Coze 返回文本后，Juzi 文本发送 payload 字段完整。
 - **SC-004**：Dong 命中后旧链路不会继续执行。
 - **SC-005**：非 Dong、群聊、非文字/语音、空回复、异常路径均有单元测试。
@@ -121,6 +122,7 @@
 
 - 已创建本 Spec Kit 文档。
 - 已记录 Dong 直连 Coze、`demo` userID、OBJECT_STRING 入参、Juzi 文本发送和旧链路旁路要求。
+- 已记录真实 agent 验证结论：调试页 `content_type/content` 结构不是 chat API 直接可接受结构，SDK object JSON 可正常返回。
 
 ### D002 - 实现记录
 

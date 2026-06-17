@@ -18,14 +18,15 @@
 - 先确认入口、字段来源和下游读取，再实现。
 - 不允许把空 JSON、空 DTO 或未赋值字段当成有效请求继续传递。
 - Dong 分支必须可单测隔离真实 Coze、Redis、FC/Juzi。
-- Coze 请求必须断言 `contentType=OBJECT_STRING` 和 JSON 数组内容。
+- Coze 请求必须断言 `contentType=OBJECT_STRING` 和 SDK object JSON 数组内容。
 - Juzi 发送必须断言 `functionCode=SEND_MESSAGE`、`type=1` 和 `MessageDto` 关键字段。
 
 ## 强制门禁
 
 - 参数来源：`userId` 来自 `otsDto.user_id` / `messageDto.botWeixin`，`externalUserId` 来自 `otsDto.external_user_id`，消息文本来自入参 `text` 或 `payload.text/content`。
 - 调用顺序：Dong 分支位于自消息处理之后、私域判断之前；返回 `true` 后旧链路不得继续。
-- 外部调用：Coze 与 Juzi 发送必须通过可替换 gateway/client，测试中不得真实调用。
+- 常规单测：Coze 与 Juzi 发送必须通过可替换 gateway/client，不得真实调用。
+- 真实验证：仅通过显式开启的 `DongDirectCozeAgentIT` 调用真实 Coze agent。
 - 边界：非 Dong 返回 `false` 交还旧链路；Dong 但群聊、非文字/语音、空文本、Coze 空回复、异常均返回 `true` 消费消息并记录日志。
 
 ## 重点代码位置
