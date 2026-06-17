@@ -149,6 +149,17 @@
 - 文档同步：已更新 `spec.md`（本记录）、`tasks.md`、`AGENTS.md`（重点代码位置去掉 BookLogisticsApiClient）。
 - 验证结果：`AiUserPortraitServiceImplTest` 通过；`ai` test-compile 通过；`AiServiceImpl` 未改动。
 
+### D006 - 修复 courseLink base64 解码报错（Illegal base64 character 22）
+
+- 触发原因：线上 `campId=17147` 报 `java.lang.IllegalArgumentException: Illegal base64 character 22`（0x22=`"`）。根因：kapi `qr/code/v2` 响应体疑似为 **JSON 引号包裹的字符串**（如 `"<base64>"`），旧 `extractBase64` 兜底分支返回了带引号原文，`Base64.getDecoder().decode` 遇到首个 `"` 抛异常。
+- 修正内容：
+  - `extractBase64` 改用 `JSON.parse`，识别 (a) JSON 字符串体→直接返回去引号值、(b) `{data:"..."}`/`{data:{...}}`、(c) `qr_code/qrCode/base64/...` 字段、(d) 非 JSON 原文。
+  - 新增 `sanitizeBase64`（去首尾引号、去 `data:` 前缀、去空白）+ `decodeBase64Image`（用 `Base64.getMimeDecoder()` 容错解码，失败返回 null 不抛异常）。
+  - `resolveCourseLink` 改用 `decodeBase64Image`，解码失败仅 `warn` 记录 `candidatePrefix` 并返回空串，不再抛异常。
+- 文档同步：本记录（spec.md）。
+- 验证结果：新增 `extractBase64_jsonQuotedStringBody`/`sanitizeBase64_*`/`decodeBase64Image_*` 用例（含复现引号场景）；`AiUserPortraitServiceImplTest` Tests run: 19, Failures: 0, Errors: 0。
+- 仍需确认：kapi 响应真实结构（请提供 `user_portrait_course_link_qr` info 日志的 raw resp），以确认提取到的是正确字段、生成图片可用。
+
 ### D005 - 数据来源调整：体验课走线索表、正价课走交接表
 
 - 触发原因：用户要求体验课通过线索表查询、正价课通过交接表查询。
