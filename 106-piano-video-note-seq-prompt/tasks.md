@@ -65,6 +65,18 @@
 - [x] T050 [D007] 运行 Python `py_compile` 与 `unittest discover -s tests`，记录音频依赖导致的 skip 情况。
 - [x] T051 [D008] 在音序替换完成后、调用 Gemini 前打印替换后的 prompt 日志，包含长度与内容，超长内容做截断保护。
 - [x] T052 [D008] 增加日志断言单测并回跑 `PianoHomeWorkVideoV2TaskTest`。
+- [x] T053 [D009] 新增音序特征提取器，只输出固定工程侧 JSON 字段，不输出候选 id/title 或候选排名。
+- [x] T054 [D009] `PianoHomeWorkVideoV2Task` 保留 `${audioseq}`，新增 `${engineeringContext}` 或自动追加工程侧音序特征 JSON，并注入 expectedDay/聊天弱上下文。
+- [x] T055 [D009] `sop-reply` 调用识别 FC 时透传 `expectedDay=logicalDay`，私聊传最近 3 条非空聊天记录，群聊不传。
+- [x] T056 [D009] 增加音序特征、prompt 注入和私聊/群聊上下文单测。
+- [x] T057 [D009] 回跑 `Gemini-Api` 与 `sop-reply` 聚焦单测，记录无法完成的临时视频 URL 回归项。
+- [x] T058 [D010] 使用 D2 当前进度执行两个提示词文件 x 5 个 demo 视频的本地真实链路回归。
+- [x] T059 [D010] 回归前重跑 `Gemini-Api` 和 `sop-reply` 聚焦单测。
+- [x] T060 [D010] 汇总 10 次回归结果，按 Pass/Warn/Fail 口径判定。
+- [x] T061 [D010] 定位外部依赖失败阶段并记录：FC 异步提交成功返回 202，但本地 Redis 结果读取失败。
+- [x] T062 [D011] 使用用户补充的 Redis 连接环境重跑 D2 回归矩阵，确认 FC 异步结果可从 Redis 取回。
+- [x] T063 [D011] 汇总 Redis 跑通后的两个提示词版本识别差异。
+- [x] T064 [D011] 记录真实失败点：旧提示词主要错 V2；V3 音序提示词对 V1/V5 误判或兜底，V2 多声部音序仍不能稳定命中 D2。
 
 ## 执行记录
 
@@ -162,3 +174,47 @@
 - 测试命令：`mvn -q -Dtest=PianoHomeWorkVideoV2TaskTest test`（workdir: `C:\workspace\ju-chat\fc\Gemini-Api`）。
 - 测试结果：通过。
 - 自检结论：满足 T051~T052；当前仍为待用户验收阶段，尚未提交 git。
+
+### D009 - 计划记录（工程侧音序特征 JSON、可算法化指纹与弱上下文注入）
+
+- 实施目标：新增工程侧音序特征 JSON，作为模型客观证据注入 prompt；工程侧不输出候选排名、不覆盖最终课程判断。例外：去噪后有效音 `<5` 时直接返回人工复核 JSON，不调用 LLM。
+- 去噪口径：`octave <= 2` 且持续时长 `<0.3s` 的极低短音直接丢弃；之后再按 confidence/voiced_prob 阈值过滤。
+- 字段口径：`validNoteCount` 为去噪和 confidence 过滤后的有效音符数；`hasSameNoteRepeat` 看起手 N 个音中八度归一化后的连续相邻同音；`isMonoDescending` 看前 5 音八度归一化差分全负；`hasFa` 看 F/F# 音级；`isWavy` 看八度归一化差分有正有负；`mainOctave` 为八度众数；`highestNote`/`lowestNote` 由有效音 midi 统计；`rhythmStability`/`pauseOrStumble` 由 duration/gap/`>1s` 长停顿统计；`pyinConfidenceMean` 优先用 `voiced_prob`，缺失时用 `confidence`；`noteSequence` 为过滤后音序文本。
+- 入口变更：`PianoHomeWorkVideoV2Task` 继续替换 `${audioseq}`，并替换 `${engineeringContext}` 或自动追加工程侧特征段；`expectedDay/currentDay/logicalDay` 和私聊最近消息仅作为弱上下文写入提示词。
+- `sop-reply` 变更：`HomeWorkMessageDto` 增加群聊标记与最近消息；`PianoVideoHomeWorkHandleServiceImpl` 向识别 FC 透传 `expectedDay` 和私聊最近 3 条非空聊天记录，群聊不传。
+- 测试计划：完成 T053~T057。临时视频 URL 尚未提供，部署回归验证暂记为待用户补充 URL。
+
+### D009 - 实现记录（工程侧音序特征 JSON、有效音短路与弱上下文注入）
+
+- 实现内容（Gemini-Api）：新增 `PianoNoteSequenceFeatureExtractor`，按低八度短噪声、confidence/voiced_prob 阈值过滤音符；八度归一化计算 `hasSameNoteRepeat`、`isMonoDescending`、`hasFa`、`isWavy`；统计 `mainOctave`、`highestNote`、`lowestNote`、`rhythmStability`、`pauseOrStumble`、`pyinConfidenceMean`、`noteSequence`。`PianoHomeWorkVideoV2Task` 保留 `${audioseq}`，新增 `${engineeringContext}` 替换/自动追加，并在有效音 `<5` 时直接返回人工复核 JSON（`confidence=0.3`、`needHumanReview=true`、`id=-1`），不调用 LLM。
+- 实现内容（sop-reply）：`HomeWorkMessageDto` 增加 `groupChat` 与 `recentMessageModels`；`SopReply.resolveHomeworkMessage` 从 `WebChatVoiceDto` 透传；`PianoVideoHomeWorkHandleServiceImpl` 向识别 FC `taskObj` 写入 `expectedDay/logicalDay/isGroup`，仅私聊写入最近 3 条非空聊天记录。
+- 测试命令：
+  - `mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceFeatureExtractorTest" test`（workdir: `C:\workspace\ju-chat\fc\Gemini-Api`）
+  - `mvn -q "-Dtest=PianoVideoHomeWorkHandleServiceImplTest" test`（workdir: `C:\workspace\ju-chat\fc\sop-reply`）
+- 测试结果：两组聚焦测试均通过。
+- 未完成项：用户尚未提供临时可访问视频 URL，无法执行部署回归验证 V1->D1、V2->D2、V3->D3、V5->D5。
+
+### D010 - 回归验证记录（D2 当前进度，Redis 读取失败）
+
+- 触发原因：用户提供 5 个 demo 视频 URL，要求分别用 `C:\Users\EDY\Downloads\视频理解的提示词.txt` 与 `C:\Users\EDY\Downloads\视频理解的提示词V3.txt` 回归验证，并按 D2 当前进度判断今日/补交/提前提交。
+- 验证矩阵：两个提示词 x `V1-1/V1-2/V2-1/V3-1/V5-1` 共 10 次；期望分别为 `V1->id=1`、`V2->id=2`、`V3->id=3`、`V5->id=5`。
+- 前置测试：
+  - `mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceFeatureExtractorTest" test`（workdir: `C:\workspace\ju-chat\fc\Gemini-Api`）通过。
+  - `mvn -q "-Dtest=PianoVideoHomeWorkHandleServiceImplTest" test`（workdir: `C:\workspace\ju-chat\fc\sop-reply`）通过。
+- 回归执行方式：在 `Gemini-Api\target\regression-runner` 生成临时 Java runner，调用 `PianoHomeWorkVideoV2Task.handleRequest` 默认真实链路；请求不传主任务 `cacheKey`，传 `expectedDay/currentDay/logicalDay=2`；完整日志写入 `Gemini-Api\target\piano-regression-d010.log`。
+- 结果汇总：
+  - 10/10 均为 `FAIL`，返回短路 JSON：`isHomeWork=否`、`id=-1`、`title=未知`、`confidence=0.3`、`needHumanReview=true`、`validNoteCount=0`。
+  - 失败阶段不是 Gemini 判断错误，也不是提示词差异；日志显示 `FcInvokeUtils` 调 `FcOssFFmpeg-3278/VideoToNoteSeq` 已返回 `statusCode=202`，随后本地读取 Redis 时失败：`redis.clients.jedis.exceptions.JedisConnectionException: Could not get a resource from the pool`。
+  - 因音序结果未能从 Redis 取回，工程侧有效音为 0，触发 `<5` 有效音短路，未调用 Gemini；因此两个提示词版本的识别效果无法在本地环境完成对比。
+- 自检结论：D010 真实链路回归当前被本地 Redis 访问环境阻塞。恢复/配置可访问的 Redis 后，应复用相同矩阵重跑；若需绕过 Redis，需要另开需求明确是否允许使用同步/直连 `VideoToNoteSeq` 结果作为回归输入。
+
+### D011 - 回归验证记录（D2 当前进度，Redis 跑通后重跑）
+
+- 触发原因：用户补充 Redis 连接信息后，继续复用 D010 的两个提示词 x 5 个 demo 视频矩阵重跑；本次仅通过本地进程环境变量注入 Redis 连接信息，未写入仓库文件。
+- 前置验证：最小 Redis 连通性探针通过，`Gemini-Api` 可在 `db=3` 中读取 key；D010 前置聚焦单测已通过，本次未改业务代码。
+- 回归执行方式：复用 `Gemini-Api\target\regression-runner` 临时 Java runner 调用 `PianoHomeWorkVideoV2Task.handleRequest` 默认真实链路；不传主任务 `cacheKey`，传 `expectedDay/currentDay/logicalDay=2`；完整日志写入 `Gemini-Api\target\piano-regression-d010-redis-rerun.log`。
+- 工程侧音序结果：FC 异步提交和 Redis 结果读取均已跑通；日志显示 V1-1/V1-2 有效音分别为 `35/34`，V2-1 为 `13`，V3-1 为 `26`，V5-1 为 `39`。
+- 结果汇总：
+  - `视频理解的提示词.txt`：5 条中 4 条 PASS，`V1-1->D1`、`V1-2->D1`、`V3-1->D3`、`V5-1->D5` 命中；`V2-1` 误判为 `id=1/四季歌/补交作业`，FAIL。
+  - `视频理解的提示词V3.txt`：5 条中 1 条 PASS，仅 `V3-1->D3` 命中；`V1-1` 误判为 `id=2/铁血丹心/今日作业`，`V1-2` 兜底 `id=-1`，`V2-1` 兜底 `id=-1`，`V5-1` 兜底 `id=-1`。
+- 自检结论：Redis 环境问题已解除，本轮形成有效提示词对比结论。旧视频理解提示词在这 5 条样本上整体优于 V3 音序提示词，但旧提示词仍不能识别 V2；V3 音序提示词对工程特征解释过于僵硬，把 V1 的起手重复/跳进误判为 D2 或排除 D1，对 V5 的复杂八度/半音音序过度兜底。V2 多声部/低音弦干扰仍是核心风险，工程侧需进一步提取主旋律或调整提示词对低音伴奏噪声的处理规则后再回归。

@@ -293,3 +293,48 @@
 - 测试命令：`mvn -q -Dtest=PianoHomeWorkVideoV2TaskTest test`（workdir: `C:\workspace\ju-chat\fc\Gemini-Api`）。
 - 测试结果：通过。
 - 自检结论：满足 FR-023 与 SC-013；当前处于待用户验收状态，尚未进入本地提交阶段。
+
+### D009 - 计划记录（工程侧音序特征 JSON 与弱上下文注入）
+
+- 触发原因：用户确认不再由工程侧输出候选排名或覆盖最终 `id/title`，而是输出固定结构的音序特征 JSON 作为客观证据；同时私聊场景需把最近 3 条聊天记录作为弱上下文，辅助处理“昨天的作业”等表达。
+- 修正内容：
+  - 工程侧新增音序特征提取，输出固定字段：`validNoteCount`、`hasSameNoteRepeat`、`isMonoDescending`、`hasFa`、`isWavy`、`mainOctave`、`highestNote`、`lowestNote`、`rhythmStability`、`pauseOrStumble`、`pyinConfidenceMean`、`noteSequence`。
+  - 工程侧先做可算法化处理：`octave <= 2` 且持续时长 `< 0.3s` 的极低短音直接丢弃；八度归一化后计算指纹，避免 `E5/E4` 采集误差干扰；音符数、音区、最高/最低音、节奏稳定性、长停顿、pyin/voiced_prob 均值均由代码统计。
+  - 去噪和置信度过滤后 `validNoteCount < 5` 时，代码层直接短路，返回兼容识别结果 JSON（`confidence=0.3`、`needHumanReview=true`、`id=-1`、`title=未知`），不再调用 LLM。
+  - `PianoHomeWorkVideoV2Task` 保留 `${audioseq}` 替换，同时新增 `${engineeringContext}` 替换；提示词未声明占位符时自动追加“工程侧音序特征 JSON”。`expectedDay/currentDay/logicalDay` 仅进入提示词上下文，不硬判课程。
+  - `sop-reply` 调用识别 FC 时透传 `expectedDay = HomeWorkMessageDto.logicalDay`；私聊 `isGroup=false` 时透传最近 3 条非空聊天记录，群聊不透传。
+- 指纹量化口径：
+  - 同音重复：起手 N 个音中，八度归一化后连续相邻同音达到阈值，`hasSameNoteRepeat=true`。
+  - 持续下行：去噪序列前 5 音八度归一化差分全为负，`isMonoDescending=true`。
+  - Fa 音存在：有效音序中存在 F/F# 音级（不看八度），`hasFa=true`。
+  - 上下游走：八度归一化差分同时存在正负，`isWavy=true`。
+- 关键约束：工程侧 JSON 不包含课程候选 `id/title` 或候选排名；除 `validNoteCount < 5` 的低信息短路外，最终 `id/title/confidence/needHumanReview` 仍由模型按提示词规则判断。
+- 测试计划：
+  - 单测音序特征：V1 `hasFa=true/isWavy=true/isMonoDescending=false`；V2 有效音数足够且保留结构化音序；V3 起手下行；V5 `hasSameNoteRepeat=true`。
+  - 入口单测：Gemini prompt 包含 `${audioseq}` 替换结果与完整工程 JSON；私聊最近 3 条注入，群聊不注入。
+  - 回归测试：等待用户提供临时可访问视频 URL 后，调用部署的 `VideoToNoteSeq` 验证 V1->D1、V2->D2、V3->D3、V5->D5，并覆盖当天/过去/未来作业路由。
+
+### D009 - 实现记录（工程侧音序特征 JSON、有效音短路与弱上下文注入）
+
+- 实现内容（Gemini-Api）：新增 `PianoNoteSequenceFeatureExtractor`，先丢弃 `octave <= 2` 且 `duration < 0.3s` 的极低短噪声，再按 confidence/voiced_prob 阈值过滤；输出固定工程 JSON 字段，并用八度归一化后的音级量化同音重复、持续下行、F/F#、上下游走。`PianoHomeWorkVideoV2Task` 保留 `${audioseq}`，新增 `${engineeringContext}` 替换/自动追加；有效音 `<5` 时直接返回人工复核 JSON（`confidence=0.3`、`needHumanReview=true`、`id=-1`），不调用 LLM。
+- 实现内容（sop-reply）：`HomeWorkMessageDto` 增加 `groupChat` 与 `recentMessageModels`；`SopReply` 从 `WebChatVoiceDto` 透传；`PianoVideoHomeWorkHandleServiceImpl` 向识别 FC 写入 `expectedDay/logicalDay/isGroup`，仅私聊写入最近 3 条非空聊天记录。
+- 测试验证：`Gemini-Api` 聚焦测试 `PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceFeatureExtractorTest` 通过；`sop-reply` 聚焦测试 `PianoVideoHomeWorkHandleServiceImplTest` 通过。
+- 剩余验收：用户提供临时可访问视频 URL 后，再执行部署回归验证 V1->D1、V2->D2、V3->D3、V5->D5 以及当天/过去/未来作业路由。
+
+### D010 - 回归验证记录（D2 当前进度，Redis 读取失败）
+
+- 验证输入：使用用户提供的 5 个视频 URL，分别配合 `视频理解的提示词.txt` 与 `视频理解的提示词V3.txt`；所有 `D%s/currentDay/logicalDay/expectedDay` 均按 `D2`。
+- 前置验证：`Gemini-Api` 聚焦单测与 `sop-reply` 聚焦单测均通过。
+- 执行结果：10 次真实默认链路调用均返回工程侧短路结果：`id=-1`、`isHomeWork=否`、`confidence=0.3`、`needHumanReview=true`、`validNoteCount=0`，均未进入 Gemini。
+- 失败定位：`VideoToNoteSeq` 异步 FC 调用已提交成功（FC 返回 `202`），但本地读取 Redis 结果失败，错误为 `JedisConnectionException: Could not get a resource from the pool`；因此无法取得音序，触发有效音 `<5` 短路。
+- 结论：本次没有形成提示词效果对比结论；阻塞点是本地 Redis 访问环境。恢复 Redis 后按同一矩阵重跑，或另行确认允许使用直连/同步音序结果绕过 Redis 做离线回归。
+
+### D011 - 回归验证记录（D2 当前进度，Redis 跑通后重跑）
+
+- 验证输入：复用 D010 的 5 个视频 URL 与两个提示词文件；所有 `D%s/currentDay/logicalDay/expectedDay` 均按 `D2`。Redis 连接信息仅通过本地进程环境变量注入，未写入仓库。
+- 执行结果：Redis 探针通过，FC 异步提交与 Redis 结果读取均可用；10 次调用均进入 Gemini 并返回可解析 JSON。
+- 工程侧音序：V1-1/V1-2 的有效音分别为 `35/34`，具备 `hasFa=true`、`isWavy=true`；V2-1 有效音 `13`，主要为低音区伴奏/噪声；V3-1 有效音 `26`，`isMonoDescending=true`；V5-1 有效音 `39`，`hasSameNoteRepeat=true`。
+- 结果对比：
+  - `视频理解的提示词.txt`：`V1-1`、`V1-2`、`V3-1`、`V5-1` 命中；`V2-1` 误判为 `id=1/四季歌`。总体 `4/5 PASS`。
+  - `视频理解的提示词V3.txt`：仅 `V3-1` 命中；`V1-1` 误判为 `id=2/铁血丹心`，`V1-2/V2-1/V5-1` 均兜底未知。总体 `1/5 PASS`。
+- 结论：D011 已形成有效回归结论。当前 V3 音序提示词不适合作为上线默认版本；它对同音重复、跳进和复杂八度的排除规则过硬，导致 V1/V5 误判或兜底。旧视频理解提示词整体更稳，但 V2 多声部/低音弦干扰仍未解决，后续需优先增强工程侧主旋律提取或单独调整 V2 指纹规则。

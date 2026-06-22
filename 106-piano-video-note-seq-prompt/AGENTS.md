@@ -21,6 +21,9 @@
 - D006：D005 被新口径取代且已实施。`PianoHomeWorkVideoV2Task` 默认音序调用改为 POST `http://kapi.likeduoduiyi.cn/sae-gateway/kkhc-idc-ai/ai/transfer/fc`，body 为 `{taskObj:event, serviceName, functionName, isVpc:true}`；不再通过 `FcInvokeUtils` 直接调 FC SDK。
 - D007：D006 默认调用方式被新口径取代，当前目标改为：Java 端默认音序调用使用 `FcInvokeUtils.doTask` 异步提交 `VideoToNoteSeq`，通过内部音序 Redis `cacheKey` 等待 `SUCCESS.result`；Python `videoToAudio/index.py` 在收到 `cacheKey` 时写 Redis `RUNNING/SUCCESS/FAIL`，无 `cacheKey` 时保持直接 return。D007 已实施，待用户验收。
 - D008：在音序替换完成后、调用 Gemini 前打印最终 prompt 日志，包含替换后长度与内容；超长 prompt 做截断保护。D008 已实施，待用户验收。
+- D009：新增工程侧音序特征 JSON 注入提示词，字段固定且不输出候选排名/最终课程 id；工程侧先过滤极低短噪声、八度归一化量化同音重复/持续下行/F 音/上下游走/音区/节奏/pyin 置信度。去噪后有效音 `<5` 直接返回人工复核 JSON，不调用 LLM。`sop-reply` 透传 `expectedDay=logicalDay` 与私聊最近 3 条非空聊天记录（群聊不传），这些上下文只作弱参考。
+- D010：已按 D2 当前进度尝试两个提示词 x 5 个 demo 视频回归；FC 异步提交返回 202，但本地 Redis 结果读取失败，10 次均因有效音为 0 短路，未进入 Gemini。
+- D011：用户补充 Redis 连接信息后已重跑 D2 回归矩阵；FC/Redis 跑通，10 次均进入 Gemini。旧提示词 `4/5 PASS`，仅 V2 误判为 D1；V3 音序提示词 `1/5 PASS`，仅 V3 命中，V1/V5 误判或兜底。结论：V3 音序提示词暂不适合作为默认版本，V2 多声部主旋律提取仍是核心风险。
 
 ## 执行原则
 
@@ -48,6 +51,9 @@
 ## 重点代码位置
 
 - `fc/Gemini-Api/src/main/java/com/drh/gemini/api/PianoHomeWorkVideoV2Task.java`：入口 `handleRequest` 与 `analyzeVideo`（在 `validateRequired` 之后、Gemini 调用之前插入「取音序 + 替换占位符」）；新增 `NoteSequenceCaller` 接口 + 默认实现 + `buildNoteSequenceText`（按 `confidence` 阈值过滤后拼音名）+ `replacePromptPlaceholder` + 服务/函数名/置信度阈值常量与 env。
+- `fc/Gemini-Api/src/main/java/com/drh/gemini/api/PianoNoteSequenceFeatureExtractor.java`：D009 音序特征提取器，输出固定工程侧 JSON 与过滤后音序文本，不输出课程候选。
+- `fc/sop-reply/src/main/java/com/drh/homework/service/homeworkhandle/PianoVideoHomeWorkHandleServiceImpl.java`：D009 识别 FC 触发参数增加 `expectedDay` 与私聊最近 3 条聊天记录。
+- `fc/sop-reply/src/main/java/com/drh/homework/service/SopReply.java`、`fc/sop-reply/src/main/java/com/drh/homework/dto/HomeWorkMessageDto.java`：D009 透传群聊标记与聊天记录。
 - `fc/common/src/main/java/com/drh/common/util/FcInvokeUtils.java`：D007 默认音序调用使用 `doTask` 异步提交 FC；D006 的默认 HTTP 网关方案已被取代；不要改动默认 `doSyncTask`、`doTaskWithDelay` 对其他调用方的行为。
 - `fc/common/src/main/java/com/drh/common/dto/FcInvokeInput.java`：`serviceName`/`functionName`/`taskObj`/`traceId`（链式 setter）。
 - `fc/Gemini-Api/src/main/java/com/drh/gemini/api/AppTask.java`：本模块内 `FcInvokeUtils` 用法范例（已抽象成接口便于测试）。

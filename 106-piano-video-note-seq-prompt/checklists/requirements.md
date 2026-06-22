@@ -15,6 +15,7 @@
 - [x] D006 明确音序调用改走 transfer/fc HTTP 网关，D005 SDK VPC 方案被取代。
 - [x] D007 明确音序调用改走异步 FC + Redis：Java 异步提交，Python 写 Redis 状态，Java 轮询结果；D006 HTTP 默认方案被取代。
 - [x] D008 明确替换完音序后的 prompt 需要打印日志，且有单测验证日志内容。
+- [x] D009 明确工程侧输出固定音序特征 JSON 和弱上下文，不输出候选排名；并明确有效音 `<5` 的代码层短路返回策略。
 
 ## 需求完整性
 
@@ -36,6 +37,7 @@
 - [x] D005 已补充 endpoint/client 来源、赋值时机和下游读取风险：`clientBeijing`/`runtimeBeijing` 静态初始化后供显式 VPC 同步调用使用。
 - [x] D006 已补充 transfer URL、transfer body、`taskObj`、`isVpc` 来源与赋值时机。
 - [x] D007 已补充内部音序 `cacheKey`、Redis 状态 JSON、异步 FC event、等待参数来源与赋值时机。
+- [x] D009 已补充 `engineeringContext`、去噪规则、八度归一化指纹、有效音短路、`expectedDay`、私聊最近 3 条聊天记录的来源、赋值时机和弱参考边界。
 
 ## 实施就绪度
 
@@ -48,8 +50,12 @@
 - [x] D005 验证计划覆盖 focused 单测、模块编译和静态 endpoint 路径审查。
 - [x] D006 验证计划覆盖 HTTP URL/body/isVpc/taskObj 断言、focused 单测、模块编译和静态遗留代码审查。
 - [x] D007 验证计划覆盖 Java 异步 FC event/cacheKey/Redis 成功失败超时断言、Python Redis RUNNING/SUCCESS/FAIL 写入测试、Java 编译测试与 Python py_compile/unittest。
+- [x] D009 验证计划覆盖音序特征提取、Gemini prompt 注入、私聊/群聊上下文透传；临时视频 URL 回归待用户提供。
 
 ## 备注
 
 - 强制门禁已完成（Phase 1/2 结论见 `tasks.md`）。
 - D007/D008 已实施并回填 `spec.md`/`tasks.md`/`AGENTS.md`：默认音序调用已从 transfer/fc HTTP 网关改为异步 FC + Redis，并新增替换后 prompt 日志，当前等待用户验收。
+- D009 已进入实施：工程侧音序特征 JSON 与私聊弱上下文注入，部署视频 URL 回归等待用户补充可访问 URL。
+- D010 已执行 D2 主进度回归；当前阻塞于本地 Redis 结果读取失败，未形成提示词识别效果对比结论。
+- D011 已在 Redis 可访问后重跑 D2 主进度回归；真实链路可取得音序并进入 Gemini。旧提示词 `4/5 PASS`，V3 音序提示词 `1/5 PASS`，当前不建议把 V3 作为默认提示词，V2 多声部主旋律提取仍需后续优化。
