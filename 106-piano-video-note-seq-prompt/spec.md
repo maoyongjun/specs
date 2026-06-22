@@ -2,7 +2,7 @@
 
 **功能目录**：`106-piano-video-note-seq-prompt`  
 **创建日期**：`2026-06-21`  
-**状态**：Implemented（D013 待用户验收）
+**状态**：Implemented（D014 待用户验收）
 **输入**：用户需求——「修改 `C:\workspace\ju-chat\fc\Gemini-Api\src\main\java\com\drh\gemini\api\PianoHomeWorkVideoV2Task.java`，调用函数计算服务名 `FcOssFFmpeg-3278`、函数名 `VideoToNoteSeq`，返回结果参考 spec `105-video-to-note-sequence` 的描述；拿到音序之后放进提示词，提示词用 `${audioseq}` 占位将要识别到的音序。」澄清结论（本次 AskUserQuestion 确认）：①音序填入 `${audioseq}` 的形式为**音名序列文本**（如 `C4 D4 E4`）；②拿到音序、替换提示词后**仍把视频(file_url)一起传给 Gemini**，保留原有 fileUrl/inlineData/auto 三模式与回退逻辑；③`VideoToNoteSeq` **调用失败或返回空音序(noteCount=0) 也继续调用 Gemini**（用空音序文本继续替换）。
 
 ## 背景
@@ -397,3 +397,26 @@
 - 回归验证：使用 `C:\Users\EDY\Downloads\视频理解提示词V1_2.txt`、`expectedDay/currentDay/logicalDay=2` 通过真实默认链路重跑 6 个视频，最新结果 `6/6 PASS`：`V1-1->D1/补交`、`V1-2->D1/补交`、`V2-1->D2/今日`、`V3-1->D3/提前`、`V5-1->D5/提前`、`21bea->D2/今日`。
 - 日志位置：最新完整回归日志 `C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-d013-v1_2-final.log`；中间单跑 V2-1 日志 `C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-d013-v1_2-v2-rerun.log`。
 - 自检结论：D013 已完成，D1/D2/D3 工程模板覆盖链路可用，新增 D2 视频由 E 结尾优先规则稳定命中；D5 仍依赖 Gemini，本轮真实链路成功通过。
+
+### D014 - 实现记录（连续短语匹配 + D1 移调纠偏 + 双提示词回归）
+
+- 触发原因：用户提供一个实际为 D1《四季歌》的音序样本，但 D2 长模板因跨段 LCS 更高被误判为 D2；同时要求新增 `contiguousPhraseSimilarity` 并把新增视频纳入两个提示词版本的真实链路回归。
+- 实现内容：
+  - `PianoNoteSequenceTemplateMatcher.Score` 新增 `contiguousPhraseSimilarity`，对 pitch class 序列计算连续 2/3/4-gram 的 Dice overlap，取最大值并保留两位小数；`templateScores.D1/D2/D3` 均输出该字段。
+  - 保留原有基础分公式 `0.55*coverage + 0.30*histogramSimilarity + 0.15*prefixSimilarity`。
+  - 新增窄口径 D1 纠偏：基础 best 为 D2、D2 未触发结尾连续 E 优先、D2 基础分低于高置信线、样本足够长且 D1 的音级分布与连续短语证据明显强于 D2 时，工程侧改判 D1 并置高置信；`priorityReason` 写入“D2长模板LCS虚高，D1连续短语和音级分布更强，按四季歌纠偏”。
+  - 真实新增视频暴露出整体移调情况（工程音序为 `B5 A#5 G5...`，相对 D1 模板整体上移 7 个半音）。为覆盖该样本，在上述窄口径 D1 纠偏内增加 D1 模板 12 半音移调评分；仅在基础 best 仍为 D2、D2 基础分 `<0.70`、有效音 `>=30`、移调后 D1 `score>=0.80`、`lcsLength>=24`、`histogramSimilarity>=0.85`、`contiguousPhraseSimilarity>=0.50` 且相对 D2 差值达标时触发。命中时 `templateScores.D1` 输出 `transpositionShift`，`priorityReason` 写入“D1整体移调”。
+  - `PianoHomeWorkVideoV2Task` 复用既有高置信工程覆盖链路：D1 纠偏命中后覆盖 `id/title/coreElements.recognizedDay/submissionType/evidence`，保留 Gemini 诊断字段，并清理冲突 evidence。
+- 测试验证：
+  - 新增单测覆盖用户提供的 D1 误判音序，断言命中 D1 高置信、`templateScores.D1` 包含 `contiguousPhraseSimilarity`、`priorityReason` 包含 D2 长模板 LCS 虚高。
+  - 新增单测覆盖真实新增视频提取出的移调 D1 音序，断言 `transpositionShift=7`、D1 高置信、`priorityReason` 包含 D1 整体移调。
+  - 新增主链路单测：Fake Gemini 返回 D2 时，工程侧仍覆盖为 D1/四季歌/补交作业，并清理冲突 evidence。
+  - 聚焦测试通过：`mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceFeatureExtractorTest,PianoNoteSequenceTemplateMatcherTest" test`（workdir: `C:\workspace\ju-chat\fc\Gemini-Api`）。
+- 真实回归：
+  - 执行方式：真实链路 runner 调用 `PianoHomeWorkVideoV2Task.handleRequest`，`expectedDay/currentDay/logicalDay=2`，不传主任务 `cacheKey`；Redis 连接信息仅通过本地进程环境变量注入，未写入仓库。
+  - 提示词：`C:\Users\EDY\Downloads\视频理解的提示词.txt` 与 `C:\Users\EDY\Downloads\视频理解的提示词V3.txt`。
+  - 矩阵：`V1-1/V1-2/V2-1/V3-1/V5-1/21bea/新增D1样本`，共 14 次。
+  - 最新结果：`13/14 PASS`。新增 D1 样本在两个提示词版本均 PASS（D1/补交），日志中 `templateScores.D1.transpositionShift=7`、`priorityReason=D2长模板LCS虚高，D1整体移调后连续短语和音级分布更强，按四季歌纠偏`；原用户文本音序样本已由单测锁定。
+  - 唯一失败：`视频理解的提示词V3 + V5-1` 返回 `id=-1/未知`，同一 V5 视频在旧提示词版本 PASS 为 D5。该失败属于 D5 仍依赖 Gemini/V3 提示词排除法过硬的既有风险，不是本次 D1/D2/D3 工程模板纠偏引入。
+  - 日志位置：`C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-contiguous-20260622-232903.log`。
+- 自检结论：D014 目标中的 D1/D2 误判纠偏已生效，新增 D1 视频已纳入并在两个提示词版本通过；回归矩阵残余 1 个 V3+D5 失败，建议后续若要求矩阵全绿，单独扩展 D5/D6 工程模板或调整 V3 提示词。
