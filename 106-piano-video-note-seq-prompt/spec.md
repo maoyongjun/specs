@@ -2,7 +2,7 @@
 
 **功能目录**：`106-piano-video-note-seq-prompt`  
 **创建日期**：`2026-06-21`  
-**状态**：Implemented（D008 待用户验收）  
+**状态**：Implemented（D013 待用户验收）
 **输入**：用户需求——「修改 `C:\workspace\ju-chat\fc\Gemini-Api\src\main\java\com\drh\gemini\api\PianoHomeWorkVideoV2Task.java`，调用函数计算服务名 `FcOssFFmpeg-3278`、函数名 `VideoToNoteSeq`，返回结果参考 spec `105-video-to-note-sequence` 的描述；拿到音序之后放进提示词，提示词用 `${audioseq}` 占位将要识别到的音序。」澄清结论（本次 AskUserQuestion 确认）：①音序填入 `${audioseq}` 的形式为**音名序列文本**（如 `C4 D4 E4`）；②拿到音序、替换提示词后**仍把视频(file_url)一起传给 Gemini**，保留原有 fileUrl/inlineData/auto 三模式与回退逻辑；③`VideoToNoteSeq` **调用失败或返回空音序(noteCount=0) 也继续调用 Gemini**（用空音序文本继续替换）。
 
 ## 背景
@@ -171,6 +171,17 @@
 - **FR-021**：D007 Python 端 MUST 使用与现有项目一致的 Redis 环境变量（`redis_host`、`redis_password`、`db`），并在 `requirements.txt` 补充 Redis 客户端依赖。
 - **FR-022**：D007 MUST 更新 Java 与 Python 测试：Java 断言异步 FC event/cacheKey 与 Redis 成功/失败/超时；Python 断言 Redis `RUNNING/SUCCESS/FAIL` 写入和无 `cacheKey` 兼容。
 - **FR-023**：D008 起，系统 MUST 在音序替换完成后、调用 Gemini 前打印最终 prompt 日志，日志中 SHOULD 包含替换后 prompt 的长度和内容；为避免单条日志过大，超长 prompt 可以截断并标注原始长度。
+- **FR-024**：D012 起，系统 MUST 在工程侧内置用户提供的 D1《四季歌》和 D2《铁血丹心》音序模板，并在取得有效音序后、调用 Gemini 前计算 D1/D2 模板匹配分数。
+- **FR-025**：D012 模板匹配 MUST 使用八度归一化后的音级序列，保留连续重复音，允许漏检、插入噪声和重复次数差异；不得用绝对八度硬匹配。
+- **FR-026**：D012 工程侧只有在最佳模板分数达到高置信阈值且相对次高分有足够差距时，才能产出 `engineeringDecision` 并优先覆盖最终课程分类字段；低分或差距不足时 MUST 仅作为证据注入，不得硬判。
+- **FR-027**：D012 高置信工程判定 SHOULD 继续调用 Gemini 观看视频，以保留指法、手型、单双手、节奏等诊断；Gemini 返回可解析 JSON 时，Java 端 MUST 只覆盖课程分类相关字段（如 `isHomeWork/id/title/recognizedDay/submissionType/confidence/needHumanReview`），并保留 Gemini 的诊断字段。
+- **FR-028**：D012 工程判定必须保持 `<5` 有效音短路、FC 异步 + Redis、`${audioseq}`、`${engineeringContext}`、私聊弱上下文、Gemini 三模式回退、主任务缓存与锁等既有行为不变。
+- **FR-029**：D012 高置信 D1/D2 工程判定已存在时，若 Gemini 调用异常或返回非 JSON，系统 SHOULD 返回工程分类兜底 JSON，并将 `needHumanReview=true`，避免清晰模板分类结果丢失；低置信或非 D1/D2 场景仍不得硬判。
+- **FR-030**：D013 起，工程侧模板匹配 MUST 扩展到 D3《沧海一声笑·无和弦》，D3 高置信命中时可覆盖课程分类字段，并在 Gemini 异常时返回工程分类兜底 JSON。
+- **FR-031**：D013 D2 模板 MUST 使用用户补充的左右手分句模板作为主要模板，并可保留既有长模板作为容错补充；`0` 与 `空` 只代表空拍/占位，不进入音级模板。
+- **FR-032**：D013 工程侧 MUST 支持“过滤后有效音序结尾连续 3 个以上 E 音级”优先判定 D2《铁血丹心》，并用 pitch class 处理 `E3/E2/E4` 等八度采集差异。
+- **FR-033**：D013 高置信规则 SHOULD 支持完整覆盖率命中（例如覆盖率 `>=0.95` 且分数达标）直接高置信，避免 D2/D3 在 pitch class 空间高度相似时仅因分差不足而漏判。
+- **FR-034**：D013 高置信工程判定覆盖 Gemini 原课程分类时，若 Gemini 原 `evidence` 与最终分类冲突，系统 MUST 替换冲突 evidence 为工程侧覆盖说明；诊断字段仍按 D012 规则保留。
 
 ## 成功标准 *(必填)*
 
@@ -187,6 +198,11 @@
 - **SC-011**：D007 Python 单测确认有 `cacheKey` 时按 `RUNNING -> SUCCESS` 写 Redis，异常时写 `FAIL`；无 `cacheKey` 时不写 Redis且 return 结构不变。
 - **SC-012**：D007 后 Java focused 编译与 `PianoHomeWorkVideoV2TaskTest` 通过；Python `py_compile` 与可运行的 unittest 通过/按依赖缺失跳过音频测试。
 - **SC-013**：D008 后单测能捕获日志并确认日志包含替换后的音序提示词文本。
+- **SC-014**：D012 单测给定接近 D1 模板的音序，工程侧输出高置信 D1 判定，并在 Gemini 返回 JSON 后覆盖 `id=1/title=四季歌/recognizedDay=D1/submissionType=补交作业`，同时保留 Gemini 原诊断字段。
+- **SC-015**：D012 单测给定接近 D2 模板的音序，工程侧输出高置信 D2 判定，并在 D2 当前进度下覆盖为 `id=2/title=铁血丹心/submissionType=今日作业`。
+- **SC-016**：D012 单测给定低匹配或 D1/D2 分数差距不足的音序，工程侧不得覆盖 Gemini 输出。
+- **SC-017**：D012 回归使用 `C:\Users\EDY\Downloads\视频理解提示词V1_2.txt` 和 D2 当前进度，覆盖原 5 个 demo 视频及新增 `video_demo2/21bea...mp4`，期望 `V1->D1`、`V2->D2`、`V3->D3`、`V5->D5`、新增视频 `->D2`。
+- **SC-018**：D012 单测覆盖“高置信 D1/D2 模板命中但 Gemini 调用失败”时返回可解析工程兜底 JSON，分类字段正确且 `needHumanReview=true`。
 
 ## 假设
 
@@ -198,6 +214,8 @@
 - D007 之后，D006 的 HTTP transfer/fc 同步网关方案被异步 FC + Redis 方案取代；默认音序调用重新依赖 `FcInvokeUtils.doTask`，但只是异步提交，不读取 FC body。
 - D007 音序 Redis `cacheKey` 为 Java 当前层生成的内部 key，独立于外层 `PianoHomeWorkVideoV2Task` 的业务 `cacheKey`，避免覆盖主任务 RUNNING/SUCCESS/FAIL 缓存。
 - `event.task_id` 仅作上游关联透传，`VideoToNoteSeq` 端为可选参数，不影响音序提取。
+- D012 工程侧模板优先判定只先支持 D1/D2，因为当前用户只提供了 D1/D2 标准音序；D3/D4/D5/D6 仍按既有工程特征和提示词规则处理。若后续提供更多模板，再追加 Dxxx 扩展。
+- D012 高置信阈值实际实现为 `bestScore >= 0.70`、`bestScore - secondScore >= 0.15` 且有效音数至少 10；若起手持续下行，则抑制 D1/D2 高置信覆盖，避免误覆盖 D3/D4《沧海一声笑》类旋律。
 - Gemini-Api 通过 `com.drh:common` 传递依赖到 `com.aliyun:fc_open20210406`，`FcInvokeUtils`/`FcInvokeInput` 在本模块可用（已由 `AppTask` 实例佐证）。
 
 ## 执行记录
@@ -338,3 +356,44 @@
   - `视频理解的提示词.txt`：`V1-1`、`V1-2`、`V3-1`、`V5-1` 命中；`V2-1` 误判为 `id=1/四季歌`。总体 `4/5 PASS`。
   - `视频理解的提示词V3.txt`：仅 `V3-1` 命中；`V1-1` 误判为 `id=2/铁血丹心`，`V1-2/V2-1/V5-1` 均兜底未知。总体 `1/5 PASS`。
 - 结论：D011 已形成有效回归结论。当前 V3 音序提示词不适合作为上线默认版本；它对同音重复、跳进和复杂八度的排除规则过硬，导致 V1/V5 误判或兜底。旧视频理解提示词整体更稳，但 V2 多声部/低音弦干扰仍未解决，后续需优先增强工程侧主旋律提取或单独调整 V2 指纹规则。
+
+### D012 - 计划记录（D1/D2 工程侧模板优先判定 + V1_2 提示词回归）
+
+- 触发原因：用户提供新提示词文件 `C:\Users\EDY\Downloads\视频理解提示词V1_2.txt`、D1/D2 标准音序模板，并要求“工程侧优先判断”；同时新增一个 D2 预期视频 `https://drh-test.oss-cn-beijing.aliyuncs.com/video_demo2/21bea517-4d47-4638-81ea-1744f2dc4cb7.mp4`。
+- 旧行为：D009 工程侧只输出客观特征 JSON，不输出候选排名，不覆盖最终 `id/title`；只有 `validNoteCount < 5` 会代码层短路。
+- 新目标：D012 增加 D1/D2 工程侧模板匹配。高置信命中时，工程侧优先决定课程分类；Gemini 仍负责视频诊断字段，最终 JSON 的课程分类字段由 Java 层按工程判定覆盖。
+- 实现计划：
+  - 新增 `PianoNoteSequenceTemplateMatcher`（或等价类），内置 D1/D2 用户模板，输入过滤后的有效音序，输出 `templateScores`、`bestTemplate`、`confidence`、`matchedDay/id/title`、`reason`。
+  - 修改 `PianoNoteSequenceFeatureExtractor` 或其返回对象，使模板匹配器可拿到结构化有效音列表或 pitch class 序列，而不是重新解析字符串。
+  - `PianoHomeWorkVideoV2Task` 在构建工程上下文时追加 `engineeringDecision`；高置信时在 Gemini 返回后 post-process JSON，覆盖课程分类字段，并在 evidence 中追加“工程侧模板命中”的依据。
+  - 非 JSON 返回或低置信工程判定不做硬覆盖；`validNoteCount < 5` 仍走原短路。
+- 验证计划：
+  - 单测 D1/D2 模板高置信命中、低分不覆盖、覆盖后分类字段正确且诊断字段保留。
+  - 聚焦回归 `PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceFeatureExtractorTest`。
+  - 使用 `视频理解提示词V1_2.txt` 跑 6 个视频 D2 矩阵，期望 `V1-1/V1-2 -> D1`，`V2-1 -> D2`，`V3-1 -> D3`，`V5-1 -> D5`，新增视频 `->D2`。
+- 确认状态：用户已确认进入实施；D012 已实现，当前等待用户验收。
+
+### D012 - 实现记录（D1/D2 工程侧模板优先判定 + V1_2 回归）
+
+- 实现内容：新增 `PianoNoteSequenceTemplateMatcher`，内置 D1《四季歌》和 D2《铁血丹心》用户模板；`PianoNoteSequenceFeatureExtractor.ExtractResult` 增加过滤后的 pitch class 序列；`PianoHomeWorkVideoV2Task` 在工程 JSON 中追加 `templateScores`，高置信时追加 `engineeringDecision`，Gemini 返回可解析 JSON 后由 Java 覆盖课程分类字段并追加 evidence，保留 Gemini 原有诊断字段。
+- 兜底策略：真实回归中 Gemini proxy 出现间歇性 `Remote host terminated the handshake`。D012 已补充高置信 D1/D2 工程判定兜底：Gemini 调用异常或返回非 JSON 时，返回工程分类 JSON，分类正确但 `needHumanReview=true`，诊断字段不伪造为可靠结论。
+- 测试验证：`mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceFeatureExtractorTest,PianoNoteSequenceTemplateMatcherTest" test` 通过；覆盖 D1/D2 命中、低分不覆盖、下行旋律抑制覆盖、覆盖保留诊断字段、Gemini 异常工程兜底、`<5` 有效音短路不回归。
+- 回归验证：使用 `C:\Users\EDY\Downloads\视频理解提示词V1_2.txt`、`expectedDay/currentDay/logicalDay=2` 跑真实默认链路。最新完整 6 视频结果为：`V1-1` PASS（D1/补交）、`V1-2` PASS（D1/补交）、`V2-1` PASS（D2/今日）、`V3-1` PASS（D3/提前）、`21bea` WARN（工程模板高置信 D2/今日，但 Gemini proxy 握手失败，返回工程兜底 JSON）、`V5-1` FAIL（FC/Redis 音序成功且有效音 39；非 D1/D2 覆盖范围，Gemini proxy 握手失败导致空响应）。首次完整回归中 `V5-1` 曾成功识别为 D5，说明失败阶段是外部 Gemini proxy 波动。
+- 日志位置：完整回归日志 `C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-d012-v1_2-rerun2.log`；V5 单独重跑日志 `C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-d012-v1_2-v5-rerun.log`。
+- 自检结论：D1/D2 工程侧优先判定已生效，V1 与 V2/新增 D2 样本分类稳定性提升。残余风险是 D3/D5/D6 仍依赖 Gemini；模型代理失败时非 D1/D2 样本仍可能失败，后续可单独评估扩展 D3/D5/D6 模板或增加 Gemini 调用重试。
+
+### D013 - 计划记录（D2/D3 工程模板补充 + E 结尾 D2 优先规则）
+
+- 触发原因：用户补充 D2《铁血丹心》左右手分句模板、D3《沧海一声笑·无和弦》模板，并要求“结尾连续三个 E3 E3 E3，优先判别为 铁血丹心”，修改后继续回归。
+- 新目标：工程侧模板覆盖范围从 D1/D2 扩展到 D1/D2/D3；D2 使用新的左右手分句模板并保留长模板容错；D3 可高置信覆盖；D2 结尾连续 E 音级作为优先指纹。
+- 质量要求：高置信工程覆盖后不能保留与最终分类冲突的 Gemini evidence；仍保留 Gemini 的诊断字段，除非 Gemini 调用异常只能返回工程兜底。
+
+### D013 - 实现记录（D2/D3 工程模板补充 + V1_2 最新回归）
+
+- 实现内容：`PianoNoteSequenceTemplateMatcher` 已扩展为 D1/D2/D3 三模板评分；D2 模板增加用户补充的分句结构，D3 增加《沧海一声笑·无和弦》模板；`templateScores` 追加 D3 分数、`endingRepeatedE` 和可选 `priorityReason`。
+- 规则调整：匹配分数由 LCS 覆盖率、音级直方图相似度、前缀相似度组成；除分差规则外，覆盖率 `>=0.95` 且分数达标时可直接高置信；结尾连续 3 个以上 E 音级时优先判 D2。
+- 证据修正：工程高置信覆盖 Gemini 原分类且存在冲突时，最终 evidence 改写为“模型原课程分类与工程侧高置信模板冲突，已按工程侧覆盖”加工程侧依据，避免同一 JSON 中出现相互矛盾的分类证据。
+- 测试验证：`mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceFeatureExtractorTest,PianoNoteSequenceTemplateMatcherTest" test` 通过；新增覆盖 D3 模板命中、D2 结尾 E 优先、D3 主链路覆盖、冲突 evidence 清理。
+- 回归验证：使用 `C:\Users\EDY\Downloads\视频理解提示词V1_2.txt`、`expectedDay/currentDay/logicalDay=2` 通过真实默认链路重跑 6 个视频，最新结果 `6/6 PASS`：`V1-1->D1/补交`、`V1-2->D1/补交`、`V2-1->D2/今日`、`V3-1->D3/提前`、`V5-1->D5/提前`、`21bea->D2/今日`。
+- 日志位置：最新完整回归日志 `C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-d013-v1_2-final.log`；中间单跑 V2-1 日志 `C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-d013-v1_2-v2-rerun.log`。
+- 自检结论：D013 已完成，D1/D2/D3 工程模板覆盖链路可用，新增 D2 视频由 E 结尾优先规则稳定命中；D5 仍依赖 Gemini，本轮真实链路成功通过。
