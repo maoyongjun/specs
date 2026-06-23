@@ -180,6 +180,64 @@
 
 ---
 
+## Phase 9：增量需求 - 作业点评配置台视频号动作配置（US7）
+
+**目标**：`data-RC/juzi-service` 作业点评配置台新增 `VIDEO_CHANNEL` 动作，运营只配置 `V15` 这类编码，配置 JSON 输出规范化编码。
+
+- [x] T050 [US7] 更新 `spec.md`、`tasks.md`、`AGENTS.md`、`checklists/requirements.md`，记录 D004 增量范围和实施计划
+- [x] T051 [US7] 在 `data-RC/juzi-service` 增加 `HomeworkActionType.VIDEO_CHANNEL`
+- [x] T052 [US7] 扩展动作 DTO/服务层，新增 `videoChannelCode` 输出语义；保存时复用 `text_content` 存储规范化编码，不新增表字段
+- [x] T053 [US7] 更新动作新增和编辑校验：`VIDEO_CHANNEL` 不要求上传文件，编码必须匹配 `V` 或 `v` 加数字，并统一保存为大写
+- [x] T054 [US7] 更新 `homework-config.html`，动作类型下拉增加视频号；根据类型切换为编码输入框，并支持新增、编辑、展示和 JSON 预览
+- [x] T055 [US7] 补充 `juzi-service` 测试，覆盖 `v15` 规范化、非法编码拒绝、JSON 输出 `videoChannelCode=V15`、不触发文件上传字段
+
+**检查点**：配置台可维护视频号编码动作，配置 JSON 不包含真实视频号 payload。
+
+---
+
+## Phase 10：增量需求 - sop-reply 配置发送链路支持 VIDEO_CHANNEL（US7）
+
+**目标**：`SopConfigSender` 可读取配置台生成的 `VIDEO_CHANNEL` 动作，并复用 `fc/common` 视频号能力发送真实视频号卡片。
+
+- [x] T056 [US7] 在 `fc/sop-reply` 扩展 `SopActionType` 和 `SopAction`，支持 `VIDEO_CHANNEL` 与 `videoChannelCode`，并兼容从 `textContent` 读取编码
+- [x] T057 [US7] 新增或封装 `sop-reply` 视频号发送适配器，接入 `VideoChannelMessageService`、`VideoChannelSendLimitService`、`VideoChannelConfigLoader.fromDefaultResource()`、`UrlVideoChannelRawMessageReader`
+- [x] T058 [US7] 为 `sop-reply` 现有 `RedisClient` 增加 common `VideoChannelCache` 和 `VideoChannelSendLimitStore` 适配，保留 30 分钟 raw JSON 缓存和 7 天限发规则
+- [x] T059 [US7] 更新 `SopConfigSender.sendSingleAction`，`VIDEO_CHANNEL` 分支构建 `messageType=14` 的 `SEND_MESSAGE` taskObj，保持现有 delay、动作条件、`wxsend=false` 预览和 sentCount 语义
+- [x] T060 [US7] 发送失败时释放 7 天限发占位；未知编码、OSS 失败、JSON 缺字段或限发命中时跳过当前视频号并继续后续动作
+- [x] T061 [US7] 补充 `SopConfigSender` 测试，覆盖 V15 发送 payload、限发命中跳过、未知编码跳过、`wxsend=false` 预览和现有动作类型回归
+
+**检查点**：配置驱动的作业点评策略可以发送视频号，且复用 common 的真实 payload、缓存和限发能力。
+
+---
+
+## Phase 11：增量需求 - HomeWorkCommentService 支持视频号编码发送（US7）
+
+**目标**：旧 `HomeWorkCommentService` / `SendInfo` 发送链路具备按编码发送视频号的基础能力，供识别后的旧路径或直接调用复用。
+
+- [x] T062 [US7] 扩展 `SendInfo`，增加可选视频号编码列表或等价结构，编码语义与配置台一致
+- [x] T063 [US7] 在 `HomeWorkCommentService` 增加 `sendVideoChannel(WebChatVoiceDto, String code, Integer delaySeconds)`，复用 Phase 10 的视频号发送适配器
+- [x] T064 [US7] 更新 `sendInfo` 发送流程，将视频号编码按既定顺序和 delay 规则发送，默认放在奖励图片之后、提醒文本之前；不改变现有文本、语音、文件、图片顺序
+- [x] T065 [US7] 保持 `PianoVideoHomeWorkHandleServiceImpl` 仅负责识别，不在识别类内拼接真实视频号 payload
+- [x] T066 [US7] 补充 `HomeWorkCommentService` 测试，覆盖编码发送、限发/异常跳过、delay 累加和原有动作回归
+
+**检查点**：旧发送链路可发送视频号编码，且不破坏原有点评消息编排。
+
+---
+
+## Phase 12：增量需求 - 回归验证与文档记录（US7）
+
+**目标**：完成配置台与 sop-reply 的端到端回归，并把实现结论写回 spec-kit。
+
+- [x] T067 [US7] 运行 `mvn -pl common,sop-reply -am test`，确认 common 与 sop-reply 回归通过
+- [x] T068 [US7] 运行 `mvn -pl juzi-service -DskipTests=false test`；若环境测试依赖缺失，则至少运行 `mvn -pl juzi-service -DskipTests package` 并记录原因
+- [x] T069 [US7] 手工或单测验证配置 JSON 中 `VIDEO_CHANNEL/V15` 能被 `SopConfigSender` 转为 `messageType=14` 请求
+- [x] T070 [US7] 复查 FR-034 至 FR-045、SC-014 至 SC-019 覆盖情况
+- [x] T071 [US7] 更新本文件执行记录、`checklists/requirements.md` 和必要的 spec D004 验证结果
+
+**检查点**：配置台、sop-reply、旧发送链路和现有动作类型均完成验证记录。
+
+---
+
 ## 依赖与执行顺序
 
 ### 阶段依赖
@@ -190,6 +248,10 @@
 - **delay-mq（Phase 4）**：依赖 Common，可先于 `ai-reply` 完成并独立验收。
 - **ai-reply（Phase 5）**：依赖 Common，最终需要与 `delay-mq` 行为一致。
 - **Polish（Phase 6）**：依赖 Phase 3 至 Phase 5 完成。
+- **配置台视频号动作（Phase 9）**：依赖既有 common 视频号配置与 payload 能力，先于 `sop-reply` 配置发送接入。
+- **sop-reply 配置发送（Phase 10）**：依赖 Phase 9 的 JSON 形态和 common 视频号工具。
+- **HomeWorkCommentService 旧链路（Phase 11）**：依赖 Phase 10 的视频号发送适配器。
+- **回归与文档（Phase 12）**：依赖 Phase 9 至 Phase 11 完成。
 
 ### 并行机会
 
@@ -198,6 +260,8 @@
 - T016、T017、T018 可并行编写 `delay-mq` 测试。
 - T023、T024 可并行编写 `ai-reply` 测试。
 - T029 可与最终文档复查准备并行。
+- T051-T055 和 T056-T061 不建议并行修改同一 JSON 合同；可先完成配置台 JSON 形态，再接入 `sop-reply`。
+- T062-T066 可在 Phase 10 发送适配器接口稳定后与部分回归准备并行。
 
 ### MVP 优先
 
@@ -206,6 +270,10 @@
 3. 完成 Phase 4，让 `delay-mq` 可按顺序发送文本、图片、视频号。
 4. 完成 Phase 5，让 `ai-reply` 与 `delay-mq` 行为一致。
 5. 完成 Phase 6，跑自动化回归并做手动 dry-run 验收。
+6. 完成 Phase 9，让配置台能产出 `VIDEO_CHANNEL` 编码动作。
+7. 完成 Phase 10，让 `sop-reply` 配置发送链路能把编码转真实视频号发送。
+8. 完成 Phase 11，让旧 `HomeWorkCommentService` 链路具备按编码发送能力。
+9. 完成 Phase 12，跑跨模块回归并更新文档记录。
 
 ## 接口与默认值
 
@@ -218,6 +286,9 @@
 - 条件文本占位符格式为 `##{text:...}`，只绑定紧邻后一个视频号。
 - 条件文本绑定的视频号不会发送时，条件文本也不发送。
 - 视频号合法 code 为 `V` 或 `v` 加数字，内部统一为大写。
+- 配置台 `VIDEO_CHANNEL` 动作只配置编码，DTO/JSON 输出 `videoChannelCode`，存储复用 `text_content`，不新增表字段。
+- `sop-reply` 读取 `VIDEO_CHANNEL` 时优先使用 `videoChannelCode`，并兼容 `textContent` 中的编码。
+- 配置台不解析真实视频号 raw JSON；真实 payload 仍由发送端通过 `fc/common` 构建。
 - malformed 占位符不发送视频号。
 - 未知 code、OSS 失败、JSON 缺字段时记录日志并继续发送其他片段。
 - `type != 1` 的原有分支保持不变。
@@ -226,7 +297,10 @@
 
 - common JUnit 单测覆盖解析、配置、OSS、缓存、payload 构造、7 天限发和条件文本解析。
 - `delay-mq` 与 `ai-reply` 模块测试覆盖同输入一致性、顺序发送、异常跳过、重复视频号跳过和条件文本绑定发送。
+- `juzi-service` 测试覆盖 `VIDEO_CHANNEL` 动作新增、编辑、编码规范化、非法编码拒绝和配置 JSON 输出。
+- `sop-reply` 测试覆盖 `SopConfigSender` 发送 `VIDEO_CHANNEL`、`HomeWorkCommentService` 按编码发送视频号、7 天限发、30 分钟缓存和未知编码跳过。
 - 回归命令固定为：`mvn -pl common,delay-mq,ai-reply -am test`。
+- 本次增量回归命令补充：`mvn -pl common,sop-reply -am test` 与 `mvn -pl juzi-service -DskipTests=false test`。
 - 手动 demo 只作为补充验收，不替代 JUnit 自动化测试。
 
 ## 执行记录（2026-04-29）
@@ -281,4 +355,41 @@
 - 测试命令：`mvn -pl common,delay-mq,ai-reply -am test`
 - 测试结果：common `Tests run: 22, Failures: 0, Errors: 0, Skipped: 0`；delay-mq `Tests run: 8, Failures: 0, Errors: 0, Skipped: 0`；ai-reply `Tests run: 7, Failures: 0, Errors: 0, Skipped: 0`；整体 `BUILD SUCCESS`。
 - 自检结论：条件文本只绑定紧邻后一个视频号；普通文本仍独立发送；未绑定或绑定视频号不会发送时，条件文本不会泄露给用户。
+
+## 执行记录（2026-06-23）
+
+### T050 / D004 作业点评配置台视频号动作文档同步
+
+- 执行内容：复用 `001-video-channel-placeholder-send`，新增 US7、FR-034 至 FR-045、SC-014 至 SC-019；同步 Phase 9-12 任务、AGENTS 约束和 requirements 检查项。明确配置台新增 `VIDEO_CHANNEL` 动作，编码复用 `text_content` 存储，发送端复用 `fc/common` 视频号工具。
+- 测试命令：不适用，当前仅更新 spec-kit 文档，未修改业务代码。
+- 测试结果：文档更新完成；后续实现阶段按 T051-T071 执行代码和测试。
+- 自检结论：本次文档不新建 spec 目录，符合复用同一视频号发送链路规格的规则。
+
+### T051-T055 作业点评配置台视频号动作配置
+
+- 执行内容：在 `data-RC/juzi-service` 新增 `HomeworkActionType.VIDEO_CHANNEL`；`HomeworkActionDto` 增加 `videoChannelCode`；`HomeworkConfigService` 新增编码 trim、大写规范化和 `V` 加数字校验，并复用 `text_content` 存储编码；`addAction` / `updateAction` 和 admin / compat controller 均支持 `videoChannelCode`；`homework-config.html` 下拉、输入、展示、新增和编辑流程支持视频号编码。
+- 测试命令：`mvn -pl juzi-service -DskipTests=false -Dtest=HomeworkConfigServiceVideoChannelTest test`
+- 测试结果：`Tests run: 2, Failures: 0, Errors: 0, Skipped: 0`，`BUILD SUCCESS`。
+- 自检结论：`v15` 能保存为 `V15` 并输出 `videoChannelCode`；非法编码被拒绝；`VIDEO_CHANNEL` 不触发文件上传字段，未新增数据库字段。
+
+### T056-T061 sop-reply 配置发送链路支持 VIDEO_CHANNEL
+
+- 执行内容：在 `SopActionType` / `SopAction` 增加 `VIDEO_CHANNEL` / `videoChannelCode`；新增 `SopVideoChannelSender`，接入 `VideoChannelMessageService`、`VideoChannelConfigLoader.fromDefaultResource()`、`UrlVideoChannelRawMessageReader`、30 分钟 raw JSON Redis 缓存适配和 7 天限发适配；`SopConfigSender` 新增视频号分支，优先读取 `videoChannelCode`，兼容 `textContent`，并保留 delay、条件匹配、`wxsend=false` 预览和 sentCount 语义。
+- 测试命令：`mvn -pl common,sop-reply -am test`
+- 测试结果：common `Tests run: 22, Failures: 0, Errors: 0, Skipped: 0`；sop-reply `Tests run: 13, Failures: 0, Errors: 0, Skipped: 0`；整体 `BUILD SUCCESS`。
+- 自检结论：`SopVideoChannelSenderTest` 已验证 `VIDEO_CHANNEL/V15` 构造 `messageType=14` 请求且 payload 来自 raw JSON；`SopConfigSenderTest` 已验证配置动作调用视频号发送器、`textContent` 兼容读取和视频号跳过后继续发送后续文本动作。
+
+### T062-T066 HomeWorkCommentService 支持视频号编码发送
+
+- 执行内容：`SendInfo` 增加 `videoChannelCodes`；`HomeWorkCommentService` 增加可注入的 `SopVideoChannelSender` 和 `sendVideoChannel(WebChatVoiceDto, String, Integer)`；`sendInfo` 在奖励图片之后、提醒文本之前按编码列表发送视频号，不改变原有文本、语音、文件、图片顺序；`PianoVideoHomeWorkHandleServiceImpl` 保持识别职责，未拼接真实视频号 payload。
+- 测试命令：`mvn -pl common,sop-reply -am test`
+- 测试结果：见 T056-T061，`HomeWorkCommentServiceVideoChannelTest` 通过。
+- 自检结论：旧发送链路具备按编码发送视频号能力；人工接管静默判断仍保留，限发/未知编码/异常由视频号发送适配器跳过并记录，不阻断后续消息。
+
+### T067-T071 回归验证与文档记录
+
+- 执行内容：完成 Phase 9-12 代码实现和自动化测试；复查 FR-034 至 FR-045、SC-014 至 SC-019；更新任务勾选、执行记录、requirements 备注和 D004 验证结果。
+- 测试命令：`mvn -pl common,sop-reply -am test`；`mvn -pl juzi-service -DskipTests=false test`
+- 测试结果：`common+sop-reply` 整体 `BUILD SUCCESS`；`juzi-service` 全量测试 `Tests run: 161, Failures: 0, Errors: 0, Skipped: 1`，`BUILD SUCCESS`。
+- 自检结论：配置台、配置发送链路、旧发送链路和既有动作类型回归均已验证；未执行本地 commit，等待用户验收。
 

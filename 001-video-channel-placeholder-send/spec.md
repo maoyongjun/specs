@@ -3,7 +3,7 @@
 **功能分支**: `001-video-channel-placeholder-send`  
 **创建日期**: 2026-04-29  
 **状态**: Draft  
-**输入**: 用户描述："增加视频号消息的占位发送。修改 `C:\workspace\ju-chat\fc\ai-reply` 和 `C:\workspace\ju-chat\fc\delay-mq`，在收到扣子的消息后执行 `sendJuzi` 时，拆分出文本、图片、视频号消息分开发送。视频号定义为 `##{channels:V18}`，V 不区分大小写。发送逻辑参考 `C:\workspace\ju-chat\fc\delay-mq\src\test\java\TestSendVideoChannelBatchMessage` demo。工具类优先放 common，ai-reply 和 delay-mq 尽量共享逻辑。根据 `video-channel-batch-config.json` 获取 OSS URL 后，实际 JSON 需要 30 分钟 Redis 缓存。"；2026-05-06 增量："增加一个 7 天内只发送一次视频号限制。"；2026-05-06 二次增量："新增 `##{text:...}` 条件文本，占位文本根据后面紧邻视频号是否发送决定是否发送。"
+**输入**: 用户描述："增加视频号消息的占位发送。修改 `C:\workspace\ju-chat\fc\ai-reply` 和 `C:\workspace\ju-chat\fc\delay-mq`，在收到扣子的消息后执行 `sendJuzi` 时，拆分出文本、图片、视频号消息分开发送。视频号定义为 `##{channels:V18}`，V 不区分大小写。发送逻辑参考 `C:\workspace\ju-chat\fc\delay-mq\src\test\java\TestSendVideoChannelBatchMessage` demo。工具类优先放 common，ai-reply 和 delay-mq 尽量共享逻辑。根据 `video-channel-batch-config.json` 获取 OSS URL 后，实际 JSON 需要 30 分钟 Redis 缓存。"；2026-05-06 增量："增加一个 7 天内只发送一次视频号限制。"；2026-05-06 二次增量："新增 `##{text:...}` 条件文本，占位文本根据后面紧邻视频号是否发送决定是否发送。"；2026-06-23 增量："修改 `C:\workspace\ju-chat\data-RC\juzi-service` 作业点评配置台配置，增加视频号发送配置，配置时填写视频号编码例如 `V15`，发送时按 `C:\workspace\ju-chat\fc\common\src\main\resources\video-channel-batch-config.json` 转化为实际视频号发送信息；`PianoVideoHomeWorkHandleServiceImpl` 识别后通过 `C:\workspace\ju-chat\fc\sop-reply\src\main\java\com\drh\homework\service\HomeWorkCommentService.java` 发送时需要支持视频号。"
 
 ## 用户场景与测试 *(必填)*
 
@@ -107,6 +107,24 @@
 4. **Given** 条件文本绑定的 V18 因配置缺失、OSS 失败、JSON 解析失败或 payload 构建失败无法发送，**When** 系统处理绑定组合，**Then** 条件文本和 V18 都不发送，并继续发送其他有效片段。
 5. **Given** 条件文本已发送但绑定视频号函数计算同步提交失败，**When** 系统捕获异常，**Then** 释放本次 7 天限发占位，但不回滚已发送条件文本，以保持正常情况下文本在视频号前面的顺序。
 
+---
+
+### 用户故事 7 - 作业点评配置台配置视频号编码并由 sop-reply 发送（优先级：P1）
+
+运营在作业点评配置台维护点评策略时，可以新增 `VIDEO_CHANNEL` 动作并填写 `V15` 这类视频号编码。配置台生成的 JSON 只保存编码，不保存真实视频号 payload；`sop-reply` 发送时根据编码读取 `video-channel-batch-config.json`，再转化为真实视频号发送信息。
+
+**优先级原因**：视频号配置需要由运营在现有作业点评策略里维护，且后续会继续追加更多视频号编码；如果把真实 payload 写入配置台，会造成配置复杂、易错且难以复用已有缓存和限发能力。
+
+**独立测试**：通过配置台新增 `VIDEO_CHANNEL` 动作，填写 `v15` 后验证后端规范化为 `V15`、配置 JSON 输出 `videoChannelCode=V15`；再构造 `sop-reply` 配置发送用例，验证 `VIDEO_CHANNEL` 动作使用 common 视频号工具构建 `messageType=14` payload 并发送。
+
+**验收场景**：
+
+1. **Given** 运营在配置台新增 `VIDEO_CHANNEL` 动作并填写 `v15`，**When** 保存动作，**Then** 系统保存规范化编码 `V15`，并在配置 JSON 中输出该编码。
+2. **Given** 配置 JSON 中存在 `VIDEO_CHANNEL` 动作且编码为 `V15`，**When** `SopConfigSender` 执行动作，**Then** 发送端根据 `video-channel-batch-config.json` 查找 V15 的 `rawMsgUrl` 并构造视频号消息。
+3. **Given** `PianoVideoHomeWorkHandleServiceImpl` 完成钢琴视频作业识别且命中配置台策略，**When** 后续通过 `sop-reply` 配置发送链路发送点评动作，**Then** `VIDEO_CHANNEL` 动作能够作为策略动作被发送。
+4. **Given** 旧 `HomeWorkCommentService.sendInfo` 链路需要直接发送视频号编码，**When** `SendInfo` 或调用方提供视频号编码列表，**Then** `HomeWorkCommentService` 能按编码发送视频号消息。
+5. **Given** 配置的编码不存在、OSS 读取失败、payload 构建失败或 7 天限发命中，**When** 发送端处理该 `VIDEO_CHANNEL` 动作，**Then** 跳过该视频号并记录原因，不影响同一策略中的其他文本、语音、图片、PDF 或随机表情动作。
+
 ### 边界情况
 
 - 占位符 `##{channels:V18}` 与普通文本紧邻，没有空格或换行。
@@ -127,6 +145,12 @@
 - 7 天限发占位成功后，函数计算同步提交视频号失败。
 - 函数计算底层异步发送导致消息到达顺序可能变化。
 - `empExternalDto.getType()` 不是句子发送类型时，原有分支行为需要保持不变。
+- 配置台新增 `VIDEO_CHANNEL` 动作时填写小写编码、前后空格、空值或非法编码。
+- 配置台编辑 `VIDEO_CHANNEL` 动作时只修改编码、只修改 delay、只修改动作条件或同时修改多个字段。
+- 配置台 JSON 被旧版本 `sop-reply` 读取时未知动作类型不可影响其他动作；新版本读取旧 JSON 时现有动作类型保持兼容。
+- `VIDEO_CHANNEL` 动作不需要文件上传，也不应触发语音/图片/PDF 素材上传流程。
+- 视频号编码存储在现有动作文本字段时，不得改变 `TEXT` 动作的文本内容语义。
+- `video-channel-batch-config.json` 已存在 V15，后续继续追加其他视频号编码时无需改配置台字段结构。
 
 ## 需求 *(必填)*
 
@@ -165,6 +189,18 @@
 - **FR-031**：当条件文本已发送但绑定视频号函数计算同步提交失败时，系统 MUST 释放本次 7 天限发占位，但不承诺回滚已发送条件文本。
 - **FR-032**：`##{text:...}` 不得改变普通文本、图片、独立视频号或 `type != 1` 分支的现有发送行为。
 - **FR-033**：自动化测试 MUST 覆盖条件文本解析、绑定组合发送、7 天限发命中跳过条件文本、未绑定条件文本跳过、视频号构建失败跳过条件文本和双模块一致性。
+- **FR-034**：作业点评配置台 MUST 支持新增动作类型 `VIDEO_CHANNEL`，用于配置视频号发送动作。
+- **FR-035**：配置台 `VIDEO_CHANNEL` 动作 MUST 只要求填写视频号编码，编码格式为 `V` 或 `v` 加数字，例如 `V15`、`v15`。
+- **FR-036**：配置台保存 `VIDEO_CHANNEL` 动作时 MUST 将编码 trim 并规范化为大写，例如 `v15` 保存为 `V15`。
+- **FR-037**：配置台 MUST 拒绝空编码或非法编码，不得创建无法定位的视频号动作。
+- **FR-038**：本次实现 MUST 不新增数据库字段；视频号编码复用 `drh_ai_config_homework_action.text_content` 存储，DTO/JSON 对外输出语义字段 `videoChannelCode`。
+- **FR-039**：配置台生成的 JSON MUST 输出 `VIDEO_CHANNEL` 动作及其规范化编码，不得输出或要求维护真实视频号 payload。
+- **FR-040**：`sop-reply` 的配置发送模型 MUST 支持 `VIDEO_CHANNEL` 动作类型，并从 `videoChannelCode` 或兼容的 `textContent` 中读取编码。
+- **FR-041**：`SopConfigSender` 发送 `VIDEO_CHANNEL` 动作时 MUST 复用 `fc/common` 的视频号配置加载、OSS raw JSON 读取、30 分钟缓存、payload 构建和 7 天限发能力。
+- **FR-042**：`VIDEO_CHANNEL` 动作 MUST 使用现有 `SEND_MESSAGE` 调用边界，构造 `messageType=14` 的视频号消息，不手动携带 token。
+- **FR-043**：`HomeWorkCommentService` MUST 提供按视频号编码发送视频号消息的能力，供旧 `SendInfo` 发送链路或直接调用方复用。
+- **FR-044**：`VIDEO_CHANNEL` 动作遇到未知编码、OSS 失败、JSON 缺字段、payload 构建失败或 7 天限发命中时 MUST 跳过该动作并继续处理同一策略中的其他动作。
+- **FR-045**：新增 `VIDEO_CHANNEL` 配置和发送能力不得改变现有 `TEXT`、`VOICE`、`IMAGE`、`PDF`、`RANDOM_EMOJI` 动作的保存、JSON 输出、delay、条件匹配和发送行为。
 
 ### 关键实体
 
@@ -172,6 +208,7 @@
 - **消息片段**：从扣子回复内容中按顺序拆分出的最小发送单元，类型包括文本、图片和视频号。
 - **视频号占位符**：形如 `##{channels:V18}` 的标记，用于引用一个视频号配置编码。
 - **条件文本占位符**：形如 `##{text:说明文字}` 的控制型文本标记，只在后面紧邻视频号会发送时发送其说明文字。
+- **作业点评配置台视频号动作**：配置台中的 `VIDEO_CHANNEL` 动作，运营只配置视频号编码，发送端负责把编码转为真实视频号消息。
 - **视频号配置项**：`video-channel-batch-config.json` 中按编码维护的配置，至少包含视频号编码和 OSS 原始 JSON URL。
 - **OSS 原始 JSON**：从配置 URL 获取的实际视频号消息数据，包含头像、封面、描述、昵称、视频 URL 等 payload 字段。
 - **Redis 缓存项**：OSS 原始 JSON 的 30 分钟缓存，减少重复 OSS 请求。
@@ -195,6 +232,12 @@
 - **SC-011**：输入 `正常发送的文字##{text:条件文字}##{channels:v18}` 且 V18 可发送时，系统 100% 依次发送普通文本、条件文本和 V18 视频号。
 - **SC-012**：同一输入在 V18 7 天限发命中时，系统 100% 只发送普通文本，条件文本和 V18 视频号均不发送。
 - **SC-013**：`##{text:条件文字}` 后面未紧邻视频号时，条件文本不会作为普通文本泄露给用户，后续其他有效片段继续发送。
+- **SC-014**：配置台新增 `VIDEO_CHANNEL` 动作并输入 `v15` 时，配置保存和 JSON 输出中编码均为 `V15`。
+- **SC-015**：配置台新增 `VIDEO_CHANNEL` 动作时不要求上传文件，且不会写入 `materialUrl`、`ossUrl`、语音时长或 PDF 信息。
+- **SC-016**：`SopConfigSender` 执行 `VIDEO_CHANNEL/V15` 动作时，构造出的发送请求使用 `messageType=14`，payload 来源于 `video-channel-batch-config.json` 指向的 raw JSON。
+- **SC-017**：V15 的 raw JSON 在 30 分钟内重复读取时命中 Redis 缓存；同一外部联系人、同一企微员工、同一编码在 7 天内重复发送时命中限发并跳过。
+- **SC-018**：`HomeWorkCommentService` 接收到视频号编码列表时，能按编码发送视频号，并保持原有文本、语音、文件、图片发送顺序不回归。
+- **SC-019**：配置台和 `sop-reply` 对现有 `TEXT`、`VOICE`、`IMAGE`、`PDF`、`RANDOM_EMOJI` 的回归测试保持通过。
 
 ## 假设
 
@@ -206,3 +249,17 @@
 - 7 天限发维度限定为同一外部联系人、同一企微员工、同一视频号编码；重复命中只跳过视频号卡片，不删除相邻说明文本。
 - `##{text:...}` 是控制型条件文本，不是普通文本占位；只有紧邻后一个视频号会发送时才发送。
 - 为保持消息顺序，条件文本在绑定视频号前发送；若视频号函数计算提交失败，不回滚已发送条件文本。
+- 作业点评配置台的 `VIDEO_CHANNEL` 动作复用现有 `text_content` 存储编码，不新增表字段；后续如新增专用字段，需要单独补充迁移规格。
+- 配置台只负责编码格式校验，不负责下载或解析真实视频号 raw JSON；发送端通过 `fc/common` 统一转换编码到 payload。
+- `PianoVideoHomeWorkHandleServiceImpl` 保持识别职责，不直接拼装视频号 payload；识别成功后的动作发送由 `sop-reply` 配置发送链路或 `HomeWorkCommentService` 能力承接。
+
+## 执行记录
+
+### D004 - 作业点评配置台增加视频号编码配置（2026-06-23）
+
+- 触发：用户要求修改 `data-RC/juzi-service` 作业点评配置台，增加视频号发送配置，配置值为 `V15` 这类编码；发送时按 `fc/common/src/main/resources/video-channel-batch-config.json` 转真实视频号信息；`PianoVideoHomeWorkHandleServiceImpl` 识别后通过 `sop-reply` / `HomeWorkCommentService` 发送时支持视频号。
+- 原行为：配置台动作类型仅覆盖 `TEXT`、`VOICE`、`IMAGE`、`PDF`、`RANDOM_EMOJI`；`sop-reply` 配置发送模型和 `HomeWorkCommentService` 旧发送链路没有面向配置编码的 `VIDEO_CHANNEL` 动作能力。
+- 新行为：新增 `VIDEO_CHANNEL` 动作，配置台只保存规范化视频号编码；`sop-reply` 发送端复用 common 视频号配置、raw JSON 缓存、payload 构建和 7 天限发能力；旧 `HomeWorkCommentService` 补充按编码发送视频号的基础能力。
+- 文档同步：已将本增量同步到用户故事 7、边界情况、FR-034 至 FR-045、SC-014 至 SC-019、假设、`tasks.md` Phase 9-12、`AGENTS.md` 和 `checklists/requirements.md`。
+- 实现结果：已完成 `data-RC/juzi-service` 配置台 `VIDEO_CHANNEL` 编码配置、`fc/sop-reply` 配置动作发送和 `HomeWorkCommentService` 旧链路按编码发送能力；配置台仍只输出编码，真实视频号 payload 由发送端通过 `fc/common` 构建。
+- 验证结果：`mvn -pl common,sop-reply -am test` 通过，common `Tests run: 22`，sop-reply `Tests run: 13`；`mvn -pl juzi-service -DskipTests=false test` 通过，`Tests run: 161, Failures: 0, Errors: 0, Skipped: 1`。
