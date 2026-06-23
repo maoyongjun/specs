@@ -39,6 +39,18 @@
 - [x] T022 运行完整 `juzi-service` 测试并记录结果。
 - [x] T023 运行 `diff --check` 并记录结果。
 
+## Phase 5：D003 speakerId 多条件路由
+
+- [x] T024 确认不新增 `speakerId` 独立配置字段，不修改 route 表结构。
+- [x] T025 确认 `SopConfigSender` 已支持 `&&` 拆分 `matchKey/matchValue`，普通条件使用 String 参数匹配。
+- [x] T026 确认 `juzi-service` 已有 `CenterUtil.getCampInfoByCampDateId` 可获取 `speakerId`。
+- [x] T027 确认 `sop-reply` 当前未自动补齐 `speakerId`，是本次运行时缺口。
+- [x] T028 在 `juzi-service` SOP FC 入参补齐 `routeParams.speakerId` 和 `userMsg.speakerId`。
+- [x] T029 在 `sop-reply` 增加 `WebChatVoiceDto.speakerId` 并自动补齐 route param。
+- [x] T030 更新 `homework-config.html` matchKey 示例，提示 `speakerId` 多条件组合。
+- [x] T031 增加/更新单元测试覆盖 `speakerId` String 精确匹配和 FC payload。
+- [x] T032 运行聚焦测试和 `diff --check`。
+
 ## 执行记录
 
 ### D001 - 文档记录
@@ -60,3 +72,22 @@
   - `mvn -pl juzi-service -DskipTests=false test` 通过；159 tests, 0 failures, 0 errors, 1 skipped。
   - `git -C C:\workspace\ju-chat\data-RC diff --check` 通过；仅有 Git 换行提示。
   - `git -C C:\workspace\ju-chat\specs diff --check -- 100-juzi-yaqi-fixed-agent` 通过。
+
+### D003 - speakerId 多条件路由文档记录
+
+- 执行内容：
+  - 复查 `fc\sop-reply` 发送链路和 `data-RC\juzi-service` 配置链路，确认 `matchKey/matchValue` 可承载 `speakerId` 多条件，不需要新增字段。
+  - 确认缺口是运行时未稳定注入 `speakerId`，导致配置 `currentDay&&homeworkDayRelation&&speakerId` 时缺少实际参数。
+  - 确认比较口径为 `String.valueOf(speakerId).trim()` 后参与普通条件精确相等。
+- 自检结论：D003 可在不改表结构、不改 `route-config` AI/Agent 字段的前提下，通过补齐 SOP 路由参数实现。
+- 实现结果：
+  - `juzi-service` 的 `DefaultSopRouteEvaluator` 和 `MessageServiceImpl` 异步 SOP 入参已写入 `routeParams.speakerId`、`userMsg.speakerId`。
+  - `fc\sop-reply` 已新增 `WebChatVoiceDto.speakerId`，`SopReply` 上游优先、缺失时按 `camp_date_id` 查询 Center 补齐。
+  - `SopConfigSender` 已从 `userMsg.speakerId` 补齐匹配参数；`speakerId` 与配置值均按 String 精确相等。
+  - `homework-config.html` 的 route match 示例已更新为 `currentDay&&homeworkDayRelation&&speakerId`。
+- 验证结果：
+  - `mvn -pl juzi-service -DskipTests=false "-Dtest=DefaultSopRouteEvaluatorTest,MessageServiceImplSopGateTest,YaqiAgentRouteServiceTest" test` 通过，11 tests, 0 failures, 0 errors。
+  - `mvn -pl sop-reply -DskipTests=false "-Dtest=SopConfigSenderTest#shouldMatchSpeakerIdInAndRouteConditions" test` 通过，1 test, 0 failures, 0 errors。
+  - `git -C C:\workspace\ju-chat\data-RC diff --check` 通过，仅有换行提示。
+  - `git -C C:\workspace\ju-chat\fc diff --check -- sop-reply/...` 通过，仅有换行提示。
+  - `git -C C:\workspace\ju-chat\specs diff --check -- 100-juzi-yaqi-fixed-agent` 通过，仅有换行提示。

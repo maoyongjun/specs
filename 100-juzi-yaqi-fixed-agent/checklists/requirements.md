@@ -29,6 +29,7 @@
 - [x] 不存在未处理的调用后赋值风险。
 - [x] 外部接口、FC、Redis 的关键参数已有下游参数断言方案。
 - [x] 本次会新增 Center 查询和缓存，已记录失败降级策略。
+- [x] D003 已确认 `speakerId` 参数来源、上游优先级和 String 精确匹配口径。
 
 ## 实施就绪度
 
@@ -38,3 +39,4 @@
 - [x] 每个关键需求至少有一条测试、编译或静态验证任务。
 - [x] 单元测试计划避免真实访问 Redis、Center、RocketMQ、FC 或外部 HTTP。
 - [x] 补充和纠正需求已同步更新 `spec.md`、`tasks.md` 和 `AGENTS.md`。
+- [x] D003 明确不新增表结构、不新增 route 独立字段、不修改 `route-config` AI/Agent 规则模型。
