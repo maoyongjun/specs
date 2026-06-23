@@ -61,3 +61,10 @@
   - `mvn -f C:\workspace\ju-chat\fc\pom.xml -pl sop-reply -am test "-Dtest=PianoVideoPromptRoutingTest" "-Dsurefire.failIfNoSpecifiedTests=false"`
 - 测试结果：Gemini-Api `Tests run: 39, Failures: 0, Errors: 0`；sop-reply `Tests run: 4, Failures: 0, Errors: 0`；均 BUILD SUCCESS。
 - 自检结论：speakerId 透传、提示词 env 路由（110/113）、组X/组Y/未匹配、四种 submissionType、仅注入不覆盖、110 不回归均有测试断言；下游参数（taskObj.speakerId、所选 env 名、注入 prompt 的 recognizedGroup/submissionType）已断言。剩余风险=雅琪阈值与组X模板待真实样本回归校准。
+
+### D003 - 纠正记录（gap 阈值放宽）
+
+- 触发原因：13 个真实视频回归发现 D4「沧海一声笑·有和弦」左手和弦低音混入音序，使 groupX≈groupY、gap 跌破 0.10 判未匹配（方向仍 groupY 占优）。用户确认放宽 gap。
+- 修正内容：`YAQI_GROUP_MIN_GAP` 由 0.10 改为 0.0（达 min_score 后按更高分组判定）；详见 `spec.md` D003。
+- 测试结果：`PianoNoteSequenceTemplateMatcherTest`（含新增 yaqi_D4_3 样本）+ `PianoHomeWorkVideoV2TaskTest` 共 40 个单测全过；真实回归 yaqi_D4_3 由未匹配改判组Y。
+- 自检结论：D1-D3 gap 均远大于 0，不回归；雅琪仅注入不覆盖 + min_score 把关，鲁棒性可接受。临时回归测试已删除。

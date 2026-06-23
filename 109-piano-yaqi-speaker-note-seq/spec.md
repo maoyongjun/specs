@@ -178,3 +178,11 @@
   - `mvn -f C:\workspace\ju-chat\fc\pom.xml -pl sop-reply -am test "-Dtest=PianoVideoPromptRoutingTest" "-Dsurefire.failIfNoSpecifiedTests=false"`
 - 测试结果：Gemini-Api `Tests run: 39, Failures: 0, Errors: 0`（含新增 4 个雅琪集成 + 3 个 matchYaqi，原 32 不回归）；sop-reply `Tests run: 4, Failures: 0, Errors: 0`；均 BUILD SUCCESS。雅琪组Y 实测 groupYScore=1.0、groupXScore=0.64、gap=0.36，expectedDay=D1 时 submissionType=提前提交。
 - 自检结论：满足 FR-001~012 与 SC-001~007；speakerId 在 FC 提交前写入、雅琪证据在注入前算好、`templateMatch=null` 天然不覆盖、110 走原 `match`；剩余风险=雅琪阈值（0.40/0.10）与组X模板需真实样本回归校准；提示词 env `piano_video_prompt_speaker_113` 需部署侧配置。
+
+### D003 - 纠正记录（雅琪曲目组 gap 阈值放宽）
+
+- 触发原因：用户提供 13 个真实视频，经 `FcOssFFmpeg-3278/VideoToNoteSeq` 同步提取音序后回归。D1-D3（10 个）全部稳定命中组X；D4「沧海一声笑·有和弦」3 个里 `yaqi_D4_1` 命中组Y，但 `yaqi_D4_2`(groupX=0.45/groupY=0.48)、`yaqi_D4_3`(groupX=0.67/groupY=0.68) 因左手三音和弦低音被单音 pyin 混入、拉近两组音级分布，`scoreGap`(0.01~0.03) 跌破原阈值 0.10 → 判未匹配（但 groupY 方向仍占优）。经 AskUserQuestion 确认选「放宽 gap 门槛」。
+- 修正内容：旧口径 `YAQI_GROUP_MIN_GAP=0.10`；新口径=`0.0`（达 `YAQI_GROUP_MIN_SCORE=0.40` 后按更高分组判定、不要求分差，由 `min_score` 把关）。D1-D3 的 gap 均 0.12~0.46，不受影响；雅琪仅注入不覆盖、有 `min_score` 把关，鲁棒性可接受。
+- 文档同步：`spec.md`（本记录、假设阈值由 0.40/0.10 改为 0.40/0.0）、`tasks.md`（D003）。
+- 验证结果：`PianoNoteSequenceTemplateMatcherTest` 新增真实 `yaqi_D4_3` 序列样本断言命中组Y，40 个单测全过；真实回归 `yaqi_D4_3` 由「未匹配」改判「组Y(沧海一声笑)」PASS（groupX=0.67/groupY=0.68，gap=0.01）。`yaqi_D4_2` 数据（groupY 0.48 > groupX 0.45）在 gap=0 下确定命中组Y。
+- 备注：FC `VideoToNoteSeq` 同步调用在高负载时偶发超时（`yaqi_D1_1`/`yaqi_D4_2` 多次 ERROR，单次曾达 175s），属音序提取服务性能波动，与识别逻辑无关；生产用异步 + Redis（10min 等待超时）规避。回归用的临时手动测试 `YaqiVideoRegressionManualTest` 已删除、不入库。
