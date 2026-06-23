@@ -1,0 +1,10 @@
+{
+  "operator": "yaqi_prod_sync_20260623",
+  "prodOldSku4EnabledRoutes": 14,
+  "prodExistingYaqiLikeRoutes": 0,
+  "newStrategies": 4,
+  "newActions": 28,
+  "newRoutes": 4,
+  "syncSql": "C:\\workspace\\ju-chat\\specs\\108-yaqi-piano-homework-config\\sql\\prod-sync-yaqi-piano-config.sql",
+  "rollbackSql": "C:\\workspace\\ju-chat\\specs\\108-yaqi-piano-homework-config\\sql\\rollback-prod-yaqi-piano-config.sql"
+}

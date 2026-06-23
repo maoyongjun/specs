@@ -1,0 +1,18 @@
+{
+  "risk": "dml",
+  "row_count": 1,
+  "affected_rows": 50,
+  "truncated": false,
+  "columns": [
+    "yaqi_enabled_strategy",
+    "yaqi_enabled_action",
+    "yaqi_enabled_route"
+  ],
+  "rows": [
+    {
+      "yaqi_enabled_strategy": 4,
+      "yaqi_enabled_action": 28,
+      "yaqi_enabled_route": 4
+    }
+  ]
+}

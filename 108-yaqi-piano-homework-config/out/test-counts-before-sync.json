@@ -1,0 +1,24 @@
+{
+  "risk": "readonly",
+  "row_count": 1,
+  "affected_rows": 0,
+  "truncated": false,
+  "columns": [
+    "enabled_strategy_count",
+    "enabled_action_count",
+    "enabled_route_count",
+    "total_strategy_count",
+    "total_action_count",
+    "total_route_count"
+  ],
+  "rows": [
+    {
+      "enabled_strategy_count": 75,
+      "enabled_action_count": 186,
+      "enabled_route_count": 73,
+      "total_strategy_count": 80,
+      "total_action_count": 317,
+      "total_route_count": 73
+    }
+  ]
+}

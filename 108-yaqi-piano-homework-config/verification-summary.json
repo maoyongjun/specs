@@ -1,0 +1,93 @@
+{
+  "routeCount": 18,
+  "liyao": [
+    {
+      "day": 1,
+      "routeId": 14,
+      "name": "day1-1-prod"
+    },
+    {
+      "day": 2,
+      "routeId": 17,
+      "name": "day2-1-prod"
+    },
+    {
+      "day": 3,
+      "routeId": 20,
+      "name": "day3-1-prod"
+    },
+    {
+      "day": 4,
+      "routeId": 23,
+      "name": "day4-1-prod"
+    }
+  ],
+  "yaqi": [
+    {
+      "day": 1,
+      "routeId": 125,
+      "name": "yaqi-piano-day1-comment1"
+    },
+    {
+      "day": 2,
+      "routeId": 126,
+      "name": "yaqi-piano-day2-comment1"
+    },
+    {
+      "day": 3,
+      "routeId": 127,
+      "name": "yaqi-piano-day3-comment1"
+    },
+    {
+      "day": 4,
+      "routeId": 128,
+      "name": "yaqi-piano-day4-comment1"
+    }
+  ],
+  "otherSpeaker": [
+    {
+      "day": 1,
+      "routeId": null,
+      "name": null
+    },
+    {
+      "day": 2,
+      "routeId": null,
+      "name": null
+    },
+    {
+      "day": 3,
+      "routeId": null,
+      "name": null
+    },
+    {
+      "day": 4,
+      "routeId": null,
+      "name": null
+    }
+  ],
+  "day1Questions": {
+    "节奏有问题": [
+      "VOICE",
+      "VIDEO_CHANNEL",
+      "TEXT",
+      "VOICE",
+      "TEXT",
+      "VOICE"
+    ],
+    "翘指": [
+      "VOICE",
+      "VIDEO_CHANNEL",
+      "VOICE",
+      "VOICE",
+      "VOICE"
+    ],
+    "折指": [
+      "VOICE",
+      "VIDEO_CHANNEL",
+      "VOICE",
+      "VOICE",
+      "VOICE"
+    ]
+  }
+}

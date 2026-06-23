@@ -1,0 +1,14 @@
+{
+  "sync_sql": "C:\\workspace\\ju-chat\\specs\\108-yaqi-piano-homework-config\\sql\\sync-test-homework-config-from-prod.sql",
+  "rollback_sql": "C:\\workspace\\ju-chat\\specs\\108-yaqi-piano-homework-config\\sql\\rollback-test-homework-config-before-sync.sql",
+  "prod_counts": {
+    "drh_ai_config_homework_route": 73,
+    "drh_ai_config_homework_action": 316,
+    "drh_ai_config_homework_strategy": 80
+  },
+  "test_backup_counts": {
+    "drh_ai_config_homework_route": 73,
+    "drh_ai_config_homework_action": 317,
+    "drh_ai_config_homework_strategy": 80
+  }
+}

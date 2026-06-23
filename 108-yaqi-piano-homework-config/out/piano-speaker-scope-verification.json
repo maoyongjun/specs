@@ -1,0 +1,16 @@
+{
+  "risk": "readonly",
+  "row_count": 0,
+  "affected_rows": 0,
+  "truncated": false,
+  "columns": [
+    "route_id",
+    "day_num",
+    "comment_index",
+    "comment_match_type",
+    "match_key",
+    "match_value",
+    "strategy_name"
+  ],
+  "rows": []
+}

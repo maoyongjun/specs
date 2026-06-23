@@ -1,0 +1,632 @@
+{
+  "baseUrl": "https://test-api.opensplendid.cn/juzi-service",
+  "operator": "yaqi_config_20260623",
+  "skuId": "4",
+  "speakerId": "113",
+  "strategies": [
+    {
+      "id": 87,
+      "name": "yaqi-piano-day1-comment1",
+      "skuId": "4",
+      "actions": []
+    },
+    {
+      "id": 88,
+      "name": "yaqi-piano-day2-comment1",
+      "skuId": "4",
+      "actions": []
+    },
+    {
+      "id": 89,
+      "name": "yaqi-piano-day3-comment1",
+      "skuId": "4",
+      "actions": []
+    },
+    {
+      "id": 90,
+      "name": "yaqi-piano-day4-comment1",
+      "skuId": "4",
+      "actions": []
+    }
+  ],
+  "actions": [
+    {
+      "day": 1,
+      "question": "折指",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\折指\\D1_1.mp3",
+      "action": {
+        "id": 359,
+        "orderIndex": 1,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "折指",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%36%31%61%61%61%30%64%30%66%34%65%32%35%33%31%32%30%64.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/570603ce57cb42d7b7ec60429741e54a.mp3",
+        "voiceDurationMillis": 27000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 27000
+      }
+    },
+    {
+      "day": 1,
+      "question": "折指",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\折指\\D1_2_V23.txt",
+      "action": {
+        "id": 360,
+        "orderIndex": 2,
+        "type": "VIDEO_CHANNEL",
+        "conditionKey": "question",
+        "conditionValue": "折指",
+        "textContent": null,
+        "videoChannelCode": "V23",
+        "materialUrl": null,
+        "ossUrl": null,
+        "voiceDurationMillis": null,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 2000
+      }
+    },
+    {
+      "day": 1,
+      "question": "折指",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\折指\\D1_3.mp3",
+      "action": {
+        "id": 361,
+        "orderIndex": 3,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "折指",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%36%32%61%30%36%37%63%30%66%64%37%39%62%66%61%31%66%38.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/8d1c58eeb6454c8d85b3bb4d339b44b0.mp3",
+        "voiceDurationMillis": 35000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 35000
+      }
+    },
+    {
+      "day": 1,
+      "question": "折指",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\折指\\D1_4.mp3",
+      "action": {
+        "id": 362,
+        "orderIndex": 4,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "折指",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%36%34%61%30%36%37%63%30%66%64%37%39%62%66%61%32%63%35.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/d566ea6559a5449e868c13d12a68d337.mp3",
+        "voiceDurationMillis": 35000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 35000
+      }
+    },
+    {
+      "day": 1,
+      "question": "折指",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\折指\\D1_5.mp3",
+      "action": {
+        "id": 363,
+        "orderIndex": 5,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "折指",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%36%36%61%61%61%30%64%30%66%34%65%32%35%33%31%34%34%37.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/0d4d861ae301459e8ca1480958d218ea.mp3",
+        "voiceDurationMillis": 20000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 20000
+      }
+    },
+    {
+      "day": 1,
+      "question": "翘指",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\翘指\\D1_1.mp3",
+      "action": {
+        "id": 364,
+        "orderIndex": 1,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "翘指",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%36%37%34%34%31%38%65%65%61%61%65%35%31%35%39%36%36%63.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/65f75b49bc5d4863b23dab54be70fe86.mp3",
+        "voiceDurationMillis": 27000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 27000
+      }
+    },
+    {
+      "day": 1,
+      "question": "翘指",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\翘指\\D1_2_V23.txt",
+      "action": {
+        "id": 365,
+        "orderIndex": 2,
+        "type": "VIDEO_CHANNEL",
+        "conditionKey": "question",
+        "conditionValue": "翘指",
+        "textContent": null,
+        "videoChannelCode": "V23",
+        "materialUrl": null,
+        "ossUrl": null,
+        "voiceDurationMillis": null,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 2000
+      }
+    },
+    {
+      "day": 1,
+      "question": "翘指",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\翘指\\D1_3.mp3",
+      "action": {
+        "id": 366,
+        "orderIndex": 3,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "翘指",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%36%39%61%30%36%37%63%30%66%64%37%39%62%66%61%35%35%34.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/0105a163d2244123bd6bf67fb505e8d7.mp3",
+        "voiceDurationMillis": 20000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 20000
+      }
+    },
+    {
+      "day": 1,
+      "question": "翘指",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\翘指\\D1_4.mp3",
+      "action": {
+        "id": 367,
+        "orderIndex": 4,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "翘指",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%36%61%61%30%36%37%63%30%66%64%37%39%62%66%61%36%30%33.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/4ea58b699f5a4ebbb715950dc06a1610.mp3",
+        "voiceDurationMillis": 35000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 35000
+      }
+    },
+    {
+      "day": 1,
+      "question": "翘指",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\翘指\\D1_5.mp3",
+      "action": {
+        "id": 368,
+        "orderIndex": 5,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "翘指",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%36%63%34%34%31%38%65%65%61%61%65%35%31%35%39%38%30%37.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/d7ad402c4d2b48d28489d9ec6b3c6261.mp3",
+        "voiceDurationMillis": 20000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 20000
+      }
+    },
+    {
+      "day": 1,
+      "question": "节奏有问题",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\节奏有问题\\D1_1.mp3",
+      "action": {
+        "id": 369,
+        "orderIndex": 1,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "节奏有问题",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%36%64%61%61%61%30%64%30%66%34%65%32%35%33%31%36%66%36.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/4fcc8c79aaad4b3f975709a942f1e318.mp3",
+        "voiceDurationMillis": 27000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 27000
+      }
+    },
+    {
+      "day": 1,
+      "question": "节奏有问题",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\节奏有问题\\D1_2_V24.txt",
+      "action": {
+        "id": 370,
+        "orderIndex": 2,
+        "type": "VIDEO_CHANNEL",
+        "conditionKey": "question",
+        "conditionValue": "节奏有问题",
+        "textContent": null,
+        "videoChannelCode": "V24",
+        "materialUrl": null,
+        "ossUrl": null,
+        "voiceDurationMillis": null,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 2000
+      }
+    },
+    {
+      "day": 1,
+      "question": "节奏有问题",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\节奏有问题\\D1_3.txt",
+      "action": {
+        "id": 371,
+        "orderIndex": 3,
+        "type": "TEXT",
+        "conditionKey": "question",
+        "conditionValue": "节奏有问题",
+        "textContent": "很多老师都不会在前期讲到的节奏问题，老师必须给您讲一下！在练习阶段，一定要越慢越好，不要追求速度，把节奏放下来，用嘴打节拍最好~",
+        "videoChannelCode": null,
+        "materialUrl": null,
+        "ossUrl": null,
+        "voiceDurationMillis": null,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 2000
+      }
+    },
+    {
+      "day": 1,
+      "question": "节奏有问题",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\节奏有问题\\D1_4.mp3",
+      "action": {
+        "id": 372,
+        "orderIndex": 4,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "节奏有问题",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%36%66%61%30%36%37%63%30%66%64%37%39%62%66%61%37%37%30.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/f4b06e4a5c8049b08689421463ea7747.mp3",
+        "voiceDurationMillis": 12000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 12000
+      }
+    },
+    {
+      "day": 1,
+      "question": "节奏有问题",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\节奏有问题\\D1_5.txt",
+      "action": {
+        "id": 373,
+        "orderIndex": 5,
+        "type": "TEXT",
+        "conditionKey": "question",
+        "conditionValue": "节奏有问题",
+        "textContent": "另外老师看咱们指法的运用总体还是不错的",
+        "videoChannelCode": null,
+        "materialUrl": null,
+        "ossUrl": null,
+        "voiceDurationMillis": null,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 2000
+      }
+    },
+    {
+      "day": 1,
+      "question": "节奏有问题",
+      "file": "C:\\workspace\\homework_yaqi\\D1\\节奏有问题\\D1_6.mp3",
+      "action": {
+        "id": 374,
+        "orderIndex": 6,
+        "type": "VOICE",
+        "conditionKey": "question",
+        "conditionValue": "节奏有问题",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%37%30%61%61%61%30%64%30%66%34%65%32%35%33%31%37%64%39.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/37ccbbd055df426894f271d5119d89c2.mp3",
+        "voiceDurationMillis": 35000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 35000
+      }
+    },
+    {
+      "day": 2,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D2\\D2_1.mp3",
+      "action": {
+        "id": 375,
+        "orderIndex": 1,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%37%32%34%34%31%38%65%65%61%61%65%35%31%35%39%39%62%63.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/97292562b32748a4ab13b924c9a8f76e.mp3",
+        "voiceDurationMillis": 41000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 41000
+      }
+    },
+    {
+      "day": 2,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D2\\D2_2.png",
+      "action": {
+        "id": 376,
+        "orderIndex": 2,
+        "type": "IMAGE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/mh/permanent/material/5fc83141-3171-429e-9156-412880ae5786/%61%31%33%36%63%63%64%30%66%34%34%31%34%36%63%37%38%39%31%38%38%64%63%61%38%34%65%61%32%31%61%35.png",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/file/a136ccd0f44146c789188dca84ea21a5.png",
+        "voiceDurationMillis": null,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 2000
+      }
+    },
+    {
+      "day": 2,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D2\\D2_3.txt",
+      "action": {
+        "id": 377,
+        "orderIndex": 3,
+        "type": "TEXT",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": "老师用笔给您圈出来方便看",
+        "videoChannelCode": null,
+        "materialUrl": null,
+        "ossUrl": null,
+        "voiceDurationMillis": null,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 2000
+      }
+    },
+    {
+      "day": 2,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D2\\D2_4.mp3",
+      "action": {
+        "id": 378,
+        "orderIndex": 4,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%37%34%61%61%61%30%64%30%66%34%65%32%35%33%31%39%39%37.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/ea553c962bdf48cdae81892efc1723d2.mp3",
+        "voiceDurationMillis": 57000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 57000
+      }
+    },
+    {
+      "day": 2,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D2\\D2_5.mp3",
+      "action": {
+        "id": 379,
+        "orderIndex": 5,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%37%35%61%30%36%37%63%30%66%64%37%39%62%66%61%61%37%64.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/6857a673be8844509f9b60d7cfe19b19.mp3",
+        "voiceDurationMillis": 15000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 15000
+      }
+    },
+    {
+      "day": 3,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D3\\D3_1.mp3",
+      "action": {
+        "id": 380,
+        "orderIndex": 1,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%37%36%61%30%36%37%63%30%66%64%37%39%62%66%61%61%66%36.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/8e85e96dafcd4ab6aeef1e51dc3b2ca3.mp3",
+        "voiceDurationMillis": 19000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 19000
+      }
+    },
+    {
+      "day": 3,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D3\\D3_2.jpg",
+      "action": {
+        "id": 381,
+        "orderIndex": 2,
+        "type": "IMAGE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/mh/permanent/material/939d94b9-633e-4ea5-ad4d-1d512f3c85f4/%64%32%35%38%33%66%30%34%65%33%34%61%34%37%39%63%62%63%33%39%35%62%30%63%31%31%63%66%31%61%63%34.jpg",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/file/d2583f04e34a479cbc395b0c11cf1ac4.jpg",
+        "voiceDurationMillis": null,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 2000
+      }
+    },
+    {
+      "day": 3,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D3\\D3_3.mp3",
+      "action": {
+        "id": 382,
+        "orderIndex": 3,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%37%38%34%34%31%38%65%65%61%61%65%35%31%35%39%63%33%33.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/5624acb663ad4fa6b11c55a000bb916b.mp3",
+        "voiceDurationMillis": 33000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 33000
+      }
+    },
+    {
+      "day": 3,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D3\\D3_4.png",
+      "action": {
+        "id": 383,
+        "orderIndex": 4,
+        "type": "IMAGE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/mh/permanent/material/dcf8deb4-759a-494f-bc59-f3114a0e17ac/%33%62%31%30%36%65%30%37%34%66%64%66%34%62%33%34%39%63%37%61%62%38%39%64%39%35%33%65%36%35%33%62.png",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/file/3b106e074fdf4b349c7ab89d953e653b.png",
+        "voiceDurationMillis": null,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 2000
+      }
+    },
+    {
+      "day": 3,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D3\\D3_5.mp3",
+      "action": {
+        "id": 384,
+        "orderIndex": 5,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%37%61%61%61%61%30%64%30%66%34%65%32%35%33%31%63%36%32.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/4134275d46a248ea92fea9124bd9639e.mp3",
+        "voiceDurationMillis": 57000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 57000
+      }
+    },
+    {
+      "day": 4,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D4\\D4_1.mp3",
+      "action": {
+        "id": 385,
+        "orderIndex": 1,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%37%63%61%61%61%30%64%30%66%34%65%32%35%33%31%63%66%62.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/aafb1cbc20664834bc015135a1fc283c.mp3",
+        "voiceDurationMillis": 42000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 42000
+      }
+    },
+    {
+      "day": 4,
+      "question": null,
+      "file": "C:\\workspace\\homework_yaqi\\D4\\D4_2.mp3",
+      "action": {
+        "id": 386,
+        "orderIndex": 2,
+        "type": "VOICE",
+        "conditionKey": "",
+        "conditionValue": "",
+        "textContent": null,
+        "videoChannelCode": null,
+        "materialUrl": "https://kkhc.tos-cn-beijing.volces.com/eps-juzibot/permanent/material/%36%61%33%61%37%34%37%64%61%30%36%37%63%30%66%64%37%39%62%66%61%64%37%30.silk",
+        "ossUrl": "https://drh.likeduoduiyi.cn/homework/voice/4922ba0c2df44e9799d22f7dada32340.mp3",
+        "voiceDurationMillis": 27000,
+        "pdfFileName": null,
+        "pdfFileSizeBytes": null,
+        "delayMillis": 27000
+      }
+    }
+  ],
+  "routes": [
+    {
+      "day": 1,
+      "commentIndex": 1,
+      "commentMatchType": "EQ",
+      "strategyId": 87,
+      "matchKey": "currentDay&&homeworkDayRelation&&speakerId",
+      "matchValue": "1&&CURRENT&&113",
+      "skuId": "4"
+    },
+    {
+      "day": 2,
+      "commentIndex": 1,
+      "commentMatchType": "EQ",
+      "strategyId": 88,
+      "matchKey": "currentDay&&homeworkDayRelation&&speakerId",
+      "matchValue": "2&&CURRENT&&113",
+      "skuId": "4"
+    },
+    {
+      "day": 3,
+      "commentIndex": 1,
+      "commentMatchType": "EQ",
+      "strategyId": 89,
+      "matchKey": "currentDay&&homeworkDayRelation&&speakerId",
+      "matchValue": "3&&CURRENT&&113",
+      "skuId": "4"
+    },
+    {
+      "day": 4,
+      "commentIndex": 1,
+      "commentMatchType": "EQ",
+      "strategyId": 90,
+      "matchKey": "currentDay&&homeworkDayRelation&&speakerId",
+      "matchValue": "4&&CURRENT&&113",
+      "skuId": "4"
+    }
+  ]
+}
