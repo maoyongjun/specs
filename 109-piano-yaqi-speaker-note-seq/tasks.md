@@ -68,3 +68,15 @@
 - 修正内容：`YAQI_GROUP_MIN_GAP` 由 0.10 改为 0.0（达 min_score 后按更高分组判定）；详见 `spec.md` D003。
 - 测试结果：`PianoNoteSequenceTemplateMatcherTest`（含新增 yaqi_D4_3 样本）+ `PianoHomeWorkVideoV2TaskTest` 共 40 个单测全过；真实回归 yaqi_D4_3 由未匹配改判组Y。
 - 自检结论：D1-D3 gap 均远大于 0，不回归；雅琪仅注入不覆盖 + min_score 把关，鲁棒性可接受。临时回归测试已删除。
+
+### D004 - 纠正记录（组X 今日作业按 expectedDay 定 id）
+
+- 触发原因：但愿人长久 D2 视频被 Gemini 细分误判 D3。
+- 修正内容：组X 今日作业按 expectedDay 注入 `recognizedDay/recognizedId`（组Y=D4，组X 补交/提前不注入），提示词规定 id 直接采用、禁止细分；详见 `spec.md` D004。
+- 测试结果：42 单测全过；组X今日注入 D2/id2、组Y 注入 D4、组X补交不注入均有断言。
+
+### D005 - 纠正记录（分层阈值 + 未匹配判 id=-1）
+
+- 触发原因：gap=0 导致但愿人长久(0.42/0.51,gap0.09)误判沧海；用户要求分数低直接 id=-1 人工介入。
+- 修正内容：分层阈值 high=0.65/midGap=0.10 取代 gap=0；雅琪未匹配短路返回 id=-1 人工复核、不调 Gemini；详见 `spec.md` D005。
+- 测试结果：42 单测全过（含误判案例→未匹配、未匹配→id=-1 短路）；D4_3 高分仍组Y、D2_1 仍组X 不回归。

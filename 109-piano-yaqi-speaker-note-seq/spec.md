@@ -186,3 +186,20 @@
 - 文档同步：`spec.md`（本记录、假设阈值由 0.40/0.10 改为 0.40/0.0）、`tasks.md`（D003）。
 - 验证结果：`PianoNoteSequenceTemplateMatcherTest` 新增真实 `yaqi_D4_3` 序列样本断言命中组Y，40 个单测全过；真实回归 `yaqi_D4_3` 由「未匹配」改判「组Y(沧海一声笑)」PASS（groupX=0.67/groupY=0.68，gap=0.01）。`yaqi_D4_2` 数据（groupY 0.48 > groupX 0.45）在 gap=0 下确定命中组Y。
 - 备注：FC `VideoToNoteSeq` 同步调用在高负载时偶发超时（`yaqi_D1_1`/`yaqi_D4_2` 多次 ERROR，单次曾达 175s），属音序提取服务性能波动，与识别逻辑无关；生产用异步 + Redis（10min 等待超时）规避。回归用的临时手动测试 `YaqiVideoRegressionManualTest` 已删除、不入库。
+
+### D004 - 纠正记录（组X 今日作业按 expectedDay 定 id，消除 D2/D3 误判）
+
+- 触发原因：用户反馈某「但愿人长久」D2 视频被识别为 D3。根因：组X(D1/D2/D3 右手旋律相同) 内的 D1/D2/D3 细分原交给 Gemini 看视频单双手判断，Gemini 把 D2 误判 D3。
+- 修正内容：组X 是同一首曲子的不同深度，今日作业一律按当前进度 `expectedDay` 计 id。工程侧雅琪分支新增 `resolveYaqiRecognizedDay`：组X 今日作业 → `recognizedDay=D{expectedDay}`/`recognizedId=expectedDay`；组Y → D4；组X 非今日（补交/提前）不给（交模型）。注入 `engineeringContext`。提示词改为「组X 命中时 `id`/`recognizedDay` 直接采用工程侧 `recognizedDay`，禁止细分 D1/D2/D3；单双手/和弦/第三句仅作诊断」。
+- 文档同步：`spec.md`（本记录）、`tasks.md`、提示词。
+- 验证结果：单测断言组X今日注入 `recognizedDay=D2/recognizedId=2`、组Y=D4、组X补交不注入；42 单测全过。
+
+### D005 - 纠正记录（分层阈值 + 未匹配判 id=-1 人工介入）
+
+- 触发原因：D003 的 `gap=0` 太激进——用户反馈某「但愿人长久」视频（音序采集质量差、未抓到标准右手高音旋律，`groupX=0.42`/`groupY=0.51`/`gap=0.09`）被误判沧海(组Y)。两组都低分且接近时纯方向判定不可靠。用户要求「分数低的直接判 id=-1，后续人工介入」。
+- 修正内容：
+  - 分层阈值取代 `gap=0`：新增 `YAQI_GROUP_HIGH_SCORE=0.65`（高分直接判，救 D4_3=0.68 等）；`YAQI_GROUP_MIN_GAP` 恢复 `0.10`（中等分 0.40~0.65 需 `gap≥0.10` 否则未匹配）。该案例(0.51/gap0.09)改判未匹配。
+  - 未匹配（分数低）直接判 `id=-1`：雅琪曲目组未匹配时工程侧短路返回 `id=-1`/`needHumanReview=true` 人工复核 JSON（新增 `isYaqiGroupUnmatched`/`buildYaqiUnmatchedResult`），不调 Gemini 硬猜。提示词「未匹配」分支同步说明已由工程侧拦截为人工介入。
+- 文档同步：`spec.md`、`tasks.md`、提示词。
+- 验证结果：单测新增「误判案例音序→未匹配」「雅琪未匹配→id=-1 短路不调 Gemini」；matcher 11 + task 31 = 42 单测全过；D4_3(0.68)高分仍命中组Y、D2_1(gap0.12)仍组X 不回归。
+- 假设更新：D003 的阈值口径 `0.40/0.0` 被本记录的分层阈值 `min=0.40 / high=0.65 / midGap=0.10` 取代。

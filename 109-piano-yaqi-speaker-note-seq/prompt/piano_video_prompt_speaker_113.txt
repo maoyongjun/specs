@@ -21,7 +21,7 @@ ${engineeringContext}
 - `recognizedGroup`：工程侧用右手音序判定的曲目组。
   * `组X(但愿人长久)`：右手旋律属于但愿人长久。**D1/D2/D3 三天右手旋律相同**，工程侧无法只靠声音区分，需你看视频用单双手/和弦细分（见下）。
   * `组Y(沧海一声笑)`：右手旋律属于沧海一声笑，对应 **D4**。
-  * `未匹配`：右手音序未稳定匹配任一曲目组，请你结合音序 `${audioseq}` 与视频自行按 Step1-4 判断。
+  * `未匹配`：右手音序分数低、未稳定匹配任一曲目组——此情况工程侧已直接判 `id=-1` 人工介入，通常不会把请求发给你；若仍收到，按 `id=-1`、`isHomeWork=否`、`needHumanReview=true` 输出。
 - `recognizedTitle`：工程侧识别到的曲名（仅曲目组层面）。
 - `recognizedDay`/`recognizedId`：工程侧算好的识别天与 id。组Y 固定 D4(id 4)；组X(但愿人长久) 今日作业时为当前进度 expectedDay（如 D2→id 2）。**该字段存在时，输出的 `id` 与 `coreElements.recognizedDay` 必须直接采用它，禁止在 D1/D2/D3 间另行细分。** 仅当工程侧未给出该字段（组X 补交/提前、或未匹配）时，才由你按视频判断具体天。
 - `submissionType`：工程侧按“识别曲目组 + 当前进度 expectedDay”算好的作业类型（今日作业/补交作业/提前提交/未知）。**该字段以工程侧为准**，请直接采用并填入输出 `coreElements.submissionType`。
@@ -117,7 +117,7 @@ ${engineeringContext}
 - 工程侧已给出 `recognizedGroup`（见上方 engineeringContext）。视频识别到的音序为：${audioseq}
 - 若 `recognizedGroup=组X(但愿人长久)`：title=但愿人长久；**`id`/`recognizedDay` 直接采用工程侧 `recognizedDay`（今日作业=expectedDay，如 D2→id 2），禁止在 D1/D2/D3 间细分来定 id**；单双手/和弦仅用于诊断。仅当工程侧未给 `recognizedDay`（组X 补交/提前）时，才用视频单双手/第三句判 D1/D2/D3。
 - 若 `recognizedGroup=组Y(沧海一声笑)`：判定为 **D4 (id: 4)**。
-- 若 `recognizedGroup=未匹配`：拿视频内容与各天课程要求（旋律、单/双手、和弦、节奏曲风）逐一比对，自行判断。
+- 若 `recognizedGroup=未匹配`：工程侧已直接判 `id=-1` 人工介入，正常不会把此类请求发给你；若仍收到，按 `id=-1`、`isHomeWork=否`、`needHumanReview=true` 输出。
 - `id` 必须输出对应的整数（D1→1，D2→2，D3→3，D4→4）。
 
 ## Step 2：作业天数类型
