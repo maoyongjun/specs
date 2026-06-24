@@ -456,3 +456,22 @@
   - `C:\Users\EDY\Downloads\视频理解提示词V1_2.txt` 增加工程侧音序证据说明，明确高置信 `engineeringDecision` 以工程侧为准；同步版本化副本到 `prompt/piano_video_prompt_liyao_110_v1_2.txt`。
 - 额外修正：新增 D5 模板后，升半音铁血丹心样本原调最佳分被 D5 顶到边界值 `0.50`，导致原 `<0.50` 移调补救未触发；D016 将移调补救条件改为 `<=0.50`，仍只在低分边界启用，不影响原调高分样本。
 - 验证结果：`mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceTemplateMatcherTest" "-Dsurefire.failIfNoSpecifiedTests=false" test` 通过，`Tests run: 50, Failures: 0, Errors: 0, Skipped: 0`。覆盖萱草花模板高置信、D5/D6 今日作业、D3 进度提前提交、D5 进度沧海补交、低分 `id=-1`、Gemini 失败兜底使用组内天数、D2 移调补救不回归。本次未跑真实 Gemini/FC/Redis。
+
+### D017 - 纠正记录（D2 当前进度真实异步音序回归 + V5 开头指纹）
+
+- 触发原因：用户提供 Redis 连接信息并要求“再试一次，发起异步请求，提取音序，验证”。回归矩阵为 `V1-1/V1-2/V2-1/V3-1/V5-1`，假设当天/推荐进度为 `D2`；期望 `V1-* -> D1/补交作业`、`V2-1 -> D2/今日作业`、`V3-1 -> D3/提前提交`、`V5-1 -> D5/提前提交`。
+- 真实异步取音序结果：通过 `FcOssFFmpeg-3278/VideoToNoteSeq` 异步提交并轮询 Redis DB 3，可稳定拿到音序。首次工程侧音序校验中 `V1-1/V1-2/V2-1/V3-1` 均符合预期；`V5-1` 提取出的实际音序开头为 `E5 E5 E4 G3 G3 G3...`，与 D016 固定 D5 模板 `D D D F...` 存在整体采集偏移/音区混入，原精确模板分 `D5=0.25`，被 D2 中分 `0.65` 压过。
+- 修正内容：`PianoNoteSequenceTemplateMatcher` 增加窄口径萱草花开头指纹规则：在前 0~3 个有效音位置内出现“三个同音后上行小三度”（提示词中的 `3 3 3 5` 轮廓）时，优先判定 D5-D6 曲目组，输出 `priorityReason=萱草花开头指纹...`，并将 `templateScores.D5.score` 提升为高置信证据分 `0.88`。该规则在 D2 结尾 E 优先与 D1 纠偏之后生效，不改变 D1/D2/D3 原有高置信、移调补救和低分人工介入规则。
+- 单测锁定：新增真实 V5 提取音序用例，断言命中 D5、`dayMin=5/dayMax=6`、`highConfidence=true`、`priorityReason` 包含萱草花开头指纹。聚焦测试 `mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceTemplateMatcherTest" "-Dsurefire.failIfNoSpecifiedTests=false" test` 通过；本地报告为 `PianoHomeWorkVideoV2TaskTest` 37 个、`PianoNoteSequenceTemplateMatcherTest` 14 个，均 0 失败。
+- 异步音序回归结论：D2 当前进度矩阵已通过 5/5。`V1-1`：有效音 35，D1，`id=1`，补交作业；`V1-2`：有效音 34，D1，`id=1`，补交作业；`V2-1`：有效音 13，D2，`id=2`，今日作业；`V3-1`：有效音 26，D3，`id=3`，提前提交；`V5-1` 修正后：有效音 39，D5，`id=5`，提前提交，`bestScore=0.88`。
+- 真实主链路抽验：修正后单独跑 `PianoHomeWorkVideoV2Task` 的 `V5-1`，最终输出 `id=5`、`title=萱草花`、`coreElements.recognizedDay=D5`、`coreElements.submissionType=提前提交`、`needHumanReview=false`、`confidence=0.88`。本轮未重跑 5 个视频的完整 Gemini 主链路，只完成 5 个视频的异步取音序工程验证与 V5 完整链路复验。
+- 临时日志：当次执行日志写入过 `C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-d017-async-note-retry.out.log`、`piano-regression-d017-async-note-v5-after-fix.out.log`、`piano-regression-d017-full-v5-after-fix.out.log`；这些位于 `target` 下，不作为持久交付物，后续构建可能清理。
+- 安全说明：Redis 连接信息仅作为本地进程环境变量使用，未写入仓库、spec 或测试代码。
+
+### D018 - 纠正记录（D2 长模板虚高 → D3 沧海纠偏）
+
+- 触发原因：用户提供一段沧海一声笑视频（音序 `A3 G3 C4 A2 C4 A3 G3 B2 G3 G3 C4 G4 G4 B2`），工程侧误判 D2《铁血丹心》。日志显示 D2 长模板对短音序的 LCS/coverage 虚高（`D2 coverage=1.0、score=0.76`），压过真正匹配沧海的 D3（`score=0.74`），尽管 D3 的 `histogramSimilarity(0.76)`、`contiguousPhraseSimilarity(0.28)`、`prefixSimilarity(0.5)` 都明显更强。
+- 修正内容：`PianoNoteSequenceTemplateMatcher.match` 在 D2 结尾 E 优先、D1 纠偏之后、萱草花开头指纹之前，增加 **D2→D3 窄口径纠偏** `shouldCorrectD2ToD3WhenChorusStronger`：当 `baseBest=D2`、有效音 `>=10`、`d2.score-d3.score<=0.10`、`d3.histogram>=0.70`、`d3.prefix>=0.45`、`d3.contiguous>=0.25`、且 `d3.histogram-d2.histogram>=0.15`、`d3.contiguous-d2.contiguous>=0.15` 时，改判 D3 沧海并置高置信，`priorityReason=D2长模板LCS虚高，D3音级分布与连续短语明显更强，按沧海一声笑纠偏`。关键区分特征是 **D3.prefixSimilarity>=0.45**（起手真是沧海 A-G-E-D-C），用于排除「铁血丹心 + G 重复偶然撞高 histogram/contiguous 但起手不匹配沧海」的 D2 噪声样本（该类 prefix≈0.38）。不改变 D1/D2/D3 既有高置信、移调补救、低分人工介入、萱草花指纹等规则。
+- 单测锁定：新增 `match_shouldCorrectD2ToD3WhenChorusHistogramAndPhraseStronger`（真实音序断言纠偏 D3、高置信、priorityReason 含沧海一声笑纠偏）；原 D2 噪声序列用例 `match_shouldHighConfidenceMatchNoisyD2Sequence`（prefix=0.38）仍判 D2 不回归。`PianoNoteSequenceTemplateMatcherTest`(15) + `PianoHomeWorkVideoV2TaskTest`(37) 共 52 单测全过。
+- 真实 FC 回归（expectedDay=2，组覆盖）：`V1-1->D1四季歌/补交(1.0)`、`V2-1->D2铁血/今日(0.73)`、`V3-1->D3沧海/0.87 非高置信交Gemini`、`V5-1->D5萱草花/提前(0.88)`、本案例沧海 `->D3沧海/提前(0.74) 纠偏命中`、`demo2->D2铁血/今日(0.92)`。三大修复（萱草花 D5、D2→D3 纠偏、组覆盖）全部真实数据验证，原调与 D2 噪声不回归。临时手动测试已删除、不入库。
+- 遗留：`V3-1` 沧海 `score=0.87` 但 baseBest 已是 D3、仅因 gap 不足非高置信交 Gemini，属「D3 高分但 gap 不足」既有问题，与本次 D2→D3 纠偏无关。

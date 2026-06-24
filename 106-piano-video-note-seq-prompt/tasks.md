@@ -342,3 +342,24 @@
 - 提示词：`C:\Users\EDY\Downloads\视频理解提示词V1_2.txt` 已加入 `${engineeringContext}` 说明，明确高置信 `engineeringDecision` 的 `id/recognizedDay/submissionType` 以工程侧为准；萱草花特征修正为含 `Bb/A#`、不含 `E/B`。已同步副本到 `prompt/piano_video_prompt_liyao_110_v1_2.txt`。
 - 测试命令：`mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceTemplateMatcherTest" "-Dsurefire.failIfNoSpecifiedTests=false" test`（workdir: `C:\workspace\ju-chat\fc\Gemini-Api`）。
 - 测试结果：通过，`Tests run: 50, Failures: 0, Errors: 0, Skipped: 0`。覆盖萱草花高置信 D5、D6 组内今日作业、D3 进度萱草花提前、D5 进度沧海补交、D6 Gemini 失败工程兜底、低分 `id=-1`、升半音 D2 移调补救不回归。
+
+### D017 - 执行记录（D2 当前进度真实异步音序回归 + V5 开头指纹）
+
+- 任务来源：用户要求基于真实 Redis 信息重试异步请求、提取音序并验证 `V1-1/V1-2/V2-1/V3-1/V5-1`，当前进度按 `D2` 计算。
+- 已执行：
+  - [x] 使用临时 runner 异步提交 `FcOssFFmpeg-3278/VideoToNoteSeq`，轮询 Redis DB 3，提取工程侧有效音序并调用 `PianoNoteSequenceTemplateMatcher` 验证最终 `id/recognizedDay/submissionType`。
+  - [x] 确认首次真实音序校验中 `V1-1/V1-2/V2-1/V3-1` 均符合 D2 当前进度预期。
+  - [x] 定位 `V5-1` 首次失败原因：真实提取音序呈现 `E E E G` 开头轮廓，D016 固定 D5 模板分低，且 Gemini 完整链路曾误给 D1。
+  - [x] 在 `PianoNoteSequenceTemplateMatcher` 增加窄口径萱草花开头指纹（三个同音后上行小三度）优先规则，并补真实 V5 音序单测。
+  - [x] 重跑聚焦单测与 `mvn -q -DskipTests package`。
+  - [x] 重跑 `V5-1` 异步音序工程验证与完整 `PianoHomeWorkVideoV2Task` 主链路抽验。
+- 验证结果：
+  - [x] 聚焦单测通过：`mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceTemplateMatcherTest" "-Dsurefire.failIfNoSpecifiedTests=false" test`。
+  - [x] 异步音序工程矩阵 5/5 PASS：`V1-1 -> D1/id=1/补交`，`V1-2 -> D1/id=1/补交`，`V2-1 -> D2/id=2/今日`，`V3-1 -> D3/id=3/提前`，`V5-1 -> D5/id=5/提前`。
+  - [x] `V5-1` 完整主链路复验 PASS：最终 `id=5`、`title=萱草花`、`recognizedDay=D5`、`submissionType=提前提交`、`needHumanReview=false`、`confidence=0.88`。
+- 临时日志：
+  - `C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-d017-async-note-retry.out.log`
+  - `C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-d017-async-note-v5-after-fix.out.log`
+  - `C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-d017-full-v5-after-fix.out.log`
+- 说明：以上日志位于 `target` 下，仅是当次本地回归的临时输出，后续构建可能清理；持久记录以 `spec.md`/`tasks.md` 的 D017 结果为准。
+- 注意事项：本轮没有把 Redis 密码写入仓库或规格；临时 runner 均在 `target\regression-runner` 下，仅用于本地回归。

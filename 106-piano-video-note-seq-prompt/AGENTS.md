@@ -28,6 +28,7 @@
 - D013：工程侧模板覆盖范围已扩展到 D1/D2/D3。D2 使用用户补充的左右手分句模板并保留长模板容错；D3 使用《沧海一声笑·无和弦》模板；结尾连续 3 个以上 E 音级优先判 D2。`视频理解提示词V1_2.txt` 的 D2 最新 6 视频回归为 6/6 PASS。
 - D014：`PianoNoteSequenceTemplateMatcher` 已增加 `contiguousPhraseSimilarity`（2/3/4-gram Dice overlap）和窄口径 D1 纠偏；当基础 best 为 D2 且 D2 未达高置信、D1 音级分布与连续短语显著更强时改判 D1。真实新增 D1 视频存在整体移调，D014 在 D1 纠偏内部增加 D1 模板 12 半音移调评分，命中时输出 `transpositionShift` 并按 D1 高置信覆盖。
 - D016：李瑶(110/默认)工程侧模板已扩展为 D1 四季歌、D2 铁血丹心、D3-D4 沧海一声笑、D5-D6 萱草花四个曲目组；D3/D4 与 D5/D6 组内按 `expectedDay` 算最终 `id/recognizedDay/submissionType`，不靠音频细分有无和弦。
+- D017：真实异步 FC/Redis 回归确认 D2 当前进度矩阵 `V1-1/V1-2/V2-1/V3-1/V5-1` 的工程音序验证为 5/5 PASS。`V5-1` 实际提取音序存在 `E E E G` 开头轮廓，已在 `PianoNoteSequenceTemplateMatcher` 增加萱草花“三个同音后上行小三度”开头指纹优先规则；修正后 V5 完整主链路输出 D5/提前提交。
 
 ## 执行原则
 
@@ -53,12 +54,14 @@
 - D007 异步 Redis 门禁：Java event 中 `cacheKey` 必须在异步提交前生成并传给 Python；Python 必须在有 `cacheKey` 时写 `RUNNING/SUCCESS/FAIL`；Java 必须测试 Redis `SUCCESS`/`FAIL`/超时；音序 Redis key 不得覆盖外层主任务 `cacheKey`。
 - D012/D013/D014 模板优先门禁：只有 D1/D2/D3 模板达到高置信规则或 D014 的窄口径 D1 纠偏条件时才覆盖课程分类；覆盖范围限制在分类字段，不能抹掉 Gemini 的诊断字段；低置信不覆盖。D1 移调评分只在 D1 纠偏内部作为补充证据，不能把所有模板全局改成移调匹配。若 Gemini 原分类证据与工程覆盖冲突，最终 evidence 必须替换为工程覆盖说明。
 - D016 曲目组门禁：D3-D4、D5-D6 组内最终天数必须由 `expectedDay` 与 `dayMin/dayMax` 现算；高置信工程判定、Gemini 失败兜底和提示词工程证据不得继续只写模板代表天。
+- D017 V5 指纹门禁：萱草花开头指纹只允许作为 D5-D6 曲目组的窄口径补充证据，且必须保留在 D2 结尾 E 优先、D1 纠偏之后；不得把所有 D5 匹配改成宽松移调或降低低分人工介入阈值。
 
 ## 重点代码位置
 
 - `fc/Gemini-Api/src/main/java/com/drh/gemini/api/PianoHomeWorkVideoV2Task.java`：入口 `handleRequest` 与 `analyzeVideo`（在 `validateRequired` 之后、Gemini 调用之前插入「取音序 + 替换占位符」）；新增 `NoteSequenceCaller` 接口 + 默认实现 + `buildNoteSequenceText`（按 `confidence` 阈值过滤后拼音名）+ `replacePromptPlaceholder` + 服务/函数名/置信度阈值常量与 env。
 - `fc/Gemini-Api/src/main/java/com/drh/gemini/api/PianoNoteSequenceFeatureExtractor.java`：D009 音序特征提取器，输出固定工程侧 JSON 与过滤后音序文本，不输出课程候选。
 - `fc/Gemini-Api/src/main/java/com/drh/gemini/api/PianoNoteSequenceTemplateMatcher.java`：D1/D2/D3/D5 音序模板匹配器，输出模板分数、高置信工程判定，处理 D2 结尾连续 E 音级优先规则；D014 新增 `contiguousPhraseSimilarity` 与 D1 窄口径纠偏/移调评分，D016 新增萱草花 D5-D6 曲目组证据。
+- `fc/Gemini-Api/src/test/java/com/drh/gemini/api/PianoNoteSequenceTemplateMatcherTest.java`：D017 用真实 `V5-1` 提取音序锁定萱草花开头指纹，防止回归到 D2/D1 误判。
 - `fc/sop-reply/src/main/java/com/drh/homework/service/homeworkhandle/PianoVideoHomeWorkHandleServiceImpl.java`：D009 识别 FC 触发参数增加 `expectedDay` 与私聊最近 3 条聊天记录。
 - `fc/sop-reply/src/main/java/com/drh/homework/service/SopReply.java`、`fc/sop-reply/src/main/java/com/drh/homework/dto/HomeWorkMessageDto.java`：D009 透传群聊标记与聊天记录。
 - `fc/common/src/main/java/com/drh/common/util/FcInvokeUtils.java`：D007 默认音序调用使用 `doTask` 异步提交 FC；D006 的默认 HTTP 网关方案已被取代；不要改动默认 `doSyncTask`、`doTaskWithDelay` 对其他调用方的行为。
