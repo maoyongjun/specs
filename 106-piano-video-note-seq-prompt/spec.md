@@ -182,6 +182,11 @@
 - **FR-032**：D013 工程侧 MUST 支持“过滤后有效音序结尾连续 3 个以上 E 音级”优先判定 D2《铁血丹心》，并用 pitch class 处理 `E3/E2/E4` 等八度采集差异。
 - **FR-033**：D013 高置信规则 SHOULD 支持完整覆盖率命中（例如覆盖率 `>=0.95` 且分数达标）直接高置信，避免 D2/D3 在 pitch class 空间高度相似时仅因分差不足而漏判。
 - **FR-034**：D013 高置信工程判定覆盖 Gemini 原课程分类时，若 Gemini 原 `evidence` 与最终分类冲突，系统 MUST 替换冲突 evidence 为工程侧覆盖说明；诊断字段仍按 D012 规则保留。
+- **FR-035**：D016 起，李瑶(110/默认)工程侧模板 MUST 增加 D5-D6《萱草花》曲目组模板，右手音序使用用户确认的两句萱草花音序，并与 D1/D2/D3 一起进入 `templateScores`、高置信匹配和低分人工介入判断。
+- **FR-036**：D016 起，D3-D4《沧海一声笑》和 D5-D6《萱草花》MUST 按曲目组计算最终 `id/recognizedDay/submissionType`：`expectedDay` 落在组内时取 `expectedDay`；识别组早于当前进度时取组最大天；识别组晚于当前进度时取组最小天；`expectedDay` 缺失或非法时取模板代表天且 `submissionType=未知`。
+- **FR-037**：D016 高置信 `engineeringDecision` 和 Gemini 失败工程兜底 MUST 使用工程侧按 `expectedDay` 算出的最终天数，避免 D6 今日作业因 D5 代表模板被写成 D5。
+- **FR-038**：D016 李瑶低分人工介入文案 MUST 覆盖四个曲目组：四季歌、铁血丹心、沧海一声笑、萱草花。
+- **FR-039**：D016 MUST 调整李瑶 V1_2 提示词，显式接收 `${engineeringContext}`，说明高置信 `engineeringDecision` 的 `id/recognizedDay/submissionType` 以工程侧为准，模型只负责视频诊断；萱草花描述 MUST 修正为含 `Bb/A#`、不含 `E/B`，不得再写“不含 Fa”。
 
 ## 成功标准 *(必填)*
 
@@ -203,6 +208,10 @@
 - **SC-016**：D012 单测给定低匹配或 D1/D2 分数差距不足的音序，工程侧不得覆盖 Gemini 输出。
 - **SC-017**：D012 回归使用 `C:\Users\EDY\Downloads\视频理解提示词V1_2.txt` 和 D2 当前进度，覆盖原 5 个 demo 视频及新增 `video_demo2/21bea...mp4`，期望 `V1->D1`、`V2->D2`、`V3->D3`、`V5->D5`、新增视频 `->D2`。
 - **SC-018**：D012 单测覆盖“高置信 D1/D2 模板命中但 Gemini 调用失败”时返回可解析工程兜底 JSON，分类字段正确且 `needHumanReview=true`。
+- **SC-019**：D016 单测给定完整萱草花音序时，工程侧高置信命中 D5 模板，`templateScores` 包含 D5，且模板组范围为 D5-D6。
+- **SC-020**：D016 单测覆盖萱草花在 `expectedDay=D5/D6/D3` 时分别输出 `id=5/6/5` 与 `今日作业/今日作业/提前提交`。
+- **SC-021**：D016 单测覆盖沧海一声笑在 `expectedDay=D5` 时输出 `id=4`、`recognizedDay=D4`、`submissionType=补交作业`。
+- **SC-022**：D016 聚焦测试 `PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceTemplateMatcherTest` 编译并通过；不跑真实 Gemini/FC/Redis 回归。
 
 ## 假设
 
@@ -217,6 +226,7 @@
 - D012 工程侧模板优先判定只先支持 D1/D2，因为当前用户只提供了 D1/D2 标准音序；D3/D4/D5/D6 仍按既有工程特征和提示词规则处理。若后续提供更多模板，再追加 Dxxx 扩展。
 - D012 高置信阈值实际实现为 `bestScore >= 0.70`、`bestScore - secondScore >= 0.15` 且有效音数至少 10；若起手持续下行，则抑制 D1/D2 高置信覆盖，避免误覆盖 D3/D4《沧海一声笑》类旋律。
 - Gemini-Api 通过 `com.drh:common` 传递依赖到 `com.aliyun:fc_open20210406`，`FcInvokeUtils`/`FcInvokeInput` 在本模块可用（已由 `AppTask` 实例佐证）。
+- D016 李瑶 D3/D4 与 D5/D6 的右手音序组内相同，工程侧不通过音频细分是否有和弦；组内当天取 `expectedDay`，提前/补交取组边界天。
 
 ## 执行记录
 
@@ -420,3 +430,29 @@
   - 唯一失败：`视频理解的提示词V3 + V5-1` 返回 `id=-1/未知`，同一 V5 视频在旧提示词版本 PASS 为 D5。该失败属于 D5 仍依赖 Gemini/V3 提示词排除法过硬的既有风险，不是本次 D1/D2/D3 工程模板纠偏引入。
   - 日志位置：`C:\workspace\ju-chat\fc\Gemini-Api\target\piano-regression-contiguous-20260622-232903.log`。
 - 自检结论：D014 目标中的 D1/D2 误判纠偏已生效，新增 D1 视频已纳入并在两个提示词版本通过；回归矩阵残余 1 个 V3+D5 失败，建议后续若要求矩阵全绿，单独扩展 D5/D6 工程模板或调整 V3 提示词。
+
+### D015 - 纠正记录（D2/D3 移调补救 + 低分 id=-1 人工介入）
+
+- 触发原因：用户提供一段李瑶(110)体系视频（`engineeringContext` 为 `templateScores`、无 `speakerId`/`yaqiTemplateScores`），学员把铁血丹心(D2)整体升高半音演奏：音序全升号 `F5 D#5 C#5 C5 A#4 F4 ...`，逐音降半音还原即标准铁血丹心 `E5 D5 C5 B4 A4 ...`。D2 白键模板无移调评分（D014 仅给 D1 做了纠偏内移调），`D2 score=0.21` 匹配不上、`D1=0.32` 略高但低、`highConfidence=false`，交 Gemini 误判成 D1 四季歌。
+- 修正内容：
+  1. **D2/D3 移调补救**：`match()` 在「原调(无移调)未达高置信 且 best<`TRANSPOSE_RESCUE_BELOW`(0.50) 且 有效音>=`HIGH_CONFIDENCE_MIN_OBSERVED_NOTES`(10)」时，调用 `bestTransposedRescue` 对 D1/D2/D3 计算最佳移调分，挑选「移调命中(shift≠0)、达高置信(>=0.70)、且比原调 best 高>=`TRANSPOSE_RESCUE_MIN_DELTA`(0.15)」者改判并置高置信，`priorityReason` 写“原调匹配分低，整体移调N半音后命中Dx”，`evidenceText` 追加“（整体移调N半音后命中）”。**仅低分时启用，原调演奏零影响**——避免全局移调评分破坏 D1 纠偏与 D2/D3 精细区分（曾尝试全局 `strongerScore` 导致 7 个用例回归，已回退）。
+  2. **低分 id=-1 人工介入**：`PianoHomeWorkVideoV2Task` 对李瑶(110)体系，若曲目模板最佳分（含移调补救后）仍 < `LOW_SCORE_MANUAL_REVIEW_THRESHOLD`(0.50)，直接短路返回 `id=-1`、`needHumanReview=true`，不交 Gemini 硬猜（与雅琪未匹配 -1 一致）。形成三档：高置信(含移调补救)覆盖 / 中间分(0.50~高置信)交 Gemini / 低分(<0.50) id=-1。
+- 文档同步：`spec.md`（本记录）。
+- 验证结果：`PianoNoteSequenceTemplateMatcherTest`(12) + `PianoHomeWorkVideoV2TaskTest`(32) 共 **44 个单测全过**。关键用例：`match_shouldRescueTransposedD2TieXueDanXin` 用本案例真实日志音序断言移调补救命中 D2(shift≠0)；`handleRequest_transposedD2_shouldRescueAndOverrideToD2` 端到端覆盖 `id=2/铁血丹心/recognizedDay=D2/今日作业`、evidence 含“移调”；`handleRequest_lowTemplateScore_shouldShortCircuitToManualReview` 验证 6 音半音阶低分→`id=-1`；原 7 个 D1 纠偏/D2/D3 覆盖用例不回归。
+- 备注：本案例视频音序已由用户日志给出，matcher 单测直接用真实音序锁定（→D2 移调命中）；李瑶 demo 原调回归由现有 `match` D1/D2/D3 高置信用例覆盖（移调补救低分门槛不触及高分原调）。
+- 真实 FC 回归：调 `VideoToNoteSeq` 跑 ①`video_demo2/21bea...`(D2 原调) → `bestDay=D2, score=0.92, shift=0, highConfidence=true`（移调补救未触发、原调不受影响）；②本案例升半音铁血丹心视频 → `bestDay=D2, score=0.95, shift=1, highConfidence=true`（移调补救命中升 1 半音）；③用户补充的 V1-V5 demo(`video_demo/V*.mp4`，expectedDay=2)：V1-1/V1-2 → D1 高置信覆盖(score=1.0，补交作业)、V2-1 → D2 高置信覆盖(0.73，当日作业)、V3-1 → D3(0.87)非高置信交 Gemini、V5-1(D5 无工程模板) → 工程误匹配 D2(0.65)非高置信交 Gemini。**关键确认：V5 best=0.65 未被「低分 id=-1」短路(阈值0.50)误伤**，低分短路对 D5/D6 安全；V3/V5 最终天数靠 Gemini（既有逻辑，本次未改 Gemini 链路）。临时手动测试已删除、不入库。
+
+### D016 - 纠正记录（李瑶 D5/D6 萱草花工程模板与组内天数）
+
+- 触发原因：用户要求完成 ClaudeCode 未完成的 D5/D6 萱草花音序识别收尾。当前工作树中已部分加入 D5 模板和组范围，但 `PianoHomeWorkVideoV2Task` 调用了未实现的 `resolveTemplateDayId(...)`、`resolveTemplateSubmissionType(...)`，导致 `Gemini-Api` 编译失败；同时 `templateScores` 尚未输出 D5 分数，李瑶提示词未明确 `${engineeringContext}` 分工，萱草花描述仍有“不含 Fa”的错误表述。
+- 新目标：李瑶(110/默认)工程侧曲目组统一为：D1 四季歌、D2 铁血丹心、D3-D4 沧海一声笑、D5-D6 萱草花。工程侧用右手音序判曲目组；D3/D4 与 D5/D6 组内不靠音频细分，按 `expectedDay` 决定最终天数与作业类型。
+- 参数与赋值时机：
+  - `expectedDay` 来源仍为 request `expectedDay/currentDay/logicalDay`，在 Gemini 调用前注入工程上下文，在工程覆盖/兜底时现算最终 `id/recognizedDay/submissionType`。
+  - `dayMin/dayMax` 来源为内置模板常量；D1、D2 为单天组，D3 模板代表 D3-D4，D5 模板代表 D5-D6。
+  - `engineeringDecision` 来源为高置信模板匹配；D016 后其天数必须使用 `resolveTemplateDayId` 结果，而不是模板代表天。
+- 实施内容：
+  - `PianoNoteSequenceTemplateMatcher` 将 D5《萱草花》分数完整纳入 `MatchResult` 和 `templateScores` 输出，并保留 D1/D2/D3 既有规则。
+  - `PianoHomeWorkVideoV2Task` 新增组内天数与作业类型 helper；工程覆盖与 Gemini 失败兜底统一使用组内最终天数；低分人工介入文案补齐萱草花。
+  - `C:\Users\EDY\Downloads\视频理解提示词V1_2.txt` 增加工程侧音序证据说明，明确高置信 `engineeringDecision` 以工程侧为准；同步版本化副本到 `prompt/piano_video_prompt_liyao_110_v1_2.txt`。
+- 额外修正：新增 D5 模板后，升半音铁血丹心样本原调最佳分被 D5 顶到边界值 `0.50`，导致原 `<0.50` 移调补救未触发；D016 将移调补救条件改为 `<=0.50`，仍只在低分边界启用，不影响原调高分样本。
+- 验证结果：`mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceTemplateMatcherTest" "-Dsurefire.failIfNoSpecifiedTests=false" test` 通过，`Tests run: 50, Failures: 0, Errors: 0, Skipped: 0`。覆盖萱草花模板高置信、D5/D6 今日作业、D3 进度提前提交、D5 进度沧海补交、低分 `id=-1`、Gemini 失败兜底使用组内天数、D2 移调补救不回归。本次未跑真实 Gemini/FC/Redis。

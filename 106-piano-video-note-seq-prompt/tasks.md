@@ -92,6 +92,15 @@
 - [x] T077 [D013] 更新单测：D3 模板高置信命中、E 结尾 D2 优先、D3 主链路覆盖、冲突 evidence 清理、既有 D1/D2/短路不回归。
 - [x] T078 [D013] 回跑 `Gemini-Api` 聚焦单测并记录结果。
 - [x] T079 [D013] 使用 `视频理解提示词V1_2.txt` 重跑 6 视频 D2 回归矩阵，记录最新 Pass/Warn/Fail 与日志路径。
+- [x] T080 [D016] 修复 `PianoHomeWorkVideoV2Task` 编译失败，新增 `resolveTemplateDayId` 与 `resolveTemplateSubmissionType`，按模板 `dayMin/dayMax` 和 `expectedDay` 计算最终天数与作业类型。
+- [x] T081 [D016] 补完整 D5《萱草花》模板输出：`MatchResult` 携带 D5 模板/分数，`templateScores` 输出 D5，并保留 D1/D2/D3 既有匹配规则不回归。
+- [x] T082 [D016] 让高置信 `engineeringDecision`、工程覆盖和 Gemini 失败兜底都使用工程侧按 `expectedDay` 算出的最终 `id/recognizedDay/submissionType`。
+- [x] T083 [D016] 更新李瑶低分人工介入文案，覆盖四季歌、铁血丹心、沧海一声笑、萱草花四个曲目组。
+- [x] T084 [D016] 修改 `C:\Users\EDY\Downloads\视频理解提示词V1_2.txt`，加入 `${engineeringContext}` 分工说明并修正萱草花 `Bb/A#`、不含 `E/B` 的描述。
+- [x] T085 [D016] 保存提示词版本副本到 `specs\106-piano-video-note-seq-prompt\prompt\piano_video_prompt_liyao_110_v1_2.txt`。
+- [x] T086 [D016] 更新 matcher 单测：萱草花高置信命中、`templateScores.D5` 存在、组范围 D5-D6、不误判 D2/D3。
+- [x] T087 [D016] 更新任务主链路单测：D5/D6 今日作业、D3 进度萱草花提前、D5 进度沧海补交、低分短路、Gemini 失败兜底组内天数。
+- [x] T088 [D016] 回跑 `PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceTemplateMatcherTest` 聚焦测试并记录结果。
 
 ## 执行记录
 
@@ -315,3 +324,21 @@
   - 新增 D1 样本：两个提示词版本均 PASS 为 `D1/补交`；工程 JSON 显示 `D1.score=0.85`、`D2.score=0.66`、`scoreGap=0.19`、`transpositionShift=7`、`priorityReason` 包含 D1 整体移调纠偏。
   - 唯一失败：`视频理解的提示词V3 + V5-1` 返回 `id=-1/未知`，同一 V5 视频在旧提示词版本 PASS 为 D5。该失败属于 D5 仍依赖 Gemini/V3 提示词排除法过硬的既有风险，不是 D014 的 D1/D2/D3 模板改动引入。
 - 自检结论：D014 的 D1 误判纠偏已完成；新增 D1 视频纳入并通过；若要求两个提示词版本 14/14 全绿，需要另起 D5/D6 工程模板或 V3 提示词调整任务。
+
+### D016 - 计划记录（李瑶 D5/D6 萱草花工程模板与组内天数）
+
+- 触发原因：ClaudeCode 已部分加入 D5 模板和 D3/D5 组范围，但留下编译失败：`resolveTemplateDayId`、`resolveTemplateSubmissionType` 未实现；D5 分数未进入 `templateScores`，提示词缺少工程侧 `engineeringDecision` 分工说明。
+- 事实确认：
+  - `Gemini-Api` 当前编译失败点为 `PianoHomeWorkVideoV2Task.java` 中 4 处缺失 helper 方法。
+  - `PianoNoteSequenceTemplateMatcher` 已有 D5 模板常量，但 `MatchResult` 只携带 D1/D2/D3 分数。
+  - 上游 `sop-reply` 仍负责替换 `D%s`，`Gemini-Api` 负责 `${audioseq}` 和 `${engineeringContext}`。
+- 实施任务：完成 T080-T085。
+- 验证任务：完成 T086-T088。
+
+### D016 - 实现记录（李瑶 D5/D6 萱草花工程模板与组内天数）
+
+- 实现内容：`PianoNoteSequenceTemplateMatcher.MatchResult` 已携带 D5 模板与分数，`templateScores` 输出 D5 与最佳模板组范围；D5《萱草花》参与高置信匹配与移调补救。`PianoHomeWorkVideoV2Task` 新增 `resolveTemplateDayId` / `resolveTemplateSubmissionType`，工程覆盖、工程兜底和注入的 `engineeringDecision` 都使用按 `expectedDay` 计算出的最终天数。
+- 口径修正：移调补救触发条件从 `<0.50` 调整为 `<=0.50`，避免新增 D5 模板后升半音铁血丹心样本被 D5 原调边界分 `0.50` 阻断补救。
+- 提示词：`C:\Users\EDY\Downloads\视频理解提示词V1_2.txt` 已加入 `${engineeringContext}` 说明，明确高置信 `engineeringDecision` 的 `id/recognizedDay/submissionType` 以工程侧为准；萱草花特征修正为含 `Bb/A#`、不含 `E/B`。已同步副本到 `prompt/piano_video_prompt_liyao_110_v1_2.txt`。
+- 测试命令：`mvn -q "-Dtest=PianoHomeWorkVideoV2TaskTest,PianoNoteSequenceTemplateMatcherTest" "-Dsurefire.failIfNoSpecifiedTests=false" test`（workdir: `C:\workspace\ju-chat\fc\Gemini-Api`）。
+- 测试结果：通过，`Tests run: 50, Failures: 0, Errors: 0, Skipped: 0`。覆盖萱草花高置信 D5、D6 组内今日作业、D3 进度萱草花提前、D5 进度沧海补交、D6 Gemini 失败工程兜底、低分 `id=-1`、升半音 D2 移调补救不回归。
