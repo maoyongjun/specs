@@ -13,7 +13,7 @@
 
 ## 当前目标
 
-- AI 最终待发送内容包含 `已经给您登记邮寄` 时写入 5 分钟 Redis 缓存。
+- AI answer 生成内容包含 `已经给您登记邮寄` 时写入 5 分钟 Redis 缓存。
 - Redis key 必须包含 `external_user_id`，统一为 `ai:reply:register-mail:if_register:{external_user_id}`。
 - `external-info-select` 的 `AppTask` 返回前检查缓存，命中后强制 `if_register="是"`。
 
@@ -22,14 +22,14 @@
 - 先读代码，再定方案，后实现。
 - 不扩大到 `ProfileTask/ProfileTaskV2`。
 - Redis 读写异常只记录 warn，不阻断主流程。
-- 写缓存必须位于发送前校验通过后，避免未发送的 AI 内容污染登记状态。
+- 写缓存必须位于 answer 内容清洗并打印日志后，避免后续 early return 漏掉已生成的登记邮寄话术。
 - 不修改 MQ body、FC 调用参数、OTS 表结构、外部 HTTP 请求和现有标签/物流解析规则。
 - 单元测试覆盖 key、TTL、触发文案和 `AppTask` 纯逻辑覆盖。
 
 ## 强制门禁
 
 - 参数来源：`external_user_id` 来自 `EmpExternalDto` 或 `external_key` 解析，使用前必须判空。
-- 赋值时机：AI 内容来自 Coze answer 清洗后，缓存写入在实际发送前。
+- 赋值时机：AI 内容来自 Coze answer 清洗后，缓存写入在 answer 生成事件内。
 - 占位对象：`AppTask` 空 JSON 早退不做缓存覆盖。
 - 下游读取：`AppTask` 返回前读取缓存并覆盖 `if_register`。
 - 旧逻辑保持：敏感词、撤回、人工回复、空内容、`无法回答`、MD5 缓存、用户信息保存、标签和物流逻辑不变。

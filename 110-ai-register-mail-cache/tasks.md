@@ -17,7 +17,7 @@
 ## Phase 2：风险门禁
 
 - [x] T006 `AppTask` 存在静态空 JSON 早退对象；早退场景不做缓存覆盖。
-- [x] T007 AI 回复缓存写入放在发送前校验通过后，不依赖后续异步步骤补齐字段。
+- [x] T007 AI 回复缓存写入放在 answer 生成并打印日志后，不依赖后续发送步骤补齐字段。
 - [x] T008 `AppTask` 下游返回字段在返回前当前层覆盖，日志和返回体保持一致。
 - [x] T009 本次明确新增 Redis key/TTL 行为；不改变接口契约、MQ body、数据库写入或外部请求。
 - [x] T010 用户已确认缓存只按 `external_user_id` 维度、只覆盖 `AppTask` 主入口。
@@ -27,18 +27,18 @@
 
 ## Phase 3：实现
 
-- [ ] T012 按规格实现最小范围改动。
-- [ ] T013 保持未声明的旧行为不变。
-- [ ] T014 对 Redis key、TTL、触发文案和返回覆盖增加可测试断言点。
-- [ ] T015 同步更新 `spec.md`、`tasks.md`、`AGENTS.md` 或 checklist 中因实现产生的口径变化。
+- [x] T012 按规格实现最小范围改动。
+- [x] T013 保持未声明的旧行为不变。
+- [x] T014 对 Redis key、TTL、触发文案和返回覆盖增加可测试断言点。
+- [x] T015 同步更新 `spec.md`、`tasks.md`、`AGENTS.md` 或 checklist 中因实现产生的口径变化。
 
 ## Phase 4：测试与验证
 
-- [ ] T016 新增或更新单元测试，覆盖关键行为。
-- [ ] T017 测试中断言关键 Redis 参数内容，不只断言最终结果。
-- [ ] T018 验证未命中文案、缓存不存在、旧标签/物流逻辑不回归。
-- [ ] T019 运行目标模块测试或编译命令，并记录结果。
-- [ ] T020 搜索确认没有残留旧口径或遗漏目标路径。
+- [x] T016 新增或更新单元测试，覆盖关键行为。
+- [x] T017 测试中断言关键 Redis 参数内容，不只断言最终结果。
+- [x] T018 验证未命中文案、缓存不存在、旧标签/物流逻辑不回归。
+- [x] T019 运行目标模块测试或编译命令，并记录结果。
+- [x] T020 搜索确认没有残留旧口径或遗漏目标路径。
 
 ## 执行记录
 
@@ -50,4 +50,14 @@
 
 ### D002 - 实现记录
 
-- 待实现后填写。
+- 实现内容：新增登记邮寄缓存常量和测试；AI answer 生成命中文案即写 Redis；`AppTask` 返回前读取缓存并覆盖 `if_register`。
+- 测试命令：`mvn -f C:\workspace\ju-chat\fc\pom.xml -pl ai-reply -Dtest=RedisContantsTest test`；`mvn -f C:\workspace\ju-chat\fc\pom.xml -pl delay-mq -Dtest=RedisContantsTest test`；`mvn -f C:\workspace\ju-chat\coze_plugin\pom.xml -pl external-info-select -Dmaven.test.skip=false -DskipTests=false -Dtest=AppTaskCourierStatusRegisterCompatTest,RedisContantsTest test`。
+- 测试结果：三条命令均 BUILD SUCCESS。
+- 自检结论：参数来源、调用顺序和旧逻辑保持已复核；本次纠正将写入时机前移到 answer 生成点。
+
+### D003 - 纠正记录：缓存写入时机前移
+
+- 触发原因：用户反馈已看到命中文案的 AI 生成日志，但未看到缓存写入日志。
+- 修正内容：缓存写入从 `sendJuzi` 入口前移到 answer 内容清洗并打印日志之后。
+- 文档同步：已同步 `spec.md`、`tasks.md`、`AGENTS.md`。
+- 验证结果：`ai-reply` 4 tests、`delay-mq` 3 tests、`external-info-select` 10 tests 全部通过。
