@@ -475,3 +475,13 @@
 - 单测锁定：新增 `match_shouldCorrectD2ToD3WhenChorusHistogramAndPhraseStronger`（真实音序断言纠偏 D3、高置信、priorityReason 含沧海一声笑纠偏）；原 D2 噪声序列用例 `match_shouldHighConfidenceMatchNoisyD2Sequence`（prefix=0.38）仍判 D2 不回归。`PianoNoteSequenceTemplateMatcherTest`(15) + `PianoHomeWorkVideoV2TaskTest`(37) 共 52 单测全过。
 - 真实 FC 回归（expectedDay=2，组覆盖）：`V1-1->D1四季歌/补交(1.0)`、`V2-1->D2铁血/今日(0.73)`、`V3-1->D3沧海/0.87 非高置信交Gemini`、`V5-1->D5萱草花/提前(0.88)`、本案例沧海 `->D3沧海/提前(0.74) 纠偏命中`、`demo2->D2铁血/今日(0.92)`。三大修复（萱草花 D5、D2→D3 纠偏、组覆盖）全部真实数据验证，原调与 D2 噪声不回归。临时手动测试已删除、不入库。
 - 遗留：`V3-1` 沧海 `score=0.87` 但 baseBest 已是 D3、仅因 gap 不足非高置信交 Gemini，属「D3 高分但 gap 不足」既有问题，与本次 D2→D3 纠偏无关。
+
+### D019 - 纠正记录（D2→D3 纠偏改为双路径，覆盖更多沧海采集形态）
+
+- 触发原因：D018 单路径纠偏漏判两段真沧海视频，仍被误判铁血丹心：①案例1 `D2=0.77/D3=0.65/gap=0.12`（gap>0.10）、`D3.prefix=0.38`（起手采集偏移），但 `D3.histogram=0.97/contiguous=0.7` 极强；②案例2 `gap=0.06/D3.prefix=0.5`，但 `D3.contiguous=0.22`（<0.25）。
+- 修正内容：`shouldCorrectD2ToD3WhenChorusStronger` 改为双路径（满足其一即纠偏；仍要求 `baseBest=D2`、有效音>=10）：
+  - 路径A（D3 极强）：`D3.histogram>=0.85 && D3.contiguous>=0.40 && histogram diff>=0.10 && contiguous diff>=0.20`，不要求 gap/prefix，覆盖起手被采集偏移的沧海（案例1）。
+  - 路径B（起手真沧海）：`d2.score-d3.score<=0.10 && D3.histogram>=0.70 && D3.prefix>=0.45 && histogram diff>=0.15`，去掉 D018 的 contiguous 硬门槛，覆盖 contiguous 偏低但起手匹配沧海的形态（案例2 与原真沧海）。
+  两路径都排除 D2 噪声样本（prefix=0.38 排除B、histogram=0.83<0.85 排除A）。
+- 单测：新增 `match_shouldCorrectD2ToD3WhenChorusVeryStrong`（路径A）、`match_shouldCorrectD2ToD3WhenChorusOpeningStrong`（路径B），原 D2 噪声/真 D2 用例不回归，54 单测全过。
+- 真实 FC 回归（expectedDay=3）：沧海案例1->D3(0.65 路径A)、案例2->D3(0.64 路径B)、铁血对照->D2(0.90)、demo2->D2(0.92)。后两者走结尾 E 指纹优先判 D2（先于 D2→D3 纠偏），确保铁血不被误纠偏。临时手动测试已删除、不入库。
