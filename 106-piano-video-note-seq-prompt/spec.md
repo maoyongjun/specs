@@ -485,3 +485,10 @@
   两路径都排除 D2 噪声样本（prefix=0.38 排除B、histogram=0.83<0.85 排除A）。
 - 单测：新增 `match_shouldCorrectD2ToD3WhenChorusVeryStrong`（路径A）、`match_shouldCorrectD2ToD3WhenChorusOpeningStrong`（路径B），原 D2 噪声/真 D2 用例不回归，54 单测全过。
 - 真实 FC 回归（expectedDay=3）：沧海案例1->D3(0.65 路径A)、案例2->D3(0.64 路径B)、铁血对照->D2(0.90)、demo2->D2(0.92)。后两者走结尾 E 指纹优先判 D2（先于 D2→D3 纠偏），确保铁血不被误纠偏。临时手动测试已删除、不入库。
+
+### D020 - 纠正记录（弹得太差/丢失曲目特征的假高置信 D2 → 人工）
+
+- 触发原因：用户提供一段沧海视频但学员弹得太差，音序 `A4 A2 C4 E4 C4 C3 E4 A4 E4 C4 D3 A4 E4 C4` 已丢失沧海特征（全是 A-C-E 琶音、无 G、无 A-G-E-D-C 级进），被误判 D2 铁血丹心。分数显示 `D2 coverage=1.0/contiguous=0.08`（A/C/E/D 恰好都落在铁血超长模板里使 coverage 满，但非连续铁血旋律），`D3.histogram=0.74<D2.histogram=0.86、D3.contiguous=0.17`——D3 无任何强于 D2 的依据，无法纠偏到沧海。
+- 修正内容：`PianoHomeWorkVideoV2Task` 增加假高置信 D2 门禁 `isFakeHighConfidenceD2`：当 `best=D2 高置信、非结尾E指纹命中(!endingRepeatedE)、D2.coverage>=0.95 且 D2.contiguousPhraseSimilarity<0.12` 时，判为长模板虚高的假高置信（音序丢失曲目特征），短路返回 `id=-1`、`needHumanReview=true` 走人工，不硬覆盖 D2、不调 Gemini。`!endingRepeatedE` 排除走结尾E指纹的真铁血（如 demo2），使其仍正常覆盖 D2。
+- 权衡：用户确认接受「弹得差的真 D2（如 V2-1，coverage=1.0/contiguous=0.07）也走人工复核」——工程侧无法可靠区分「差沧海」与「差 D2」（特征几乎一致）。
+- 单测：新增 `handleRequest_fakeHighConfidenceD2_shouldShortCircuitToManualReview`（本案例→id=-1 人工、不调 Gemini）；原 3 个 D2 覆盖/兜底/speaker110 用例改用 demo2 结尾E真铁血序列（不触发门禁）保留 D2 覆盖测试。`PianoNoteSequenceTemplateMatcherTest`(17)+`PianoHomeWorkVideoV2TaskTest`(38) 共 55 单测全过。
