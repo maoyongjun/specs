@@ -492,3 +492,12 @@
 - 修正内容：`PianoHomeWorkVideoV2Task` 增加假高置信 D2 门禁 `isFakeHighConfidenceD2`：当 `best=D2 高置信、非结尾E指纹命中(!endingRepeatedE)、D2.coverage>=0.95 且 D2.contiguousPhraseSimilarity<0.12` 时，判为长模板虚高的假高置信（音序丢失曲目特征），短路返回 `id=-1`、`needHumanReview=true` 走人工，不硬覆盖 D2、不调 Gemini。`!endingRepeatedE` 排除走结尾E指纹的真铁血（如 demo2），使其仍正常覆盖 D2。
 - 权衡：用户确认接受「弹得差的真 D2（如 V2-1，coverage=1.0/contiguous=0.07）也走人工复核」——工程侧无法可靠区分「差沧海」与「差 D2」（特征几乎一致）。
 - 单测：新增 `handleRequest_fakeHighConfidenceD2_shouldShortCircuitToManualReview`（本案例→id=-1 人工、不调 Gemini）；原 3 个 D2 覆盖/兜底/speaker110 用例改用 demo2 结尾E真铁血序列（不触发门禁）保留 D2 覆盖测试。`PianoNoteSequenceTemplateMatcherTest`(17)+`PianoHomeWorkVideoV2TaskTest`(38) 共 55 单测全过。
+
+### D021 - 纠正记录（课程外音级检测：电吹管等非钢琴乐器 → 人工）
+
+- 触发原因：用户提供一段电吹管（非钢琴乐器）视频，音序含大量课程外升号音（C#/D#/G#，占比约 37%），被误判 D5 萱草花。工程侧 `templateScores bestDay=D2(0.53)` 非高置信交 Gemini，Gemini 误判 id=5 萱草花（虽标 needHumanReview 但仍给了曲目 id）。钢琴课程 D1-D6 都是 C/F 大调（白键+Bb），**不含 C#/D#/F#/G#**，升号占比高说明是非钢琴乐器或非课程曲目。
+- 修正内容：
+  - `PianoNoteSequenceFeatureExtractor` 计算 `outOfScaleRatio`（pitch class∈{1,3,6,8} 即 C#/D#/F#/G# 占比），注入 engineeringContext（也给 Gemini 看）。
+  - `PianoHomeWorkVideoV2Task` 增加 `isOutOfScalePitchSequence` 门禁：李瑶体系 `outOfScaleRatio>=0.30` 且工程侧非高置信时，判为非钢琴乐器/非课程曲目，短路 `id=-1` 人工，不调 Gemini。**已高置信（含移调补救命中课程曲目）时不拦截**，避免误伤升降调演奏。
+- 单测：新增 `handleRequest_outOfScalePitchSequence_shouldShortCircuitToManualReview`（电吹管真实音序→id=-1、不调 Gemini）；`PianoNoteSequenceFeatureExtractorTest`(4)+matcher(17)+task(39) 共 60 单测全过，原用例不回归。
+- 范围：本次只处理李瑶体系电吹管（用户确认）；雅琪体系电吹管（升号多→组X/组Y 低分）多会走雅琪未匹配短路。案例1（雅琪 5 音太少/两组接近误判）本次未处理。
