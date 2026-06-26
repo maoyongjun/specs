@@ -203,3 +203,12 @@
 - 文档同步：`spec.md`、`tasks.md`、提示词。
 - 验证结果：单测新增「误判案例音序→未匹配」「雅琪未匹配→id=-1 短路不调 Gemini」；matcher 11 + task 31 = 42 单测全过；D4_3(0.68)高分仍命中组Y、D2_1(gap0.12)仍组X 不回归。
 - 假设更新：D003 的阈值口径 `0.40/0.0` 被本记录的分层阈值 `min=0.40 / high=0.65 / midGap=0.10` 取代。
+
+### D006 - 纠正记录（有效音太少/两组太接近 → 雅琪未匹配人工）
+
+- 触发原因：用户提供一段雅琪视频，只有 5 个有效音 `A4 G4 C5 A4 D5`（pitch class 9 7 0 9 2，恰好同时落在但愿人长久和沧海的音级集合里），导致 `groupX=0.90`/`groupY=0.93`/`gap=0.03` 两组都高且接近；雅琪「高分(>=0.65)直接判」规则判了 groupY(沧海D4)，但 5 个音根本无法区分两首曲子，期望 D3 却返回 D4。
+- 修正内容：`matchYaqi` 增加两道未匹配判定（满足其一即 `matched=false`，走雅琪未匹配 id=-1 人工短路）：
+  - `tooFewToDistinguish`：有效音 `< YAQI_MIN_OBSERVED_NOTES(8)`，音太少无法可靠区分曲目组；
+  - `ambiguousBothHigh`：`groupX>=YAQI_AMBIGUOUS_BOTH_HIGH(0.85) && groupY>=0.85 && gap<YAQI_GROUP_MIN_GAP(0.10)`，两组都很高且接近（音序短/公共音重叠）无法区分。
+- 验证结果：新增单测 `matchYaqi_shouldReturnUnmatchedForTooFewNotes`（5 音案例→未匹配）；D4_3(23 音、groupX=0.67<0.85，两条都不触发)仍判组Y、其余雅琪组X/组Y/低分用例不回归。matcher 18 + task 39 = 57 单测全过。
+- 备注：案例只有日志音序（无视频 URL），matcher 单测直接用真实音序锁定→未匹配。
