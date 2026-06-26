@@ -501,3 +501,4 @@
   - `PianoHomeWorkVideoV2Task` 增加 `isOutOfScalePitchSequence` 门禁：李瑶体系 `outOfScaleRatio>=0.30` 且工程侧非高置信时，判为非钢琴乐器/非课程曲目，短路 `id=-1` 人工，不调 Gemini。**已高置信（含移调补救命中课程曲目）时不拦截**，避免误伤升降调演奏。
 - 单测：新增 `handleRequest_outOfScalePitchSequence_shouldShortCircuitToManualReview`（电吹管真实音序→id=-1、不调 Gemini）；`PianoNoteSequenceFeatureExtractorTest`(4)+matcher(17)+task(39) 共 60 单测全过，原用例不回归。
 - 范围：本次只处理李瑶体系电吹管（用户确认）；雅琪体系电吹管（升号多→组X/组Y 低分）多会走雅琪未匹配短路。案例1（雅琪 5 音太少/两组接近误判）本次未处理。
+- 真实 FC 回归：电吹管 `outOfScaleRatio=0.37(valid=68)、bestScore=0.53 非高置信` → 课程外音级人工(-1)；对照沧海->D3(0.65,ratio=0.00)、铁血对照->D2(0.90,ratio=0.00)、demo2->D2(0.92,ratio=0.03)、V5萱草花->D5(0.88,ratio=0.18) 均覆盖正确、不回归（课程曲目 ratio 0.00~0.18 均 <0.30，阈值 0.30 干净区分；萱草花的 Bb 不算课程外音级）。临时手动测试已删除、不入库。
