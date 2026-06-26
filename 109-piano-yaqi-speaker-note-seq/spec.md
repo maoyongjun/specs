@@ -211,4 +211,4 @@
   - `tooFewToDistinguish`：有效音 `< YAQI_MIN_OBSERVED_NOTES(8)`，音太少无法可靠区分曲目组；
   - `ambiguousBothHigh`：`groupX>=YAQI_AMBIGUOUS_BOTH_HIGH(0.85) && groupY>=0.85 && gap<YAQI_GROUP_MIN_GAP(0.10)`，两组都很高且接近（音序短/公共音重叠）无法区分。
 - 验证结果：新增单测 `matchYaqi_shouldReturnUnmatchedForTooFewNotes`（5 音案例→未匹配）；D4_3(23 音、groupX=0.67<0.85，两条都不触发)仍判组Y、其余雅琪组X/组Y/低分用例不回归。matcher 18 + task 39 = 57 单测全过。
-- 备注：案例只有日志音序（无视频 URL），matcher 单测直接用真实音序锁定→未匹配。
+- 真实 FC 回归：用户补充视频 URL 后跑通，工程侧提取 `validNoteCount=5、groupX=0.90/groupY=0.93/gap=0.03`（与日志完全一致），`matchYaqi` 判未匹配 → 雅琪人工(-1)，修复在真实视频验证通过。临时手动测试已删除、不入库。
