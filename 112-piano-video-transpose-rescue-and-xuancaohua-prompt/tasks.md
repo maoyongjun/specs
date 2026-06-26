@@ -63,3 +63,43 @@
 - 测试命令：`mvn -f fc/pom.xml -pl Gemini-Api test -Dtest='PianoNoteSequenceTemplateMatcherTest,PianoHomeWorkVideoV2TaskTest'`
 - 测试结果：Tests run: 60, Failures: 0, Errors: 0, BUILD SUCCESS。两条既有失败转绿；移调补救假阳性修复、真升半音回归、萱草花绝对音名锁定、噪声转人工等全部通过。
 - 自检结论：仅改内存评分逻辑 + 测试 + spec 文档；未改方法签名/JSON 结构/外部契约；旧 D5 命中用例（均含开头指纹）不回归。
+
+### D005 - 真实调用回归（VideoToNoteSeq）
+
+- 执行内容：新增并运行 `scripts/RealPianoRegressionRunner.java`，真实调用 `FcOssFFmpeg-3278/VideoToNoteSeq`，使用 Redis `db=3` 轮询返回音序，并用当前 V2 工程代码计算模板匹配和作业关系；结果写入 `out/real-regression-results.json`。
+- 执行命令摘要：
+  - `mvn -f fc/pom.xml -pl Gemini-Api -am -DskipTests compile`
+  - `mvn -f fc/Gemini-Api/pom.xml dependency:build-classpath -Dmdep.outputFile=.../out/gemini-api.classpath.txt`
+  - `javac -encoding UTF-8 -cp <Gemini-Api/common/dependencies> -d .../out/classes scripts/RealPianoRegressionRunner.java`
+  - `java -cp <Gemini-Api/common/runner/dependencies> com.drh.gemini.api.RealPianoRegressionRunner .../out/real-regression-results.json`
+- 实测摘要：10/10 视频成功取回音序。D006 修正用户口误后，明确期望断言 9 条全部通过；`V2-1_D4` 未指定明确期望，仅记录实际为假高置信 D2 防护短路 `id=-1`；`V5-1_D4` 识别 D5 且作业类型为「提前提交」。
+- 通过项：V1-1(D4/D2) 均 D1/补交；V1-2(D4) D1/补交；V3-1(D4) 工程候选 D4/沧海/今日（未高置信，仍需 Gemini 最终确认）；V5-1(D2) D5/提前提交；a8bdb7b2 `id=-1`；ec62a262 `id=-1`；e57f1dda D4/沧海/今日。
+- 自检结论：本次真实调用只新增 spec 目录 runner 与 out 结果文件，不改生产逻辑；D4 下 V5 作业类型口径已在 D006 确认为「提前提交」。
+
+### D006 - 口径纠正（V5-1 D4 作业类型）
+
+- 执行内容：用户确认 `V5-1.mp4` 在 D4 场景识别 D5《萱草花》后应为未来作业/提前提交，前文「当日作业」是口误；已同步修正 `regression.md`、`spec.md`、`scripts/RealPianoRegressionRunner.java` 和 `out/real-regression-results.json`。
+- 修正后结果：明确期望断言 9 条全部通过；`V2-1_D4` 仍仅记录实际、不计入断言。
+- 自检结论：仅文档/回归断言口径修正，不改生产逻辑，不需要重新跑 FC。
+
+### D007 - 雅琪低质量沧海误判但愿人长久修复
+
+- 执行内容：`PianoNoteSequenceTemplateMatcher.matchYaqi` 新增 `YAQI_GROUP_MIN_CONTIGUOUS=0.35` 连续短语门禁，避免短/差音序只靠公共音级把 coverage/histogram 抬高后误判组别。
+- 回归样本：线上日志音序 `C2 C3 G3 D5 C4 C3 F2 F2 A3 G4 C2 C2 G3`，旧逻辑 `groupXScore=0.80`、`groupYScore=0.61`、`scoreGap=0.19` 误判 `组X(但愿人长久)`；修复后未匹配，V2 task 直接返回 `id=-1` 人工介入且不调 Gemini。
+- 测试新增：
+  - `PianoNoteSequenceTemplateMatcherTest.matchYaqi_shouldReturnUnmatchedForPoorCanghaiMisclassifiedAsGroupX`
+  - `PianoHomeWorkVideoV2TaskTest.handleRequest_yaqiSpeakerPoorCanghaiMisclassifiedAsGroupX_shouldShortCircuitToManualReview`
+- 测试命令：`mvn -f fc/pom.xml -pl Gemini-Api test -Dtest='PianoNoteSequenceTemplateMatcherTest,PianoHomeWorkVideoV2TaskTest'`
+- 测试结果：Tests run: 62, Failures: 0, Errors: 0, BUILD SUCCESS。
+- 自检结论：雅琪组X/组Y正例和低音混入沧海正例未回归；仅低质量、不稳定组别样本转人工。
+
+### D008 - 低质量升半音沧海误判铁血丹心修复
+
+- 执行内容：`PianoNoteSequenceTemplateMatcher.bestTransposedRescue` 新增自动移调幅度门禁 `TRANSPOSE_RESCUE_MAX_ABS_SHIFT=2`，只允许绝对距离 ≤2 半音的升/降调自动高置信覆盖，避免 6/9 半音远距离硬凑抢走真实曲目。
+- 回归样本：线上日志音序 `A#4 G#4 F4 D#4 C#4 A#2 F4 D#4 C#4 A#3 G#3 A#3 G#3 G#2 A#3 G#3 A#3 C#4 D#4 F4 G#4 A#4 G#4 F4 D#4 C#4 D4 D#4`，旧逻辑 `整体移调6半音后命中D2`、`score=0.91` 误判 `铁血丹心`；修复后挡掉 D2 远距离候选，近距离 `整体移调1半音` 命中 D3/D4《沧海一声笑》。
+- 测试新增：
+  - `PianoNoteSequenceTemplateMatcherTest.match_shouldPreferNearTransposedCanghaiOverTritoneD2Rescue`
+  - `PianoHomeWorkVideoV2TaskTest.handleRequest_poorCanghaiTritoneRescueToD2_shouldOverrideToCanghai`
+- 测试命令：`mvn -f fc/pom.xml -pl Gemini-Api test -Dtest='PianoNoteSequenceTemplateMatcherTest,PianoHomeWorkVideoV2TaskTest'`
+- 测试结果：Tests run: 64, Failures: 0, Errors: 0, BUILD SUCCESS。
+- 自检结论：真升半音铁血丹心仍命中 D2；D008 样本最终 `id=4/title=沧海一声笑/recognizedDay=D4/submissionType=今日作业`；D007 雅琪人工介入不回归。
