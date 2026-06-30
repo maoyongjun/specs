@@ -1,4 +1,4 @@
-# 任务清单：添加好友回调发送 MQ 新 Tag
+# 任务清单：添加好友与 RPA 新增客户回调发送 MQ 新 Tag
 
 **输入**：来自 `spec.md` 的功能规格  
 **前置条件**：`spec.md`、`AGENTS.md`、`checklists/requirements.md`  
@@ -25,6 +25,26 @@
 
 **检查点**：T006-T011 已有明确结论；无高风险调用顺序问题。
 
+## Phase 1 补充：RPA 新增客户代码事实确认
+
+- [x] T021 复查追加需求，确认仍处于 `data-RC/juzi` 模块和 `CallbackController` 回调链路。
+- [x] T022 用当前代码确认可复用添加好友回调的模式：`CallbackController` 新增入口、`JuziConfig` 布尔开关、`MqConfig` group/tag、`ProduceClient` producer、`JuziMessageServiceImpl` 原始 body 发送方法。
+- [x] T023 确认 RPA 新增客户关键参数来源：全部来自请求体 `JSONObject`，包括顶层字段 `imContactId/name/avatar/gender/createTimestamp` 与嵌套字段 `imInfo`、`botInfo`。
+- [x] T024 确认配置和外部影响：拟新增 `juzi.rpa-customer-mq-enabled=false`、`mq.juzi-rpa-customer-group`、`mq.juzi-rpa-customer-tag`；只影响 MQ 发布，不涉及 Redis、Feign、FC、数据库。
+- [x] T025 确认旧逻辑保持：不改现有 message/sendResult、juzi_all、addFriend 分支；不改 `sendMq` 自己/客户 tag 判断。
+
+**检查点**：T021-T025 已完成，追加需求事实确认支持进入实现设计。
+
+## Phase 2 补充：RPA 新增客户风险门禁
+
+- [x] T026 检查 RPA 新增客户是否需要 DTO 或字段转换：不需要；应发送请求体原始 JSON，避免嵌套字段丢失或重命名。
+- [x] T027 检查调用后赋值风险：无；开关判断和 body 生成都在发送前完成。
+- [x] T028 检查下游读取字段来源：本服务只读取开关、topic、tag、body；消费者读取业务字段不在本次范围。
+- [x] T029 检查业务语义变化：新增 HTTP 入口和新 MQ tag；不改旧入口、旧 MQ body、Redis、数据库、远程调用。
+- [x] T030 建立测试映射：controller 覆盖默认关闭/开启发送并断言嵌套字段；service 覆盖新 tag 和原始 body。
+
+**检查点**：T026-T030 已有明确结论；用户已确认并已完成 RPA 新增客户实现。
+
 ## Phase 3：实现
 
 - [x] T012 在 `JuziConfig` 增加 `addFriendMqEnabled=false`。
@@ -32,6 +52,11 @@
 - [x] T014 在 `ProduceClient` 增加添加好友 producer bean，或按最终实现复用明确的 producer。
 - [x] T015 在 `JuziMessageService` / `JuziMessageServiceImpl` 增加添加好友 MQ 发送方法。
 - [x] T016 在 `CallbackController` 增加添加好友回调入口，开关开启时发送 MQ。
+- [x] T031 在 `JuziConfig` 增加 `rpaCustomerMqEnabled=false`。
+- [x] T032 在 `MqConfig` 增加 RPA 新增客户 MQ group/tag 默认值。
+- [x] T033 在 `ProduceClient` 增加 RPA 新增客户 producer bean。
+- [x] T034 在 `JuziMessageService` / `JuziMessageServiceImpl` 增加 RPA 新增客户 MQ 发送方法。
+- [x] T035 在 `CallbackController` 增加 RPA 新增客户回调入口，开关开启时发送 MQ。
 
 ## Phase 4：测试与验证
 
@@ -39,6 +64,10 @@
 - [x] T018 更新 `JuziMessageServiceImplTest`，覆盖新方法使用新增 tag 且不解析 self 字段。
 - [x] T019 运行目标测试或编译命令，并记录结果。
 - [x] T020 搜索确认没有残留旧调用、旧字段、旧口径。
+- [x] T036 更新 `CallbackControllerTest`，覆盖 RPA 新增客户默认关闭不发送、开启发送原始 body 和嵌套字段。
+- [x] T037 更新 `JuziMessageServiceImplTest`，覆盖 RPA 新增客户新方法使用新增 tag 且不解析 body。
+- [x] T038 运行目标测试或编译命令，并记录结果。
+- [x] T039 搜索确认 RPA 新增客户配置、tag、方法命名一致，无残留旧口径。
 
 ## 执行记录
 
@@ -56,3 +85,18 @@
   - `java -cp <juzi target test/classes + dependencies> org.junit.runner.JUnitCore com.drh.data.juzi.controller.CallbackControllerTest com.drh.data.juzi.service.impl.JuziMessageServiceImplTest`
 - 测试结果：Maven 编译成功；Maven surefire 因 `pom.xml` `<skip>true</skip>` 跳过测试；JUnitCore 实际执行结果 `OK (9 tests)`。
 - 自检结论：参数来源、调用顺序、新 MQ tag、默认关闭、开启发送和旧逻辑不回归均已覆盖；无剩余实现风险。
+
+### D003 - RPA 新增客户需求记录
+
+- 执行内容：追加 RPA 新增客户回调规格、关键参数、配置、MQ tag、风险门禁和测试映射。
+- 验证方式：读取当前 `CallbackController`、`JuziConfig`、`MqConfig`、`JuziMessageServiceImpl`，确认可沿用添加好友回调的独立开关、独立 producer、原始 JSON body 发送模式。
+- 自检结论：拟新增路径 `POST /callback/msg/callback/rpaCustomer`，拟新增 `juzi.rpa-customer-mq-enabled=false`，拟新增 tag `juzi_rpa_customer`；消费者不实现；用户已确认并已完成实现。
+
+### D004 - RPA 新增客户实现记录
+
+- 实现内容：新增 `rpaCustomerMqEnabled` 开关、RPA 新增客户 MQ group/tag、独立 producer、`sendJuziRpaCustomerMq` 和 `POST /callback/msg/callback/rpaCustomer`；补充 controller/service 测试。
+- 测试命令：
+  - `mvn -pl juzi "-Dtest=CallbackControllerTest,JuziMessageServiceImplTest" "-DskipTests=false" test`
+  - `java -cp <juzi target test/classes + dependencies> org.junit.runner.JUnitCore com.drh.data.juzi.controller.CallbackControllerTest com.drh.data.juzi.service.impl.JuziMessageServiceImplTest`
+- 测试结果：Maven 编译成功；Maven surefire 因 `pom.xml` `<skip>true</skip>` 跳过测试；JUnitCore 实际执行结果 `OK (12 tests)`。
+- 自检结论：RPA 新增客户参数来源、调用顺序、新 MQ tag、默认关闭、开启发送、嵌套字段保留和旧逻辑不回归均已覆盖；无剩余实现风险。

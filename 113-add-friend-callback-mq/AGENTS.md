@@ -1,18 +1,21 @@
 # 规格执行说明
 
-本目录记录 `data-RC/juzi` 模块添加好友回调发送 MQ 新 tag 的需求。
+本目录记录 `data-RC/juzi` 模块添加好友回调与 RPA 新增客户回调发送 MQ 新 tag 的需求。
 
 ## 作用范围
 
 - 规格文档：`C:\workspace\ju-chat\specs\113-add-friend-callback-mq`
 - 目标项目：`C:\workspace\ju-chat\data-RC\juzi`
-- 相关模块：juzi 回调 controller、配置绑定、MQ 发送服务、单元测试
+- 相关模块：juzi 回调 controller、配置绑定、MQ producer、MQ 发送服务、单元测试
 
 ## 当前目标
 
 - 在 `CallbackController` 增加添加好友回调入口。
 - 增加添加好友 MQ 发布开关，默认关闭。
 - 将添加好友回调原始 JSON 发送到 MQ 新 tag；消费者不在本次实现范围内。
+- 在 `CallbackController` 增加 RPA 新增客户回调入口。
+- 增加 RPA 新增客户 MQ 发布开关，默认关闭。
+- 将 RPA 新增客户回调原始 JSON 发送到独立 MQ 新 tag；消费者不在本次实现范围内。
 
 ## 执行原则
 
@@ -25,12 +28,12 @@
 
 ## 强制门禁
 
-- 参数来源：添加好友业务字段来自请求体；开关来自 `JuziConfig`；topic/tag 来自 `MqConfig`。
+- 参数来源：添加好友和 RPA 新增客户业务字段来自请求体；开关来自 `JuziConfig`；topic/tag 来自 `MqConfig`。
 - 赋值时机：所有字段在 controller 方法执行时已存在，MQ body 在发送前由请求体生成。
 - 占位对象：新增实现不创建业务 DTO 占位对象。
 - 下游读取：本服务下游只读取 topic、tag、body；消费者字段读取不在本次范围内。
 - 旧逻辑保持：不改 `sendMq` 自己/客户 tag 判断，不改 `sendResult` 异步处理和 `juzi_all` 逻辑。
-- 影响范围：新增 HTTP 入口、新配置开关、新 MQ tag 发送方法；不涉及数据库、Redis、FC、Feign。
+- 影响范围：新增 HTTP 入口、新配置开关、新 MQ producer、新 MQ tag 发送方法；不涉及数据库、Redis、FC、Feign。
 - 测试映射：controller 测开关和 body；service 测 topic/tag/body。
 
 ## 重点代码位置
